@@ -1,0 +1,278 @@
+import { Icon } from '@iconify/react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { useSidebar } from '../contexts/SidebarContext'
+
+function Sidebar() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { user } = useAuth()
+  const { isSidebarOpen, toggleSidebar } = useSidebar()
+
+  const navItems = [
+    { id: 'overview', label: 'Visão Geral', icon: 'lucide:layout-dashboard', path: '/dashboard' },
+    { id: 'invest', label: 'Investir (Planos)', icon: 'lucide:trending-up', path: '/investir-planos' },
+    { id: 'forex', label: 'Conta Forex (MT4)', icon: 'lucide:layers', path: '/conta-forex-mt4' },
+    { id: 'crypto', label: 'Cripto (Em breve)', icon: 'lucide:bitcoin', path: '/cripto-em-breve' },
+    { id: 'reports', label: 'Relatórios', icon: 'lucide:file-bar-chart', path: '/relatorios-performance' },
+    { id: 'invoices', label: 'Faturas', icon: 'lucide:receipt', path: '/faturas-performance' },
+  ]
+
+  const accountNavItems = [
+    { id: 'profile', label: 'Perfil', icon: 'lucide:user', path: '/perfil-cliente' },
+    { id: 'referrals', label: 'Indicações', icon: 'lucide:users', path: '/referral-program' },
+    { id: 'support', label: 'Suporte', icon: 'lucide:life-buoy', path: '/suporte-cliente' },
+  ]
+
+  const isActive = (path) => {
+    return location.pathname === path || location.pathname.startsWith(path + '/')
+  }
+
+  const getUserInitials = () => {
+    if (user) {
+      const firstName = user.firstName || user.first_name || ''
+      const lastName = user.lastName || user.last_name || ''
+      if (firstName && lastName) {
+        return `${firstName[0]}${lastName[0]}`.toUpperCase()
+      }
+      if (firstName) {
+        return firstName.substring(0, 2).toUpperCase()
+      }
+    }
+    return 'JS'
+  }
+
+  const getUserName = () => {
+    if (user) {
+      const firstName = user.firstName || user.first_name || ''
+      const lastName = user.lastName || user.last_name || ''
+      return `${firstName} ${lastName}`.trim() || 'Usuário'
+    }
+    return 'João Silva'
+  }
+
+  const handleNavigation = (path) => {
+    navigate(path)
+    // Fechar sidebar em mobile após navegação
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      toggleSidebar()
+    }
+  }
+
+  return (
+    <>
+      {/* Mobile Overlay - Apenas para drawer lateral no mobile */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300"
+          onClick={toggleSidebar}
+        />
+      )}
+      
+      {/* Desktop Sidebar - Pode ser ocultado */}
+      <aside className={`hidden lg:flex sidebar-custom-scroll w-[240px] bg-gradient-to-b from-[#121316] to-[#0E0E10] text-[#9ca3af] py-8 px-5 border-r border-[rgba(255,255,255,0.04)] flex-shrink-0 fixed left-0 top-0 h-screen z-50 flex-col overflow-y-auto transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-12 pl-1">
+        <div 
+          className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[#002914] font-extrabold text-lg shadow-[0_0_20px_rgba(0,255,136,0.15)] flex-shrink-0 cursor-pointer"
+            onClick={() => handleNavigation('/dashboard')}
+          style={{
+            background: 'linear-gradient(135deg, #00ff88 0%, #00afaa 100%)'
+          }}
+        >
+          TN
+        </div>
+        <div className="flex flex-col gap-0.5 flex-1">
+          <div className="text-base font-bold text-white leading-[1.1]">
+            TraderNex
+          </div>
+          <div className="text-[11px] text-[rgba(255,255,255,0.4)] font-medium">
+            Client Portal
+          </div>
+        </div>
+      </div>
+
+        {/* Navigation */}
+        <nav className="flex flex-col gap-1 mb-10">
+          <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3">
+            Principal
+          </div>
+          {navItems.map((item) => {
+            const active = isActive(item.path)
+            return (
+              <div
+                key={item.id}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                  active
+                    ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                    : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white hover:pl-4'
+                }`}
+                onClick={() => handleNavigation(item.path)}
+                data-media-type="banani-button"
+              >
+                <div className="w-[18px] h-[18px] flex items-center justify-center">
+                  <Icon icon={item.icon} className="text-lg" />
+                </div>
+                <span className="text-sm font-medium">{item.label}</span>
+              </div>
+            )
+          })}
+
+          <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
+            Sua Conta
+          </div>
+          {accountNavItems.map((item) => {
+            const active = isActive(item.path)
+            return (
+              <div
+                key={item.id}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                  active
+                    ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                    : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white hover:pl-4'
+                }`}
+                onClick={() => handleNavigation(item.path)}
+                data-media-type="banani-button"
+              >
+                <div className="w-[18px] h-[18px] flex items-center justify-center">
+                  <Icon icon={item.icon} className="text-lg" />
+                </div>
+                <span className="text-sm font-medium">{item.label}</span>
+              </div>
+            )
+          })}
+        </nav>
+
+        {/* Footer - User Card */}
+        <div className="mt-auto">
+          <div 
+            className="flex items-center gap-3 p-3 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] rounded-xl cursor-pointer transition-all duration-300 hover:bg-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.1)]"
+            onClick={() => handleNavigation('/perfil-cliente')}
+            data-media-type="banani-button"
+          >
+            <div 
+              className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0"
+              style={{
+                background: '#2c3e50'
+              }}
+            >
+              {getUserInitials()}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <div className="text-[13px] font-semibold text-white">{getUserName()}</div>
+              <div className="text-[10px] text-[rgba(255,255,255,0.5)]">Cliente TraderNex</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile Drawer Sidebar - Drawer que desliza da esquerda */}
+      <aside className={`lg:hidden sidebar-custom-scroll w-[280px] max-w-[85vw] bg-gradient-to-b from-[#121316] to-[#0E0E10] text-[#9ca3af] py-6 px-4 border-r border-[rgba(255,255,255,0.04)] flex-shrink-0 fixed left-0 top-0 h-screen z-50 flex flex-col overflow-y-auto transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        {/* Mobile Close Button */}
+        <button
+          onClick={toggleSidebar}
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-[#9ca3af] hover:text-white hover:bg-[rgba(255,255,255,0.05)] rounded-lg transition-all"
+          data-media-type="banani-button"
+        >
+          <Icon icon="lucide:x" className="text-xl" />
+        </button>
+        
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-8 pl-1 mt-2">
+          <div 
+            className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[#002914] font-extrabold text-lg shadow-[0_0_20px_rgba(0,255,136,0.15)] flex-shrink-0 cursor-pointer"
+            onClick={() => handleNavigation('/dashboard')}
+            style={{
+              background: 'linear-gradient(135deg, #00ff88 0%, #00afaa 100%)'
+            }}
+          >
+            TN
+          </div>
+          <div className="flex flex-col gap-0.5 flex-1">
+            <div className="text-base font-bold text-white leading-[1.1]">
+              TraderNex
+            </div>
+            <div className="text-[11px] text-[rgba(255,255,255,0.4)] font-medium">
+              Client Portal
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex flex-col gap-1 mb-8">
+          <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3">
+            Principal
+          </div>
+          {navItems.map((item) => {
+            const active = isActive(item.path)
+            return (
+              <div
+                key={item.id}
+                className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                  active
+                    ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                    : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white'
+                }`}
+                onClick={() => handleNavigation(item.path)}
+                data-media-type="banani-button"
+              >
+                <div className="w-[18px] h-[18px] flex items-center justify-center">
+                  <Icon icon={item.icon} className="text-lg" />
+                </div>
+                <span className="text-sm font-medium">{item.label}</span>
+              </div>
+            )
+          })}
+
+          <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
+            Sua Conta
+          </div>
+          {accountNavItems.map((item) => {
+            const active = isActive(item.path)
+            return (
+              <div
+                key={item.id}
+                className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                  active
+                    ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                    : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white'
+                }`}
+                onClick={() => handleNavigation(item.path)}
+                data-media-type="banani-button"
+              >
+                <div className="w-[18px] h-[18px] flex items-center justify-center">
+                  <Icon icon={item.icon} className="text-lg" />
+                </div>
+                <span className="text-sm font-medium">{item.label}</span>
+              </div>
+            )
+          })}
+        </nav>
+
+        {/* Footer - User Card */}
+        <div className="mt-auto">
+          <div 
+            className="flex items-center gap-3 p-3 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] rounded-xl cursor-pointer transition-all duration-300 hover:bg-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.1)]"
+            onClick={() => handleNavigation('/perfil-cliente')}
+            data-media-type="banani-button"
+          >
+            <div 
+              className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0"
+              style={{
+                background: '#2c3e50'
+              }}
+            >
+              {getUserInitials()}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <div className="text-[13px] font-semibold text-white">{getUserName()}</div>
+              <div className="text-[10px] text-[rgba(255,255,255,0.5)]">Cliente TraderNex</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </>
+  )
+}
+
+export default Sidebar
