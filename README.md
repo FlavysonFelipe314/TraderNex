@@ -69,14 +69,6 @@ cd tradernex
 
 ### 2. Configure as Variáveis de Ambiente
 
-```bash
-# Crie o arquivo .env baseado no template
-# Copie o conteúdo de ENV-TEMPLATE.md para um arquivo .env
-
-# Ou crie manualmente:
-touch .env
-# Depois edite com suas configurações (veja ENV-TEMPLATE.md)
-```
 
 ### 3. Inicie os Containers
 
