@@ -183,10 +183,13 @@ export function AuthProvider({ children }) {
 
   const getProfile = async () => {
     try {
+      console.log('[getProfile] Fazendo requisição para /api/auth/profile')
       const response = await api.get('/api/auth/profile')
+      console.log('[getProfile] Resposta recebida:', response.data)
       
       if (response.data.success && response.data.data) {
         const userData = response.data.data
+        console.log('[getProfile] Dados do usuário recebidos:', userData)
         // Normalizar campos do backend para o formato do frontend
         const normalizedUser = {
           id: userData.id,
@@ -199,10 +202,10 @@ export function AuthProvider({ children }) {
           country: userData.country,
           emailVerified: userData.email_verified,
           accountType: userData.account_type,
-          balance: userData.balance,
-          totalInvested: userData.total_invested,
-          totalProfit: userData.total_profit,
-          profitPercentage: userData.profit_percentage,
+          balance: userData.balance != null && !isNaN(userData.balance) ? Number(userData.balance) : 0,
+          totalInvested: userData.total_invested != null && !isNaN(userData.total_invested) ? Number(userData.total_invested) : 0,
+          totalProfit: userData.total_profit != null && !isNaN(userData.total_profit) ? Number(userData.total_profit) : 0,
+          profitPercentage: userData.profit_percentage != null && !isNaN(userData.profit_percentage) ? Number(userData.profit_percentage) : 0,
           referralCode: userData.referral_code,
           street: userData.street,
           number: userData.number,
@@ -213,16 +216,25 @@ export function AuthProvider({ children }) {
           zip_code: userData.zip_code,
           complement: userData.complement
         }
+        console.log('[getProfile] Usuário normalizado:', normalizedUser)
         setUser(normalizedUser)
         localStorage.setItem('user', JSON.stringify(normalizedUser))
         return { success: true, user: normalizedUser }
       } else {
+        console.warn('[getProfile] Resposta sem dados:', response.data)
         return { 
           success: false, 
           message: response.data.message || 'Erro ao obter perfil.' 
         }
       }
     } catch (error) {
+      console.error('[getProfile] Erro na requisição:', error)
+      console.error('[getProfile] Detalhes do erro:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      })
       const errorData = error.response?.data
       const message = errorData?.message || 'Erro ao obter perfil. Tente novamente.'
       return { success: false, message }
@@ -247,10 +259,10 @@ export function AuthProvider({ children }) {
           country: userData.country,
           emailVerified: userData.email_verified,
           accountType: userData.account_type,
-          balance: userData.balance,
-          totalInvested: userData.total_invested,
-          totalProfit: userData.total_profit,
-          profitPercentage: userData.profit_percentage,
+          balance: userData.balance != null && !isNaN(userData.balance) ? Number(userData.balance) : 0,
+          totalInvested: userData.total_invested != null && !isNaN(userData.total_invested) ? Number(userData.total_invested) : 0,
+          totalProfit: userData.total_profit != null && !isNaN(userData.total_profit) ? Number(userData.total_profit) : 0,
+          profitPercentage: userData.profit_percentage != null && !isNaN(userData.profit_percentage) ? Number(userData.profit_percentage) : 0,
           referralCode: userData.referral_code,
           street: userData.street,
           number: userData.number,
@@ -283,11 +295,33 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    delete api.defaults.headers.common['Authorization']
-    setUser(null)
+  const logout = async () => {
+    try {
+      // Chamar o endpoint de logout no backend (opcional, mas boa prática)
+      try {
+        await api.post('/api/auth/logout')
+      } catch (error) {
+        // Se falhar, continua com o logout local mesmo assim
+        console.warn('Erro ao fazer logout no servidor:', error)
+      }
+      
+      // Limpar dados locais
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      delete api.defaults.headers.common['Authorization']
+      setUser(null)
+      
+      // Redirecionar para login
+      window.location.href = '/login'
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error)
+      // Mesmo em caso de erro, limpar dados locais
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      delete api.defaults.headers.common['Authorization']
+      setUser(null)
+      window.location.href = '/login'
+    }
   }
 
   const value = {

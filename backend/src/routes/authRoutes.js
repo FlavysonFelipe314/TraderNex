@@ -333,4 +333,35 @@ router.put('/profile', authMiddleware, authController.updateProfile);
  */
 router.put('/password', authMiddleware, authController.updatePassword);
 
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     summary: Fazer logout do usuário
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout realizado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Logout realizado com sucesso
+ *       401:
+ *         description: Não autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/logout', authMiddleware, authController.logout);
+
 module.exports = router;

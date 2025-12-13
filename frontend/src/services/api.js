@@ -1,15 +1,16 @@
 import axios from 'axios'
 
 // Use relative URL to leverage nginx proxy in production
-// In development, use environment variable or default to localhost:5004
+// In development, use Vite proxy (configured in vite.config.js)
 // Note: Routes already include /api prefix (e.g., /api/auth/login)
 const getBaseURL = () => {
   // If running in Docker/production, use nginx proxy (routes start with /api)
   if (import.meta.env.PROD) {
     return '' // Empty baseURL since routes already have /api prefix
   }
-  // Development: use environment variable or default
-  return import.meta.env.VITE_API_URL || 'http://localhost:5004'
+  // Development: use empty baseURL to leverage Vite proxy
+  // The proxy in vite.config.js will forward /api requests to backend
+  return ''
 }
 
 const api = axios.create({

@@ -24,16 +24,19 @@ function FaturasPerformancePage() {
         const result = await getInvoices()
         if (result.success && result.data) {
           // Transformar dados do backend para o formato esperado pelo frontend
-          const formattedInvoices = result.data.map((inv, index) => ({
-            id: inv.invoice_number || `#WK-${index + 1}-2025`,
-            week: inv.description || `Semana ${index + 1} • 2025`,
-            period: inv.due_date ? new Date(inv.due_date).toLocaleDateString('pt-BR') : 'N/A',
-            profit: inv.amount ? `$ ${inv.amount.toFixed(2)}` : '--',
-            value: inv.amount ? `$ ${inv.amount.toFixed(2)}` : '$ 0.00',
-            dueDate: inv.due_date ? new Date(inv.due_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A',
-            status: inv.status === 'paid' ? 'paid' : inv.status === 'pending' ? 'pending' : 'exempt',
-            isCurrent: inv.status === 'pending'
-          }))
+          const formattedInvoices = result.data.map((inv, index) => {
+            const amount = inv.amount != null && !isNaN(inv.amount) ? Number(inv.amount) : 0;
+            return {
+              id: inv.invoice_number || `#WK-${index + 1}-2025`,
+              week: inv.description || `Semana ${index + 1} • 2025`,
+              period: inv.due_date ? new Date(inv.due_date).toLocaleDateString('pt-BR') : 'N/A',
+              profit: amount > 0 ? `$ ${amount.toFixed(2)}` : '--',
+              value: amount > 0 ? `$ ${amount.toFixed(2)}` : '$ 0.00',
+              dueDate: inv.due_date ? new Date(inv.due_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A',
+              status: inv.status === 'paid' ? 'paid' : inv.status === 'pending' ? 'pending' : 'exempt',
+              isCurrent: inv.status === 'pending'
+            };
+          })
           setInvoices(formattedInvoices)
         }
       } catch (error) {

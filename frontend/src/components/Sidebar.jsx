@@ -6,7 +6,7 @@ import { useSidebar } from '../contexts/SidebarContext'
 function Sidebar() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const { isSidebarOpen, toggleSidebar } = useSidebar()
 
   const navItems = [
@@ -146,22 +146,39 @@ function Sidebar() {
         {/* Footer - User Card */}
         <div className="mt-auto">
           <div 
-            className="flex items-center gap-3 p-3 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] rounded-xl cursor-pointer transition-all duration-300 hover:bg-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.1)]"
-            onClick={() => handleNavigation('/perfil-cliente')}
-            data-media-type="banani-button"
+            className="flex items-center gap-2 p-2.5 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] rounded-xl transition-all duration-300 hover:bg-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.1)] overflow-hidden"
           >
             <div 
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0"
-              style={{
-                background: '#2c3e50'
-              }}
+              className="flex items-center gap-2.5 flex-1 cursor-pointer min-w-0"
+              onClick={() => handleNavigation('/perfil-cliente')}
+              data-media-type="banani-button"
             >
-              {getUserInitials()}
+              <div 
+                className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0"
+                style={{
+                  background: '#2c3e50'
+                }}
+              >
+                {getUserInitials()}
+              </div>
+              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                <div className="text-[13px] font-semibold text-white truncate">{getUserName()}</div>
+                <div className="text-[10px] text-[rgba(255,255,255,0.5)] truncate">Cliente TraderNex</div>
+              </div>
             </div>
-            <div className="flex flex-col gap-0.5">
-              <div className="text-[13px] font-semibold text-white">{getUserName()}</div>
-              <div className="text-[10px] text-[rgba(255,255,255,0.5)]">Cliente TraderNex</div>
-            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                if (window.confirm('Tem certeza que deseja sair?')) {
+                  logout()
+                }
+              }}
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-[rgba(255,255,255,0.5)] hover:text-white hover:bg-[rgba(239,68,68,0.1)] transition-all duration-200 flex-shrink-0 ml-1"
+              title="Sair"
+              data-media-type="banani-button"
+            >
+              <Icon icon="lucide:log-out" className="text-base" />
+            </button>
           </div>
         </div>
       </aside>
@@ -252,22 +269,39 @@ function Sidebar() {
         {/* Footer - User Card */}
         <div className="mt-auto">
           <div 
-            className="flex items-center gap-3 p-3 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] rounded-xl cursor-pointer transition-all duration-300 hover:bg-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.1)]"
-            onClick={() => handleNavigation('/perfil-cliente')}
-            data-media-type="banani-button"
+            className="flex items-center gap-2 p-2.5 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] rounded-xl transition-all duration-300 hover:bg-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.1)] overflow-hidden"
           >
             <div 
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0"
-              style={{
-                background: '#2c3e50'
-              }}
+              className="flex items-center gap-2.5 flex-1 cursor-pointer min-w-0"
+              onClick={() => handleNavigation('/perfil-cliente')}
+              data-media-type="banani-button"
             >
-              {getUserInitials()}
+              <div 
+                className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0"
+                style={{
+                  background: '#2c3e50'
+                }}
+              >
+                {getUserInitials()}
+              </div>
+              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                <div className="text-[13px] font-semibold text-white truncate">{getUserName()}</div>
+                <div className="text-[10px] text-[rgba(255,255,255,0.5)] truncate">Cliente TraderNex</div>
+              </div>
             </div>
-            <div className="flex flex-col gap-0.5">
-              <div className="text-[13px] font-semibold text-white">{getUserName()}</div>
-              <div className="text-[10px] text-[rgba(255,255,255,0.5)]">Cliente TraderNex</div>
-            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                if (window.confirm('Tem certeza que deseja sair?')) {
+                  logout()
+                }
+              }}
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-[rgba(255,255,255,0.5)] hover:text-white hover:bg-[rgba(239,68,68,0.1)] transition-all duration-200 flex-shrink-0 ml-1"
+              title="Sair"
+              data-media-type="banani-button"
+            >
+              <Icon icon="lucide:log-out" className="text-base" />
+            </button>
           </div>
         </div>
       </aside>

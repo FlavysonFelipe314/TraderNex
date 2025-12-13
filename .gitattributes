@@ -1,0 +1,10 @@
+# Garantir que arquivos de linha de comando usem LF
+* text=auto eol=lf
+
+# Arquivos binários
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary

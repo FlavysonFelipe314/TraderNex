@@ -54,15 +54,21 @@ function ReferralProgramPage() {
   ]
 
   // Usar dados reais ou mock
-  const displayReferrals = referralData?.referrals?.map(ref => ({
-    name: `${ref.first_name || ''} ${ref.last_name || ''}`.trim() || ref.email || 'Usuário',
-    date: new Date(ref.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
-    plan: 'Nex Pro', // TODO: buscar do perfil do usuário referido
-    status: ref.status || 'active',
-    profit: ref.commission ? `$ ${ref.commission.toFixed(2)}` : '-',
-    fee: ref.commission ? `$ ${(ref.commission * 0.1).toFixed(2)}` : '-',
-    commission: ref.commission ? `+ $ ${(ref.commission * 0.1).toFixed(2)}` : '-'
-  })) || mockReferrals
+  const displayReferrals = referralData?.referrals?.map(ref => {
+    const commission = ref.commission != null && !isNaN(ref.commission) ? Number(ref.commission) : 0;
+    const fee = commission * 0.1;
+    const userCommission = commission * 0.1;
+    
+    return {
+      name: `${ref.first_name || ''} ${ref.last_name || ''}`.trim() || ref.email || 'Usuário',
+      date: new Date(ref.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
+      plan: 'Nex Pro', // TODO: buscar do perfil do usuário referido
+      status: ref.status || 'active',
+      profit: commission > 0 ? `$ ${commission.toFixed(2)}` : '-',
+      fee: commission > 0 ? `$ ${fee.toFixed(2)}` : '-',
+      commission: commission > 0 ? `+ $ ${userCommission.toFixed(2)}` : '-'
+    };
+  }) || mockReferrals
 
   return (
     <DashboardLayout>

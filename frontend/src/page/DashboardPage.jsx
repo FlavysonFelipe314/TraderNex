@@ -169,12 +169,12 @@ function DashboardPage() {
               </div>
             </div>
             <div className="text-xs text-[#94A3B8] flex items-center gap-1.5 font-medium">
-              {dashboardData?.profile?.profitPercentage > 0 && (
+              {dashboardData?.profile?.profitPercentage != null && !isNaN(dashboardData.profile.profitPercentage) && dashboardData.profile.profitPercentage > 0 && (
                 <div className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-[rgba(16,185,129,0.08)] text-[#059669]">
                   <div className="w-2.5 h-2.5 flex items-center justify-center">
                     <Icon icon="lucide:arrow-up-right" className="text-[10px]" />
                   </div>
-                  {dashboardData.profile.profitPercentage.toFixed(1)}%
+                  {Number(dashboardData.profile.profitPercentage).toFixed(1)}%
                 </div>
               )}
               <span>no período</span>
@@ -253,20 +253,41 @@ function DashboardPage() {
                   
                   {/* Chart Path */}
                   {(() => {
-                    const min = Math.min(...performanceData.map(d => d.value));
-                    const max = Math.max(...performanceData.map(d => d.value));
+                    // Filtrar e converter valores válidos
+                    const validData = performanceData
+                      .map(d => {
+                        const value = d.net_profit != null && !isNaN(d.net_profit) 
+                          ? Number(d.net_profit) 
+                          : d.value != null && !isNaN(d.value) 
+                            ? Number(d.value) 
+                            : null;
+                        return value !== null ? { ...d, value } : null;
+                      })
+                      .filter(d => d !== null);
+                    
+                    if (validData.length === 0) {
+                      return null;
+                    }
+                    
+                    const values = validData.map(d => d.value);
+                    const min = Math.min(...values);
+                    const max = Math.max(...values);
                     const range = max - min || 1;
                     
-                    const points = performanceData.map((d, i) => {
-                      const x = (i / (performanceData.length - 1)) * 600;
-                      const y = 250 - ((d.value - min) / range) * 200 - 25; // Leave some margin
-                      return `${x},${y}`;
+                    const points = validData.map((d, i) => {
+                      const x = validData.length > 1 
+                        ? (i / (validData.length - 1)) * 600 
+                        : 300;
+                      const y = 250 - ((d.value - min) / range) * 200 - 25;
+                      // Garantir que x e y são números válidos
+                      const validX = isNaN(x) ? 300 : Math.max(0, Math.min(600, x));
+                      const validY = isNaN(y) ? 250 : Math.max(0, Math.min(250, y));
+                      return `${validX},${validY}`;
                     }).join(' ');
 
                     const firstX = 0;
                     const lastX = 600;
                     const areaPath = `M${firstX},250 ${points} L${lastX},250 Z`.replace(/,/g, ' ');
-                    const linePath = `M${points.split(' ')[0]} L${points.substring(points.indexOf(' ') + 1)}`.replace(/,/g, ' ');
 
                     return (
                       <>
@@ -289,19 +310,42 @@ function DashboardPage() {
                   })()}
 
                   {/* X Axis Labels */}
-                  {performanceData.filter((_, i) => i % Math.ceil(performanceData.length / 5) === 0).map((d, i, arr) => {
-                    const x = (performanceData.indexOf(d) / (performanceData.length - 1)) * 600;
-                    return (
-                      <text 
-                        key={i} 
-                        x={x > 550 ? 550 : x < 50 ? 10 : x} 
-                        y="245" 
-                        className="text-[11px] fill-[#94A3B8] font-medium"
-                      >
-                        {new Date(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                      </text>
-                    );
-                  })}
+                  {(() => {
+                    const validData = performanceData
+                      .map(d => {
+                        const value = d.net_profit != null && !isNaN(d.net_profit) 
+                          ? Number(d.net_profit) 
+                          : d.value != null && !isNaN(d.value) 
+                            ? Number(d.value) 
+                            : null;
+                        return value !== null ? { ...d, value } : null;
+                      })
+                      .filter(d => d !== null);
+                    
+                    if (validData.length === 0) return null;
+                    
+                    return validData
+                      .filter((_, i) => i % Math.ceil(validData.length / 5) === 0)
+                      .map((d, i) => {
+                        const index = validData.indexOf(d);
+                        const x = validData.length > 1 
+                          ? (index / (validData.length - 1)) * 600 
+                          : 300;
+                        const validX = isNaN(x) ? 300 : Math.max(10, Math.min(550, x));
+                        return (
+                          <text 
+                            key={`label-${i}-${d.report_date || d.date || i}`} 
+                            x={validX} 
+                            y="245" 
+                            className="text-[11px] fill-[#94A3B8] font-medium"
+                          >
+                            {d.report_date || d.date 
+                              ? new Date(d.report_date || d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+                              : `Ponto ${i + 1}`}
+                          </text>
+                        );
+                      });
+                  })()}
                 </svg>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[#94A3B8] text-sm">
@@ -345,20 +389,20 @@ function DashboardPage() {
               <div className="flex flex-col gap-0">
                 {mt4Accounts.length > 0 ? (
                   mt4Accounts.slice(0, 1).map((account) => (
-                    <>
-                      <div key={`${account.id}-login`} className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
+                    <div key={account.id || account.account_number || account.accountNumber}>
+                      <div className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
                         <span className="text-[#64748B] font-medium">Login MT4</span>
                         <span className="font-semibold text-[#0F172A] text-right break-all ml-2">{account.account_number || account.accountNumber}</span>
                       </div>
-                      <div key={`${account.id}-broker`} className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
+                      <div className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
                         <span className="text-[#64748B] font-medium">Corretora</span>
                         <span className="font-semibold text-[#0F172A] text-right break-all ml-2">{account.broker || 'N/A'}</span>
                       </div>
-                      <div key={`${account.id}-server`} className="flex justify-between py-3 sm:py-4 lg:py-5 text-xs sm:text-[13px] items-center">
+                      <div className="flex justify-between py-3 sm:py-4 lg:py-5 text-xs sm:text-[13px] items-center">
                         <span className="text-[#64748B] font-medium">Servidor</span>
                         <span className="font-semibold text-[#0F172A] text-right break-all ml-2">{account.server || 'N/A'}</span>
                       </div>
-                    </>
+                    </div>
                   ))
                 ) : (
                   <>

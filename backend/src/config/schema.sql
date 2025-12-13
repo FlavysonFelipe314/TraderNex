@@ -236,26 +236,34 @@ END;
 $$ language 'plpgsql';
 
 -- Triggers para atualizar updated_at
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_client_profiles_updated_at ON client_profiles;
 CREATE TRIGGER update_client_profiles_updated_at BEFORE UPDATE ON client_profiles
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_mt4_accounts_updated_at ON mt4_accounts;
 CREATE TRIGGER update_mt4_accounts_updated_at BEFORE UPDATE ON mt4_accounts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_investment_plans_updated_at ON investment_plans;
 CREATE TRIGGER update_investment_plans_updated_at BEFORE UPDATE ON investment_plans
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_investments_updated_at ON user_investments;
 CREATE TRIGGER update_user_investments_updated_at BEFORE UPDATE ON user_investments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_transactions_updated_at ON transactions;
 CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON transactions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_invoices_updated_at ON invoices;
 CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_support_tickets_updated_at ON support_tickets;
 CREATE TRIGGER update_support_tickets_updated_at BEFORE UPDATE ON support_tickets
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

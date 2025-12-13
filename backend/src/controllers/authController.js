@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
+const emailService = require('../services/emailService');
 
 // Gerar código de referência único
 const generateReferralCode = () => {
@@ -54,16 +55,38 @@ exports.register = async (req, res) => {
       [user.id, referralCode]
     );
 
-    // Gerar token JWT
-    const token = jwt.sign(
+    // Gerar token JWT para autenticação
+    const authToken = jwt.sign(
       { userId: user.id, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRE }
     );
 
+    // Gerar token de verificação de email
+    const verificationToken = jwt.sign(
+      { userId: user.id, email: user.email, purpose: 'email-verification' },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    // Enviar email de verificação
+    try {
+      console.log('[register] Tentando enviar email de verificação...');
+      const emailResult = await emailService.sendVerificationEmail(
+        user.email,
+        `${user.first_name} ${user.last_name}`,
+        verificationToken
+      );
+      console.log('[register] Resultado do envio de email:', emailResult);
+    } catch (emailError) {
+      console.error('[register] Erro ao enviar email de verificação:', emailError);
+      console.error('[register] Stack do erro:', emailError.stack);
+      // Não falhar o registro se o email falhar, apenas logar o erro
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Usuário registrado com sucesso!',
+      message: 'Usuário registrado com sucesso! Verifique seu email para ativar sua conta.',
       data: {
         user: {
           id: user.id,
@@ -71,7 +94,7 @@ exports.register = async (req, res) => {
           firstName: user.first_name,
           lastName: user.last_name
         },
-        token
+        token: authToken
       }
     });
   } catch (error) {
@@ -130,6 +153,15 @@ exports.login = async (req, res) => {
       });
     }
 
+    // Verificar se o email foi verificado
+    if (!user.email_verified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Por favor, verifique seu email antes de fazer login. Verifique sua caixa de entrada.',
+        requiresVerification: true
+      });
+    }
+
     // Gerar token JWT
     const token = jwt.sign(
       { userId: user.id, email: user.email },
@@ -164,7 +196,9 @@ exports.login = async (req, res) => {
 // Solicitar reset de senha
 exports.forgotPassword = async (req, res) => {
   try {
+    console.log('[forgotPassword] Iniciando processo de recuperação de senha...');
     const { email } = req.body;
+    console.log(`[forgotPassword] Email recebido: ${email}`);
 
     // Verificar se o usuário existe
     const result = await pool.query(
@@ -172,8 +206,11 @@ exports.forgotPassword = async (req, res) => {
       [email]
     );
 
+    console.log(`[forgotPassword] Usuário encontrado: ${result.rows.length > 0 ? 'Sim' : 'Não'}`);
+
     if (result.rows.length === 0) {
       // Por segurança, retornar sucesso mesmo se o email não existir
+      console.log('[forgotPassword] Email não encontrado, retornando sucesso genérico');
       return res.json({
         success: true,
         message: 'Se o email existir, você receberá instruções para redefinir sua senha.'
@@ -181,6 +218,7 @@ exports.forgotPassword = async (req, res) => {
     }
 
     const user = result.rows[0];
+    console.log(`[forgotPassword] Usuário encontrado: ${user.first_name} ${user.last_name} (ID: ${user.id})`);
 
     // Gerar token de reset
     const resetToken = jwt.sign(
@@ -188,6 +226,7 @@ exports.forgotPassword = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
+    console.log(`[forgotPassword] Token de reset gerado`);
 
     // Salvar token no banco
     const expiresAt = new Date(Date.now() + 3600000); // 1 hora
@@ -196,18 +235,31 @@ exports.forgotPassword = async (req, res) => {
        VALUES ($1, $2, $3)`,
       [user.id, resetToken, expiresAt]
     );
+    console.log(`[forgotPassword] Token salvo no banco de dados`);
 
-    // TODO: Enviar email com o token
-    // Por enquanto, retornar o token (em produção, enviar por email)
+    // Enviar email com o link de recuperação
+    try {
+      console.log('[forgotPassword] Tentando enviar email de recuperação...');
+      console.log(`[forgotPassword] Parâmetros: email=${user.email}, name=${user.first_name} ${user.last_name}`);
+      const emailResult = await emailService.sendPasswordResetEmail(
+        user.email,
+        `${user.first_name} ${user.last_name}`,
+        resetToken
+      );
+      console.log('[forgotPassword] Resultado do envio de email:', emailResult);
+    } catch (emailError) {
+      console.error('[forgotPassword] Erro ao enviar email de recuperação:', emailError);
+      console.error('[forgotPassword] Stack do erro:', emailError.stack);
+      // Mesmo se o email falhar, retornar sucesso por segurança
+    }
 
     res.json({
       success: true,
-      message: 'Se o email existir, você receberá instruções para redefinir sua senha.',
-      // Em produção, remover esta linha:
-      resetToken: resetToken
+      message: 'Se o email existir, você receberá instruções para redefinir sua senha.'
     });
   } catch (error) {
-    console.error('Erro ao solicitar reset de senha:', error);
+    console.error('[forgotPassword] Erro ao solicitar reset de senha:', error);
+    console.error('[forgotPassword] Stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Erro ao processar solicitação.',
@@ -288,6 +340,13 @@ exports.verifyEmail = async (req, res) => {
   try {
     const { token } = req.body;
 
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token é obrigatório.'
+      });
+    }
+
     // Verificar token
     let decoded;
     try {
@@ -299,11 +358,41 @@ exports.verifyEmail = async (req, res) => {
       });
     }
 
+    // Verificar se o token é para verificação de email
+    if (decoded.purpose !== 'email-verification') {
+      return res.status(400).json({
+        success: false,
+        message: 'Token inválido para verificação de email.'
+      });
+    }
+
+    // Verificar se o email já foi verificado
+    const userResult = await pool.query(
+      'SELECT email_verified FROM users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado.'
+      });
+    }
+
+    if (userResult.rows[0].email_verified) {
+      return res.json({
+        success: true,
+        message: 'Email já foi verificado anteriormente.'
+      });
+    }
+
     // Atualizar email_verified
     await pool.query(
       'UPDATE users SET email_verified = TRUE WHERE id = $1',
       [decoded.userId]
     );
+
+    console.log(`✅ Email verificado para userId: ${decoded.userId}`);
 
     res.json({
       success: true,
@@ -323,6 +412,7 @@ exports.verifyEmail = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const userId = req.user.userId;
+    console.log(`[getProfile] Buscando perfil para userId: ${userId}`);
 
     const result = await pool.query(
       `SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.country,
@@ -336,19 +426,34 @@ exports.getProfile = async (req, res) => {
       [userId]
     );
 
+    console.log(`[getProfile] Resultado da query: ${result.rows.length} linha(s) encontrada(s)`);
+
     if (result.rows.length === 0) {
+      console.log(`[getProfile] Usuário ${userId} não encontrado`);
       return res.status(404).json({
         success: false,
         message: 'Usuário não encontrado.'
       });
     }
 
+    const profile = result.rows[0];
+    
+    // Converter valores DECIMAL para números
+    const normalizedProfile = {
+      ...profile,
+      balance: profile.balance != null ? parseFloat(profile.balance) : 0,
+      total_invested: profile.total_invested != null ? parseFloat(profile.total_invested) : 0,
+      total_profit: profile.total_profit != null ? parseFloat(profile.total_profit) : 0,
+      profit_percentage: profile.profit_percentage != null ? parseFloat(profile.profit_percentage) : 0
+    };
+
+    console.log(`[getProfile] Perfil normalizado enviado com sucesso para userId: ${userId}`);
     res.json({
       success: true,
-      data: result.rows[0]
+      data: normalizedProfile
     });
   } catch (error) {
-    console.error('Erro ao buscar perfil:', error);
+    console.error('[getProfile] Erro ao buscar perfil:', error);
     res.status(500).json({
       success: false,
       message: 'Erro ao buscar perfil.',
@@ -509,6 +614,25 @@ exports.updateProfile = async (req, res) => {
 };
 
 // Atualizar senha
+// Logout do usuário
+exports.logout = async (req, res) => {
+  try {
+    console.log(`[logout] Usuário ${req.user?.userId} fez logout`);
+    
+    res.json({
+      success: true,
+      message: 'Logout realizado com sucesso.'
+    });
+  } catch (error) {
+    console.error('Erro no logout:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao fazer logout.',
+      error: error.message
+    });
+  }
+};
+
 exports.updatePassword = async (req, res) => {
   try {
     const userId = req.user.userId;

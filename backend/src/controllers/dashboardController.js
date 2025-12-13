@@ -51,10 +51,10 @@ exports.getDashboardData = async (req, res) => {
       success: true,
       data: {
         profile: {
-          balance: parseFloat(profile.balance),
-          totalInvested: parseFloat(profile.total_invested),
-          totalProfit: parseFloat(profile.total_profit),
-          profitPercentage: parseFloat(profile.profit_percentage),
+          balance: profile.balance != null ? parseFloat(profile.balance) : 0,
+          totalInvested: profile.total_invested != null ? parseFloat(profile.total_invested) : 0,
+          totalProfit: profile.total_profit != null ? parseFloat(profile.total_profit) : 0,
+          profitPercentage: profile.profit_percentage != null ? parseFloat(profile.profit_percentage) : 0,
           accountType: profile.account_type
         },
         mt4Accounts: {
@@ -113,9 +113,24 @@ exports.getPerformanceStats = async (req, res) => {
       [userId]
     );
 
+    // Converter valores DECIMAL para números
+    const normalizedData = result.rows.map(row => ({
+      ...row,
+      total_trades: row.total_trades != null ? parseInt(row.total_trades) : 0,
+      winning_trades: row.winning_trades != null ? parseInt(row.winning_trades) : 0,
+      losing_trades: row.losing_trades != null ? parseInt(row.losing_trades) : 0,
+      win_rate: row.win_rate != null ? parseFloat(row.win_rate) : 0,
+      total_profit: row.total_profit != null ? parseFloat(row.total_profit) : 0,
+      total_loss: row.total_loss != null ? parseFloat(row.total_loss) : 0,
+      net_profit: row.net_profit != null ? parseFloat(row.net_profit) : 0,
+      roi: row.roi != null ? parseFloat(row.roi) : 0,
+      // Adicionar campo 'value' para compatibilidade com o gráfico
+      value: row.net_profit != null ? parseFloat(row.net_profit) : 0
+    }));
+
     res.json({
       success: true,
-      data: result.rows
+      data: normalizedData
     });
   } catch (error) {
     console.error('Erro ao buscar estatísticas:', error);
@@ -300,9 +315,15 @@ exports.getInvoices = async (req, res) => {
       [userId]
     );
 
+    // Converter valores DECIMAL para números
+    const normalizedInvoices = result.rows.map(invoice => ({
+      ...invoice,
+      amount: invoice.amount != null ? parseFloat(invoice.amount) : 0
+    }));
+
     res.json({
       success: true,
-      data: result.rows
+      data: normalizedInvoices
     });
   } catch (error) {
     console.error('Erro ao buscar faturas:', error);
@@ -345,12 +366,24 @@ exports.getReferrals = async (req, res) => {
       [userId]
     );
 
+    // Converter valores DECIMAL para números
+    const normalizedReferrals = referralsResult.rows.map(ref => ({
+      ...ref,
+      commission: ref.commission != null ? parseFloat(ref.commission) : 0
+    }));
+
+    const normalizedStats = statsResult.rows[0] ? {
+      ...statsResult.rows[0],
+      total_commission: statsResult.rows[0].total_commission != null ? parseFloat(statsResult.rows[0].total_commission) : 0,
+      paid_commission: statsResult.rows[0].paid_commission != null ? parseFloat(statsResult.rows[0].paid_commission) : 0
+    } : null;
+
     res.json({
       success: true,
       data: {
         referralCode: codeResult.rows[0]?.referral_code,
-        referrals: referralsResult.rows,
-        stats: statsResult.rows[0]
+        referrals: normalizedReferrals,
+        stats: normalizedStats
       }
     });
   } catch (error) {

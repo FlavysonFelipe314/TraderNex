@@ -38,27 +38,33 @@ function PerfilClientePage() {
     }
   }, [])
 
-  // Carregar dados do perfil apenas uma vez
+  // Carregar dados do perfil
   useEffect(() => {
-    // Evitar carregar múltiplas vezes
-    if (hasLoadedRef.current) return
-    
-    if (!user) {
+    if (!user || !user.id) {
       setLoading(false)
       return
     }
 
-    hasLoadedRef.current = true
+    // Evitar carregar múltiplas vezes para o mesmo usuário
+    const userId = user.id
+    if (hasLoadedRef.current === userId) {
+      return
+    }
+
+    hasLoadedRef.current = userId
     let isMounted = true
 
     const loadProfile = async () => {
       setLoading(true)
       try {
+        console.log('[PerfilClientePage] Carregando perfil para userId:', userId)
         const result = await getProfile()
+        console.log('[PerfilClientePage] Resultado do getProfile:', result)
         if (!isMounted) return
 
         if (result.success && result.user) {
           const u = result.user
+          console.log('[PerfilClientePage] Dados do usuário recebidos:', u)
           setFormData(prev => ({
             ...prev,
             fullName: `${u.firstName || u.first_name || ''} ${u.lastName || u.last_name || ''}`.trim(),
@@ -73,19 +79,24 @@ function PerfilClientePage() {
             zipCode: u.zipCode || u.zip_code || '',
             complement: u.complement || ''
           }))
-        } else if (user) {
-          const u = user
-          setFormData(prev => ({
-            ...prev,
-            fullName: `${u.firstName || u.first_name || ''} ${u.lastName || u.last_name || ''}`.trim(),
-            email: u.email || '',
-            phone: u.phone || '',
-            country: u.country || 'Brasil'
-          }))
+          console.log('[PerfilClientePage] FormData atualizado com sucesso')
+        } else {
+          console.warn('[PerfilClientePage] Resultado sem sucesso ou sem user:', result)
+          if (user) {
+            const u = user
+            console.log('[PerfilClientePage] Usando dados do user do contexto:', u)
+            setFormData(prev => ({
+              ...prev,
+              fullName: `${u.firstName || u.first_name || ''} ${u.lastName || u.last_name || ''}`.trim(),
+              email: u.email || '',
+              phone: u.phone || '',
+              country: u.country || 'Brasil'
+            }))
+          }
         }
       } catch (err) {
         if (!isMounted) return
-        console.error('Erro ao carregar perfil:', err)
+        console.error('[PerfilClientePage] Erro ao carregar perfil:', err)
         if (user) {
           const u = user
           setFormData(prev => ({
@@ -99,6 +110,7 @@ function PerfilClientePage() {
       } finally {
         if (isMounted) {
           setLoading(false)
+          console.log('[PerfilClientePage] Loading finalizado')
         }
       }
     }
@@ -107,8 +119,12 @@ function PerfilClientePage() {
 
     return () => {
       isMounted = false
+      // Resetar o ref quando o componente desmontar ou o user mudar
+      if (hasLoadedRef.current === userId) {
+        hasLoadedRef.current = false
+      }
     }
-  }, [user]) // Apenas user como dependência, mas protegido pelo ref
+  }, [user?.id]) // Usar apenas user.id como dependência
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -572,11 +588,11 @@ function PerfilClientePage() {
                   </div>
                 </div>
 
-                {user?.profitPercentage !== undefined && user.profitPercentage > 0 && (
+                {user?.profitPercentage !== undefined && user.profitPercentage != null && !isNaN(user.profitPercentage) && user.profitPercentage > 0 && (
                   <div className="flex flex-col gap-2">
                     <div className="text-[13px] font-medium text-[#6b7280]">Performance</div>
                     <div className="text-2xl font-bold text-[#059669]">
-                      + {user.profitPercentage.toFixed(2)}%
+                      + {Number(user.profitPercentage).toFixed(2)}%
                     </div>
                   </div>
                 )}

@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # Exponha a porta que a aplicação usará
-EXPOSE 5004
+EXPOSE 5000
 
 # Comando para rodar a aplicação
 CMD ["node", "src/server.js"]

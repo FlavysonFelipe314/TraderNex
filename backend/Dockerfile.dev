@@ -1,0 +1,17 @@
+# Dockerfile de desenvolvimento com hot reload
+FROM node:18
+
+# Defina o diretório de trabalho no container
+WORKDIR /usr/src/app
+
+# Copie os arquivos de definição de dependências
+COPY package*.json ./
+
+# Instale as dependências
+RUN npm install
+
+# Exponha a porta que a aplicação usará
+EXPOSE 5000
+
+# Comando para rodar a aplicação em modo desenvolvimento com nodemon
+CMD ["npm", "run", "dev"]
