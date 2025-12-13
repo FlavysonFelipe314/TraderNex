@@ -10,10 +10,6 @@ Guia rápido para começar a desenvolver em 5 minutos.
 # Clone o repositório
 git clone https://github.com/seu-usuario/tradernex.git
 cd tradernex
-
-# Crie o arquivo .env
-# Copie o conteúdo de ENV-TEMPLATE.md para .env
-# Edite com suas credenciais
 ```
 
 ### 2. Inicie os Containers
