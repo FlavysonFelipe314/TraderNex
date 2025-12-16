@@ -7,6 +7,7 @@ const swaggerSpec = require('./config/swagger');
 const authRoutes = require('./routes/authRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const supportRoutes = require('./routes/supportRoutes');
+const myfxbookRoutes = require('./routes/myfxbookRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -78,29 +79,30 @@ app.use((req, res, next) => {
 });
 
 /**
- * @swagger
- * /health:
- *   get:
- *     summary: Verifica o status da API
- *     tags: [Health]
- *     responses:
- *       200:
- *         description: API está funcionando
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: TraderNex API está funcionando!
- *                 timestamp:
- *                   type: string
- *                   format: date-time
- */
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Verifica o status da API
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: API está funcionando
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: 'TraderNex API está funcionando!'
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: '2024-01-01T00:00:00.000Z'
+ */
 app.get('/health', (req, res) => {
   res.json({
     success: true,
@@ -119,6 +121,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/myfxbook', myfxbookRoutes);
 
 // Rota 404
 app.use((req, res) => {

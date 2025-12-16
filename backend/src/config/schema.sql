@@ -75,6 +75,16 @@ CREATE TABLE IF NOT EXISTS mt4_accounts (
     UNIQUE(user_id, account_number) -- Um usuário não pode ter a mesma conta MT4 duplicada
 );
 
+-- Tabela de Conexões Myfxbook
+CREATE TABLE IF NOT EXISTS myfxbook_connections (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    email VARCHAR(255) NOT NULL,
+    session_id VARCHAR(255),
+    connected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Tabela de Planos de Investimento
 CREATE TABLE IF NOT EXISTS investment_plans (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -201,6 +211,7 @@ CREATE INDEX IF NOT EXISTS idx_client_profiles_referral_code ON client_profiles(
 CREATE INDEX IF NOT EXISTS idx_mt4_accounts_user_id ON mt4_accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_mt4_accounts_status ON mt4_accounts(status);
 CREATE INDEX IF NOT EXISTS idx_mt4_accounts_user_status ON mt4_accounts(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_myfxbook_connections_user_id ON myfxbook_connections(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_investments_user_id ON user_investments(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_investments_status ON user_investments(status);
 CREATE INDEX IF NOT EXISTS idx_user_investments_plan_id ON user_investments(plan_id);
@@ -246,6 +257,10 @@ CREATE TRIGGER update_client_profiles_updated_at BEFORE UPDATE ON client_profile
 
 DROP TRIGGER IF EXISTS update_mt4_accounts_updated_at ON mt4_accounts;
 CREATE TRIGGER update_mt4_accounts_updated_at BEFORE UPDATE ON mt4_accounts
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_myfxbook_connections_updated_at ON myfxbook_connections;
+CREATE TRIGGER update_myfxbook_connections_updated_at BEFORE UPDATE ON myfxbook_connections
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS update_investment_plans_updated_at ON investment_plans;
