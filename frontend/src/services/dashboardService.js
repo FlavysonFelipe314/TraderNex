@@ -198,9 +198,9 @@ export const connectMyfxbook = async (email, password) => {
 }
 
 // Desconectar conta Myfxbook
-export const disconnectMyfxbook = async () => {
+export const disconnectMyfxbook = async (deleteCredentials = false) => {
   try {
-    const response = await api.post('/api/myfxbook/disconnect')
+    const response = await api.post('/api/myfxbook/disconnect', { deleteCredentials })
     return {
       success: response.data.success,
       message: response.data.message

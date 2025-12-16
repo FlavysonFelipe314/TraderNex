@@ -67,35 +67,52 @@ function ContaForexMT4Page() {
         const result = await getMyfxbookStatus()
         console.log('Resultado getMyfxbookStatus:', result)
         if (result.success && result.data) {
+          // Se há conexão salva (mesmo que sessão expirada), manter a informação
+          const hasConnection = result.data.hasSession || result.data.email || result.data.hasSavedConnection
           const isConnected = result.data.connected || (result.data.hasSession && result.data.sessionValid)
+          
           setMyfxbookConnected(isConnected)
           
-          // Se não está conectado, limpar dados
-          if (!isConnected) {
+          // Se há conexão salva mas sessão expirada, manter o email para facilitar reconexão
+          if ((hasConnection || result.data.hasSavedConnection) && !isConnected) {
+            console.log('Conexão Myfxbook encontrada no banco, mas sessão expirada. Precisa reconectar.')
+            // Manter email salvo para facilitar reconexão
+            if (result.data.email) {
+              setMyfxbookEmail(result.data.email)
+            }
+          }
+          
+          // Se não está conectado E não tem conexão salva, limpar dados
+          if (!isConnected && !hasConnection) {
             setMyfxbookAccounts([])
             setSelectedMyfxbookAccount(null)
             setMyfxbookAccountData(null)
           }
           
           // Se tem sessão mas não tem contas ainda, tentar buscar contas novamente após alguns segundos
-          if (result.data.hasSession && (!result.data.accounts || result.data.accounts.length === 0)) {
+          if (result.data.hasSession && (!result.data.accounts || result.data.accounts.length === 0) && isConnected) {
             console.log('Tem sessão mas sem contas, tentando buscar novamente em 3 segundos...')
             setTimeout(async () => {
               const retryResult = await getMyfxbookStatus()
-              if (retryResult.success && retryResult.data && retryResult.data.accounts) {
-                setMyfxbookAccounts(retryResult.data.accounts)
-                if (retryResult.data.accounts.length > 0 && !selectedMyfxbookAccount) {
-                  const firstAccount = retryResult.data.accounts[0]
-                  setSelectedMyfxbookAccount(firstAccount)
-                  if (firstAccount.id || firstAccount.accountId) {
-                    loadMyfxbookAccountData(firstAccount.id || firstAccount.accountId)
+              if (retryResult.success && retryResult.data) {
+                const retryIsConnected = retryResult.data.connected || (retryResult.data.hasSession && retryResult.data.sessionValid)
+                if (retryIsConnected && retryResult.data.accounts && retryResult.data.accounts.length > 0) {
+                  setMyfxbookAccounts(retryResult.data.accounts)
+                  setMyfxbookConnected(true)
+                  if (!selectedMyfxbookAccount) {
+                    const firstAccount = retryResult.data.accounts[0]
+                    setSelectedMyfxbookAccount(firstAccount)
+                    if (firstAccount.id || firstAccount.accountId) {
+                      loadMyfxbookAccountData(firstAccount.id || firstAccount.accountId)
+                    }
                   }
                 }
               }
             }, 3000)
           }
           
-          if (result.data.accounts && result.data.accounts.length > 0) {
+          // Se tem contas disponíveis, carregar
+          if (result.data.accounts && result.data.accounts.length > 0 && isConnected) {
             setMyfxbookAccounts(result.data.accounts)
             // Selecionar primeira conta e carregar dados
             if (!selectedMyfxbookAccount) {
@@ -189,19 +206,43 @@ function ContaForexMT4Page() {
   const handleDisconnectMyfxbook = async (e) => {
     e?.preventDefault()
     
-    if (!window.confirm('Tem certeza que deseja desconectar sua conta Myfxbook? Esta ação irá parar imediatamente o robô e cancelar a gestão da sua carteira.')) {
+    const deleteCredentials = window.confirm(
+      'Como deseja desconectar?\n\n' +
+      'OK = Desconectar sessão (reconexão automática no próximo login)\n' +
+      'Cancelar = Desconectar completamente (remover credenciais salvas)'
+    )
+    
+    if (deleteCredentials === null) {
+      return // Usuário cancelou
+    }
+
+    const finalConfirm = window.confirm(
+      deleteCredentials 
+        ? 'Tem certeza? Isso removerá suas credenciais salvas e você precisará reconectar manualmente.'
+        : 'Tem certeza que deseja desconectar a sessão? A conexão será restaurada automaticamente quando você fizer login novamente.'
+    )
+
+    if (!finalConfirm) {
       return
     }
 
     setMyfxbookLoading(true)
     try {
-      const result = await disconnectMyfxbook()
+      // Passar deleteCredentials como false para manter credenciais (reconexão automática)
+      // ou true para remover completamente
+      const result = await disconnectMyfxbook(deleteCredentials)
       console.log('Resultado desconectar:', result)
       if (result.success) {
         setMyfxbookConnected(false)
         setMyfxbookAccounts([])
         setSelectedMyfxbookAccount(null)
         setMyfxbookAccountData(null)
+        
+        if (deleteCredentials) {
+          // Se deletou credenciais, limpar email também
+          setMyfxbookEmail('')
+        }
+        
         // Recarregar status para garantir que está sincronizado
         const statusResult = await getMyfxbookStatus()
         if (statusResult.success && statusResult.data) {
@@ -251,11 +292,23 @@ function ContaForexMT4Page() {
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">Status da Conexão</span>
-              <span className={`text-base font-bold ${
-                myfxbookConnected ? 'text-[#059669]' : 'text-[#6b7280]'
-              }`}>
-                {myfxbookConnected ? 'Conectado' : 'Desconectado'}
-              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className={`text-base font-bold ${
+                  myfxbookConnected ? 'text-[#059669]' : 'text-[#6b7280]'
+                }`}>
+                  {myfxbookConnected ? 'Conectado' : 'Desconectado'}
+                </span>
+                {!myfxbookConnected && myfxbookEmail && (
+                  <span className="text-[10px] text-[#9ca3af]">
+                    Conexão salva • Clique para reconectar
+                  </span>
+                )}
+              </div>
+              {!myfxbookConnected && myfxbookEmail && (
+                <span className="text-[10px] text-[#9ca3af] mt-0.5">
+                  Conexão salva • Clique para reconectar
+                </span>
+              )}
             </div>
           </div>
 
@@ -538,20 +591,28 @@ function ContaForexMT4Page() {
                     if (myfxbookConnected) {
                       handleDisconnectMyfxbook()
                     } else {
+                      // Se já tem email salvo, usar no modal (será preenchido automaticamente)
                       setShowMyfxbookModal(true)
                     }
                   }}
                   className={`w-full h-11 sm:h-12 border rounded-xl font-semibold text-xs sm:text-sm cursor-pointer flex items-center justify-center gap-2.5 transition-all ${
                     myfxbookConnected
                       ? 'border-[#dc2626] bg-white text-[#dc2626] hover:bg-[#fef2f2]'
-                      : 'border-[#3b82f6] bg-white text-[#3b82f6] hover:bg-[#eff6ff] hover:shadow-[0_0_15px_rgba(59,130,246,0.15)]'
+                      : myfxbookEmail
+                        ? 'border-[#f59e0b] bg-[#fffbeb] text-[#d97706] hover:bg-[#fef3c7]'
+                        : 'border-[#3b82f6] bg-white text-[#3b82f6] hover:bg-[#eff6ff] hover:shadow-[0_0_15px_rgba(59,130,246,0.15)]'
                   }`}
                   disabled={myfxbookLoading}
+                  title={myfxbookEmail && !myfxbookConnected ? 'Reconectar com email salvo' : ''}
                 >
-                  <Icon icon={myfxbookConnected ? "lucide:unlink" : "lucide:link"} className="text-base" />
+                  <Icon icon={myfxbookConnected ? "lucide:unlink" : myfxbookEmail ? "lucide:refresh-cw" : "lucide:link"} className="text-base" />
                   {myfxbookLoading 
                     ? (myfxbookConnected ? 'Desconectando...' : 'Conectando...')
-                    : (myfxbookConnected ? 'Desconectar Myfxbook' : 'Conectar Myfxbook')
+                    : myfxbookConnected 
+                      ? 'Desconectar Myfxbook'
+                      : myfxbookEmail
+                        ? 'Reconectar Myfxbook'
+                        : 'Conectar Myfxbook'
                   }
                 </button>
               </div>
