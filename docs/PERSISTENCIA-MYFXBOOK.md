@@ -1,5 +1,9 @@
 # 🔄 Persistência Real do Myfxbook - Reconexão Automática
 
+📖 **Documentação relacionada:**
+- [Como Conectar Myfxbook](COMO-CONECTAR-MYFXBOOK.md) - Passo a passo
+- [README Principal](../README.md) - Documentação completa
+
 ## ✅ O que foi implementado:
 
 ### 1. **Armazenamento Seguro de Credenciais**

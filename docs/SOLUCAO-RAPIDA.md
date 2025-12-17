@@ -1,4 +1,10 @@
-# 🚀 Solução Rápida - Problemas do Docker
+# 🐛 Solução Rápida - TraderNex
+
+📖 **Documentação relacionada:**
+- [README Principal](../README.md) - Documentação completa
+- [Índice de Documentação](README.md) - Todos os guias
+- [Debug Frontend](DEBUG-FRONTEND.md) - Problemas do frontend
+- [Fix Docker](FIX-DOCKER.md) - Problemas com Docker
 
 ## ⚠️ Problemas Encontrados
 

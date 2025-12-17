@@ -1,5 +1,9 @@
 # 🤝 Guia de Contribuição - TraderNex
 
+📖 **Documentação relacionada:**
+- [README Principal](../README.md) - Documentação completa
+- [Índice de Documentação](README.md) - Todos os guias
+
 Obrigado por considerar contribuir com o TraderNex! Este documento fornece diretrizes para contribuir com o projeto.
 
 ## 📋 Como Contribuir

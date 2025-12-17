@@ -1,5 +1,9 @@
 # 🚀 Como Conectar sua Conta Myfxbook - Passo a Passo
 
+📖 **Documentação relacionada:**
+- [Persistência Myfxbook](PERSISTENCIA-MYFXBOOK.md) - Como funciona a reconexão automática
+- [README Principal](../README.md) - Documentação completa
+
 ## ✅ Passo 1: Executar Migração do Banco de Dados
 
 Primeiro, você precisa criar a tabela no banco. Execute este comando:

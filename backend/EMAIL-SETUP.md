@@ -1,5 +1,9 @@
 # 📧 Configuração de Email - TraderNex
 
+📖 **Documentação relacionada:**
+- [Configurar Email (Docs)](../docs/CONFIGURAR-EMAIL.md) - Guia simplificado
+- [README Principal](../README.md) - Documentação completa
+
 Este documento explica como configurar o envio de emails para verificação de conta e recuperação de senha.
 
 ## 🎯 Funcionalidades Implementadas

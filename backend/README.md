@@ -1,6 +1,12 @@
-# TraderNex Backend API
+# 🚀 TraderNex Backend API
 
 Backend Node.js com PostgreSQL para a plataforma TraderNex - Sistema de gestão profissional de investimentos em Forex e Cripto com IA.
+
+📖 **Documentação relacionada:**
+- [README Principal](../README.md) - Documentação completa do projeto
+- [Índice de Documentação](../docs/README.md) - Todos os guias
+- [Overview da API](OVERVIEW.md) - Visão geral detalhada
+- [Swagger](SWAGGER.md) - Documentação interativa
 
 ## 🚀 Tecnologias
 

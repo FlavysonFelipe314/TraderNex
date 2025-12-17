@@ -54,4 +54,7 @@ docker-compose restart backend
 
 ## 📚 Documentação Completa
 
-Veja [README.md](README.md) para documentação completa.
+- **[README Principal](../README.md)** - Documentação completa do projeto
+- **[Índice de Documentação](README.md)** - Todos os guias organizados
+- **[Template ENV](ENV-TEMPLATE.md)** - Variáveis de ambiente
+- **[Configurar Email](CONFIGURAR-EMAIL.md)** - Configuração SMTP

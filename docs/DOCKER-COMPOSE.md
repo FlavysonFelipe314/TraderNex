@@ -1,6 +1,11 @@
-# Docker Compose — Instruções para rodar o projeto
+# 🐳 Docker Compose — Instruções para rodar o projeto
 
-Pré-requisitos
+📖 **Documentação relacionada:**
+- [README Principal](../README.md) - Documentação completa
+- [Setup Rápido](SETUP-QUICK.md) - Instalação rápida
+- [Template ENV](ENV-TEMPLATE.md) - Variáveis de ambiente
+
+## Pré-requisitos
 - Docker (Engine) instalado
 - Docker Compose (embutido no Docker Desktop ou CLI) — versão compatível com Compose v2
 

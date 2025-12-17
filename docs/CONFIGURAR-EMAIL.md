@@ -1,5 +1,10 @@
 # 📧 Como Configurar Envio de Emails
 
+📖 **Documentação relacionada:**
+- [Email Setup Backend](../backend/EMAIL-SETUP.md) - Configuração detalhada
+- [Template ENV](ENV-TEMPLATE.md) - Variáveis de ambiente
+- [README Principal](../README.md) - Documentação completa
+
 ## Problema Identificado
 
 As variáveis SMTP não estão sendo carregadas no container Docker. Os logs mostram:

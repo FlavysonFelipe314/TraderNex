@@ -1,5 +1,10 @@
 # 📝 Template de Variáveis de Ambiente
 
+📖 **Documentação relacionada:**
+- [README Principal](../README.md) - Documentação completa
+- [Configurar Email](CONFIGURAR-EMAIL.md) - Configuração SMTP
+- [Setup Rápido](SETUP-QUICK.md) - Instalação rápida
+
 Copie este conteúdo para um arquivo `.env` na raiz do projeto.
 
 ```env
