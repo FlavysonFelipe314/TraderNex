@@ -1,8 +1,18 @@
-# Dockerfile de desenvolvimento com hot reload
+# Dockerfile.dev (Adicione estas linhas antes do COPY)
 FROM node:18-alpine
 
-# Set working directory
+# Defina o diretório de trabalho no container
 WORKDIR /app
+
+# DEBUG: Mostra o conteúdo do contexto de build antes de copiar
+RUN ls -la .
+RUN ls -la .. 
+
+# Copie os arquivos de definição de dependências
+COPY package*.json ./
+
+# DEBUG: Mostra o que foi copiado
+RUN ls -la .
 
 # Copy package files
 COPY package*.json ./

@@ -1,36 +1,43 @@
-# Frontend Dockerfile - Multi-stage build
+# ============================================================================
+# TraderNex Frontend - Dockerfile de Produção (Multi-stage)
+# ============================================================================
+
+# Stage 1: Build
 FROM node:18-alpine AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copie os arquivos de definição de dependências
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Instale todas as dependências (incluindo devDependencies para build)
+RUN npm ci && npm cache clean --force
 
-# Copy application code
+# Copie o código fonte
 COPY . .
 
-# Build the application
+# Build da aplicação
 RUN npm run build
 
-# Production stage
+# Stage 2: Production
 FROM nginx:alpine
 
-# Copy built files from builder
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Instale wget para o healthcheck (nginx:alpine pode não ter por padrão em algumas versões)
+RUN apk add --no-cache wget
 
-# Copy nginx configuration
+# Copie a configuração do nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port (nginx listens on 80 internally, mapped to 5005 externally)
+# Copie os arquivos buildados do stage anterior
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Exponha a porta 80
 EXPOSE 80
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=5 \
+  CMD wget --spider --quiet http://localhost/ || exit 1
 
-# Start nginx
+# Nginx já inicia automaticamente, mas podemos especificar explicitamente
 CMD ["nginx", "-g", "daemon off;"]
+

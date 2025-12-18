@@ -2,8 +2,17 @@
 # TraderNex - Docker Compose Configuration
 # ============================================================================
 # 
-# Este arquivo configura os serviços Docker para desenvolvimento.
+# Este arquivo funciona tanto para desenvolvimento quanto para produção.
 # 
+# Para DESENVOLVIMENTO LOCAL:
+#   - Crie um arquivo docker-compose.override.yaml com volumes para hot reload
+#   - Defina DOCKERFILE=Dockerfile.dev e FRONTEND_DOCKERFILE=Dockerfile.dev
+#
+# Para PRODUÇÃO (Coolify):
+#   - Use os Dockerfiles padrão (Dockerfile) - já configurado
+#   - Não use volumes - já configurado
+#   - Configure todas as variáveis de ambiente obrigatórias
+#
 # IMPORTANTE: 
 # - Crie um arquivo .env na raiz com suas credenciais (veja ENV-TEMPLATE.md)
 # - NUNCA commite o arquivo .env no Git!
@@ -18,24 +27,22 @@ services:
     image: postgres:15-alpine
     container_name: tradernex-db
     environment:
-      # Credenciais do banco (use variáveis de ambiente para produção)
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-admin}
-      POSTGRES_DB: ${DB_NAME:-tradernex}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
-      # Persistência dos dados do banco
       - postgres_data:/var/lib/postgresql/data
     ports:
-      # Porta do PostgreSQL (mapeada para acesso externo)
       - "${DB_PORT:-5432}:5432"
     healthcheck:
-      # Verificação de saúde do banco antes de iniciar outros serviços
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     networks:
       - tradernex-network
+    restart: unless-stopped
 
   # --------------------------------------------------------------------------
   # Serviço: Backend API (Node.js + Express)
@@ -43,91 +50,73 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev  # Dockerfile de desenvolvimento com hot reload
+      # Em produção: usa Dockerfile (padrão)
+      # Em desenvolvimento: defina DOCKERFILE=Dockerfile.dev
+      dockerfile: ${DOCKERFILE:-Dockerfile}
     container_name: tradernex-backend
     environment:
-      # Ambiente
-      NODE_ENV: ${NODE_ENV:-development}
-      
-      # Configuração do Banco de Dados
-      DB_HOST: db  # Nome do serviço Docker
-      DB_PORT: ${DB_PORT:-5432}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-admin}
-      DB_NAME: ${DB_NAME:-tradernex}
-      
-      # Servidor
-      PORT: ${PORT:-5000}
-      
-      # Hot Reload (nodemon)
-      CHOKIDAR_USEPOLLING: "true"
-      
-      # JWT (Autenticação)
-      JWT_SECRET: ${JWT_SECRET:-sua_chave_secreta_jwt_aqui}
-      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
-      
-      # Frontend URL (para links nos emails)
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      
-      # Configuração de Email SMTP
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_SECURE: ${SMTP_SECURE:-false}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: ${SMTP_FROM:-TraderNex <noreply@tradernex.com>}
+      NODE_ENV: ${NODE_ENV}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      PORT: 5000
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRE: ${JWT_EXPIRE}
+      FRONTEND_URL: ${FRONTEND_URL}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_SECURE: ${SMTP_SECURE}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+      CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING}
     ports:
-      # Porta da API (mapeada para acesso externo)
-      - "${PORT:-5000}:5000"
+      - "5000:5000"
     depends_on:
-      # Aguarda o banco estar saudável antes de iniciar
       db:
         condition: service_healthy
-    volumes:
-      # Sincronização de código para hot reload
-      - ./backend:/usr/src/app
-      # Evita sobrescrever node_modules do container
-      - /usr/src/app/node_modules
     networks:
       - tradernex-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
 
   # --------------------------------------------------------------------------
-  # Serviço: Frontend (React + Vite)
+  # Serviço: Frontend (React + Vite + Nginx)
   # --------------------------------------------------------------------------
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.dev  # Dockerfile de desenvolvimento com hot reload
+      # Em produção: usa Dockerfile (padrão, multi-stage com nginx)
+      # Em desenvolvimento: defina FRONTEND_DOCKERFILE=Dockerfile.dev
+      dockerfile: ${FRONTEND_DOCKERFILE:-Dockerfile}
     container_name: tradernex-frontend
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
-    ports:
-      # Porta do Vite dev server (mapeada para acesso externo)
-      - "3000:3000"
+      - NODE_ENV=${NODE_ENV}
+    # Expor porta 80 para o Coolify detectar e rotear
+    expose:
+      - "80"
     depends_on:
-      # Aguarda o backend estar pronto
       - backend
-    volumes:
-      # Sincronização de código para hot reload
-      - ./frontend:/app
-      # Evita sobrescrever node_modules do container
-      - /app/node_modules
     networks:
       - tradernex-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
-# ============================================================================
-# Volumes Docker (Persistência de Dados)
-# ============================================================================
 volumes:
-  # Volume para persistir dados do PostgreSQL
   postgres_data:
 
-# ============================================================================
-# Redes Docker (Comunicação entre Containers)
-# ============================================================================
 networks:
   tradernex-network:
     driver: bridge
-

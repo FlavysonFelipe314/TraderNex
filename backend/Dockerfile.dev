@@ -7,11 +7,12 @@ WORKDIR /usr/src/app
 # Copie os arquivos de definição de dependências
 COPY package*.json ./
 
-# Instale as dependências
-RUN npm install
+# Instale TODAS as dependências (incluindo devDependencies como nodemon)
+RUN npm install --include=dev 
 
 # Exponha a porta que a aplicação usará
 EXPOSE 5000
+COPY . .
 
 # Comando para rodar a aplicação em modo desenvolvimento com nodemon
 CMD ["npm", "run", "dev"]

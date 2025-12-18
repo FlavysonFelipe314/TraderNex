@@ -9,3 +9,4 @@ COMMENT ON COLUMN myfxbook_connections.encrypted_password IS 'Senha do Myfxbook 
 
 
 
+
