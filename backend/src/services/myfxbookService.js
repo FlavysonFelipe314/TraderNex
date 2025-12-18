@@ -121,10 +121,10 @@ async function getMyAccounts(session) {
     const url = `${MYFXBOOK_API_BASE}/get-my-accounts.json`;
     console.log(`[Myfxbook] URL: ${url}`);
     
-    // Construir URL manualmente para garantir que a sessão está sendo passada corretamente
-    // A sessão pode conter caracteres especiais que precisam ser tratados corretamente
-    const sessionParam = encodeURIComponent(session);
-    const fullUrl = `${url}?session=${sessionParam}`;
+    // IMPORTANTE: A sessão já vem URL-encoded da API do MyFXBook
+    // Não devemos codificar novamente, apenas usar diretamente
+    // Se a sessão contiver caracteres codificados (%2F, %3D, etc), eles já estão corretos
+    const fullUrl = `${url}?session=${session}`;
     console.log(`[Myfxbook] Full URL (primeiros 100 chars): ${fullUrl.substring(0, 100)}...`);
     
     const response = await axios.get(fullUrl, {
@@ -236,10 +236,9 @@ async function getOpenTrades(session, accountId) {
  */
 async function getHistory(session, accountId) {
   try {
-    // Construir URL manualmente para garantir encoding correto
-    const sessionParam = encodeURIComponent(session);
+    // IMPORTANTE: A sessão já vem URL-encoded da API do MyFXBook, não codificar novamente
     const accountParam = encodeURIComponent(accountId);
-    const url = `${MYFXBOOK_API_BASE}/get-history.json?session=${sessionParam}&id=${accountParam}`;
+    const url = `${MYFXBOOK_API_BASE}/get-history.json?session=${session}&id=${accountParam}`;
     
     const response = await axios.get(url, {
       timeout: 15000,
@@ -334,10 +333,9 @@ async function getDailyGain(session, accountId, startDate, endDate) {
  */
 async function getDataDaily(session, accountId, startDate, endDate) {
   try {
-    // Construir URL manualmente para garantir encoding correto
-    const sessionParam = encodeURIComponent(session);
+    // IMPORTANTE: A sessão já vem URL-encoded da API do MyFXBook, não codificar novamente
     const accountParam = encodeURIComponent(accountId);
-    const url = `${MYFXBOOK_API_BASE}/get-data-daily.json?session=${sessionParam}&id=${accountParam}&start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}`;
+    const url = `${MYFXBOOK_API_BASE}/get-data-daily.json?session=${session}&id=${accountParam}&start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}`;
     
     const response = await axios.get(url, {
       timeout: 15000,
