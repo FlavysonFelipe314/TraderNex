@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
-import { getAllMT4Accounts, updateMyfxbookIntegrationLogin } from '../services/adminService'
+import { getAllMT4Accounts, updateMyfxbookIntegrationLogin, updateMyfxbookPassword } from '../services/adminService'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
@@ -12,7 +12,10 @@ function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [editingAccountId, setEditingAccountId] = useState(null)
   const [editingLogin, setEditingLogin] = useState('')
+  const [editingPasswordUserId, setEditingPasswordUserId] = useState(null)
+  const [editingPassword, setEditingPassword] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savingPassword, setSavingPassword] = useState(false)
   const [activeTab, setActiveTab] = useState('mt4-accounts')
 
   useEffect(() => {
@@ -82,6 +85,40 @@ function AdminPage() {
     }
   }
 
+  const handleEditPasswordClick = (account) => {
+    setEditingPasswordUserId(account.user_id)
+    setEditingPassword('')
+  }
+
+  const handleCancelPasswordEdit = () => {
+    setEditingPasswordUserId(null)
+    setEditingPassword('')
+  }
+
+  const handleSavePassword = async (userId) => {
+    if (!editingPassword) {
+      alert('Por favor, digite a senha MyFXBook.')
+      return
+    }
+
+    setSavingPassword(true)
+    try {
+      const result = await updateMyfxbookPassword(userId, editingPassword)
+      if (result.success) {
+        alert('Senha MyFXBook salva com sucesso!')
+        setEditingPasswordUserId(null)
+        setEditingPassword('')
+      } else {
+        alert('Erro ao salvar: ' + (result.message || 'Erro desconhecido'))
+      }
+    } catch (error) {
+      console.error('Erro ao salvar senha:', error)
+      alert('Erro ao salvar senha MyFXBook.')
+    } finally {
+      setSavingPassword(false)
+    }
+  }
+
   return (
     <DashboardLayout 
       title="Painel Administrativo"
@@ -135,6 +172,7 @@ function AdminPage() {
                       <th className="px-4 py-3 text-left text-[#6b7280] font-semibold">Trading Auto</th>
                       <th className="px-4 py-3 text-left text-[#6b7280] font-semibold">Perfil Risco</th>
                       <th className="px-4 py-3 text-left text-[#6b7280] font-semibold">Login MyFXBook</th>
+                      <th className="px-4 py-3 text-left text-[#6b7280] font-semibold">Senha MyFXBook</th>
                       <th className="px-4 py-3 text-left text-[#6b7280] font-semibold">Ações</th>
                     </tr>
                   </thead>
@@ -194,31 +232,78 @@ function AdminPage() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          {editingAccountId === account.id ? (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleSave(account.id)}
-                                disabled={saving}
-                                className="px-3 py-1 bg-[#00afaa] text-white rounded text-xs font-semibold hover:bg-[#009a96] transition-colors disabled:opacity-50"
-                              >
-                                {saving ? 'Salvando...' : 'Salvar'}
-                              </button>
-                              <button
-                                onClick={handleCancelEdit}
-                                disabled={saving}
-                                className="px-3 py-1 bg-white border border-[#e5e7eb] text-[#6b7280] rounded text-xs font-semibold hover:bg-[#f9fafb] transition-colors disabled:opacity-50"
-                              >
-                                Cancelar
-                              </button>
+                          {editingPasswordUserId === account.user_id ? (
+                            <input
+                              type="password"
+                              value={editingPassword}
+                              onChange={(e) => setEditingPassword(e.target.value)}
+                              placeholder="Senha MyFXBook"
+                              className="w-full px-2 py-1 border border-[#e5e7eb] rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa] focus:border-transparent"
+                              disabled={savingPassword}
+                            />
+                          ) : (
+                            <span className="text-[#111827]">
+                              <span className="text-[#9ca3af] italic">••••••••</span>
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {editingAccountId === account.id || editingPasswordUserId === account.user_id ? (
+                            <div className="flex flex-col gap-2">
+                              {editingAccountId === account.id && (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleSave(account.id)}
+                                    disabled={saving}
+                                    className="px-3 py-1 bg-[#00afaa] text-white rounded text-xs font-semibold hover:bg-[#009a96] transition-colors disabled:opacity-50"
+                                  >
+                                    {saving ? 'Salvando...' : 'Salvar Login'}
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEdit}
+                                    disabled={saving}
+                                    className="px-3 py-1 bg-white border border-[#e5e7eb] text-[#6b7280] rounded text-xs font-semibold hover:bg-[#f9fafb] transition-colors disabled:opacity-50"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              )}
+                              {editingPasswordUserId === account.user_id && (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleSavePassword(account.user_id)}
+                                    disabled={savingPassword}
+                                    className="px-3 py-1 bg-[#3b82f6] text-white rounded text-xs font-semibold hover:bg-[#2563eb] transition-colors disabled:opacity-50"
+                                  >
+                                    {savingPassword ? 'Salvando...' : 'Salvar Senha'}
+                                  </button>
+                                  <button
+                                    onClick={handleCancelPasswordEdit}
+                                    disabled={savingPassword}
+                                    className="px-3 py-1 bg-white border border-[#e5e7eb] text-[#6b7280] rounded text-xs font-semibold hover:bg-[#f9fafb] transition-colors disabled:opacity-50"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           ) : (
-                            <button
-                              onClick={() => handleEditClick(account)}
-                              className="px-3 py-1 bg-[#f9fafb] border border-[#e5e7eb] text-[#6b7280] rounded text-xs font-semibold hover:bg-[#f3f4f6] transition-colors flex items-center gap-1"
-                            >
-                              <Icon icon="lucide:edit" className="text-xs" />
-                              Editar
-                            </button>
+                            <div className="flex flex-col gap-1">
+                              <button
+                                onClick={() => handleEditClick(account)}
+                                className="px-3 py-1 bg-[#f9fafb] border border-[#e5e7eb] text-[#6b7280] rounded text-xs font-semibold hover:bg-[#f3f4f6] transition-colors flex items-center gap-1"
+                              >
+                                <Icon icon="lucide:edit" className="text-xs" />
+                                Editar Login
+                              </button>
+                              <button
+                                onClick={() => handleEditPasswordClick(account)}
+                                className="px-3 py-1 bg-[#f9fafb] border border-[#e5e7eb] text-[#6b7280] rounded text-xs font-semibold hover:bg-[#f3f4f6] transition-colors flex items-center gap-1"
+                              >
+                                <Icon icon="lucide:key" className="text-xs" />
+                                Editar Senha
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>

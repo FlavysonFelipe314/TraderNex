@@ -71,4 +71,35 @@ router.put('/mt4-accounts/:accountId/myfxbook-login', adminController.updateMyfx
  */
 router.get('/myfxbook-connections', adminController.getAllMyfxbookConnections);
 
+/**
+ * @swagger
+ * /api/admin/myfxbook-connections/{userId}/password:
+ *   put:
+ *     summary: Atualizar senha MyFXBook de um usuário (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Senha atualizada com sucesso
+ *       403:
+ *         description: Acesso negado - apenas admins
+ */
+router.put('/myfxbook-connections/:userId/password', adminController.updateMyfxbookPassword);
+
 module.exports = router;

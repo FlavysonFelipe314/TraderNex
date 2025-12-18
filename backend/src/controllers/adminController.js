@@ -126,3 +126,73 @@ exports.getAllMyfxbookConnections = async (req, res) => {
     });
   }
 };
+
+/**
+ * Atualizar senha MyFXBook de um usuário (Admin)
+ * PUT /api/admin/myfxbook-connections/:userId/password
+ */
+exports.updateMyfxbookPassword = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Senha é obrigatória.'
+      });
+    }
+
+    // Verificar se o usuário existe
+    const userCheck = await pool.query(
+      'SELECT id FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado.'
+      });
+    }
+
+    // Criptografar senha
+    const { encrypt } = require('../utils/encryption');
+    const encryptedPassword = encrypt(password);
+
+    // Verificar se já existe conexão MyFXBook
+    const connectionCheck = await pool.query(
+      'SELECT id FROM myfxbook_connections WHERE user_id = $1',
+      [userId]
+    );
+
+    if (connectionCheck.rows.length > 0) {
+      // Atualizar senha na conexão existente
+      await pool.query(
+        `UPDATE myfxbook_connections 
+         SET encrypted_password = $1, updated_at = NOW()
+         WHERE user_id = $2`,
+        [encryptedPassword, userId]
+      );
+    } else {
+      // Criar conexão com apenas a senha (sem email ainda)
+      await pool.query(
+        `INSERT INTO myfxbook_connections (user_id, email, encrypted_password, connected_at, updated_at)
+         VALUES ($1, '', $2, NOW(), NOW())`,
+        [userId, encryptedPassword]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Senha MyFXBook atualizada com sucesso!'
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar senha MyFXBook:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao atualizar senha MyFXBook.',
+      error: error.message
+    });
+  }
+};

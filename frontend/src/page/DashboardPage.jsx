@@ -515,7 +515,7 @@ function DashboardPage() {
             </div>
           </div>
 
-          {/* Connection Card */}
+          {/* Connection Card - Agora com dados MyFXBook */}
           <div className="bg-white rounded-xl sm:rounded-2xl border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden">
             <div className="p-4 sm:p-6 lg:p-8 border-b border-[#F8FAFC] flex justify-between items-center bg-white">
               <div>
@@ -523,64 +523,142 @@ function DashboardPage() {
                   <div className="w-4 h-4 flex items-center justify-center text-[#00AFAA] opacity-80">
                     <Icon icon="lucide:link" className="text-base" />
                   </div>
-                  Conexão MT4
+                  {myfxbookConnected && selectedMyfxbookAccount ? 'Dados Myfxbook' : 'Conexão MT4'}
                 </div>
                 <div className="text-[13px] text-[#64748B] mt-1">
-                  Status em tempo real
+                  {myfxbookConnected && selectedMyfxbookAccount ? 'Estatísticas e histórico' : 'Status em tempo real'}
                 </div>
               </div>
-              <button className="bg-white border border-[#E2E8F0] rounded-full px-5 py-2 text-xs font-semibold text-[#0F172A] transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-[#CBD5E1] hover:shadow-[0_4px_8px_rgba(0,0,0,0.04)] hover:-translate-y-[1px] hover:text-black" data-media-type="banani-button">
+              <button 
+                onClick={() => window.location.href = '/conta-forex-mt4'}
+                className="bg-white border border-[#E2E8F0] rounded-full px-5 py-2 text-xs font-semibold text-[#0F172A] transition-all shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-[#CBD5E1] hover:shadow-[0_4px_8px_rgba(0,0,0,0.04)] hover:-translate-y-[1px] hover:text-black" 
+                data-media-type="banani-button"
+              >
                 Gerenciar
               </button>
             </div>
             <div className="p-4 sm:p-6 lg:p-8 flex flex-col gap-4 sm:gap-6 lg:gap-8 flex-1">
-              <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 bg-[rgba(240,253,244,0.6)] border border-[rgba(34,197,94,0.15)] rounded-xl sm:rounded-[14px]">
-                <span className="flex items-center gap-3 font-bold text-[#15803D] text-[13px]">
-                  <div 
-                    className="w-2 h-2 bg-[#22C55E] rounded-full shadow-[0_0_0_4px_rgba(34,197,94,0.15)]" 
-                    style={pulseStyle}
-                  />
-                  Conectada e Operando
-                </span>
-                <div className="w-[18px] h-[18px] flex items-center justify-center">
-                  <Icon icon="lucide:wifi" className="text-[18px] text-[#22c55e]" />
-                </div>
-              </div>
-              <div className="flex flex-col gap-0">
-                {mt4Accounts.length > 0 ? (
-                  mt4Accounts.slice(0, 1).map((account) => (
-                    <div key={account.id || account.account_number || account.accountNumber}>
-                      <div className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
-                        <span className="text-[#64748B] font-medium">Login MT4</span>
-                        <span className="font-semibold text-[#0F172A] text-right break-all ml-2">{account.account_number || account.accountNumber}</span>
-                      </div>
-                      <div className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
-                        <span className="text-[#64748B] font-medium">Corretora</span>
-                        <span className="font-semibold text-[#0F172A] text-right break-all ml-2">{account.broker || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between py-3 sm:py-4 lg:py-5 text-xs sm:text-[13px] items-center">
-                        <span className="text-[#64748B] font-medium">Servidor</span>
-                        <span className="font-semibold text-[#0F172A] text-right break-all ml-2">{account.server || 'N/A'}</span>
+              {myfxbookConnected && selectedMyfxbookAccount ? (
+                // Mostrar dados MyFXBook
+                <>
+                  <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 bg-[rgba(240,253,244,0.6)] border border-[rgba(34,197,94,0.15)] rounded-xl sm:rounded-[14px]">
+                    <span className="flex items-center gap-3 font-bold text-[#15803D] text-[13px]">
+                      <div 
+                        className="w-2 h-2 bg-[#22C55E] rounded-full shadow-[0_0_0_4px_rgba(34,197,94,0.15)]" 
+                        style={pulseStyle}
+                      />
+                      MyFXBook Conectado
+                    </span>
+                    <div className="w-[18px] h-[18px] flex items-center justify-center">
+                      <Icon icon="lucide:bar-chart-3" className="text-[18px] text-[#22c55e]" />
+                    </div>
+                  </div>
+                  
+                  {/* Cards de Métricas MyFXBook */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
+                      <div className="text-[10px] text-[#6b7280] font-medium mb-1">Ganho Total</div>
+                      <div className={`text-base font-bold ${
+                        (selectedMyfxbookAccount.gain || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
+                      }`}>
+                        {selectedMyfxbookAccount.gain ? `${parseFloat(selectedMyfxbookAccount.gain).toFixed(2)}%` : 'N/A'}
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <>
-                    <div className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
-                      <span className="text-[#64748B] font-medium">Login MT4</span>
-                      <span className="font-semibold text-[#0F172A] text-right break-all ml-2">82139402</span>
+                    <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
+                      <div className="text-[10px] text-[#6b7280] font-medium mb-1">Lucro</div>
+                      <div className={`text-base font-bold ${
+                        (selectedMyfxbookAccount.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
+                      }`}>
+                        {selectedMyfxbookAccount.profit ? `$${parseFloat(selectedMyfxbookAccount.profit).toFixed(2)}` : 'N/A'}
+                      </div>
                     </div>
-                    <div className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
-                      <span className="text-[#64748B] font-medium">Corretora</span>
-                      <span className="font-semibold text-[#0F172A] text-right break-all ml-2">ICMarkets (Live)</span>
+                    <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
+                      <div className="text-[10px] text-[#6b7280] font-medium mb-1">Drawdown</div>
+                      <div className="text-base font-bold text-[#dc2626]">
+                        {selectedMyfxbookAccount.drawdown ? `${parseFloat(selectedMyfxbookAccount.drawdown).toFixed(2)}%` : 'N/A'}
+                      </div>
                     </div>
-                    <div className="flex justify-between py-3 sm:py-4 lg:py-5 text-xs sm:text-[13px] items-center">
-                      <span className="text-[#64748B] font-medium">Servidor</span>
-                      <span className="font-semibold text-[#0F172A] text-right break-all ml-2">ICMarkets-Live18</span>
+                    <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
+                      <div className="text-[10px] text-[#6b7280] font-medium mb-1">Equity</div>
+                      <div className="text-base font-bold text-[#111827]">
+                        {selectedMyfxbookAccount.equity ? `$${parseFloat(selectedMyfxbookAccount.equity).toFixed(2)}` : 'N/A'}
+                      </div>
                     </div>
-                  </>
-                )}
-              </div>
+                  </div>
+                  
+                  {/* Dados MT4 abaixo */}
+                  {mt4Accounts.length > 0 && (
+                    <div className="pt-4 border-t border-[#F1F5F9]">
+                      <div className="text-[11px] font-semibold text-[#64748B] mb-3 uppercase tracking-wide">Credenciais MT4</div>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex justify-between py-2 text-xs sm:text-[13px] items-center">
+                          <span className="text-[#64748B] font-medium">Login MT4</span>
+                          <span className="font-semibold text-[#0F172A] text-right break-all ml-2">{mt4Accounts[0].account_number || mt4Accounts[0].accountNumber}</span>
+                        </div>
+                        <div className="flex justify-between py-2 text-xs sm:text-[13px] items-center">
+                          <span className="text-[#64748B] font-medium">Corretora</span>
+                          <span className="font-semibold text-[#0F172A] text-right break-all ml-2">{mt4Accounts[0].broker || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between py-2 text-xs sm:text-[13px] items-center">
+                          <span className="text-[#64748B] font-medium">Servidor</span>
+                          <span className="font-semibold text-[#0F172A] text-right break-all ml-2">{mt4Accounts[0].server || 'N/A'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                // Mostrar apenas dados MT4 quando não houver MyFXBook
+                <>
+                  <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 bg-[rgba(240,253,244,0.6)] border border-[rgba(34,197,94,0.15)] rounded-xl sm:rounded-[14px]">
+                    <span className="flex items-center gap-3 font-bold text-[#15803D] text-[13px]">
+                      <div 
+                        className="w-2 h-2 bg-[#22C55E] rounded-full shadow-[0_0_0_4px_rgba(34,197,94,0.15)]" 
+                        style={pulseStyle}
+                      />
+                      Conectada e Operando
+                    </span>
+                    <div className="w-[18px] h-[18px] flex items-center justify-center">
+                      <Icon icon="lucide:wifi" className="text-[18px] text-[#22c55e]" />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-0">
+                    {mt4Accounts.length > 0 ? (
+                      mt4Accounts.slice(0, 1).map((account) => (
+                        <div key={account.id || account.account_number || account.accountNumber}>
+                          <div className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
+                            <span className="text-[#64748B] font-medium">Login MT4</span>
+                            <span className="font-semibold text-[#0F172A] text-right break-all ml-2">{account.account_number || account.accountNumber}</span>
+                          </div>
+                          <div className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
+                            <span className="text-[#64748B] font-medium">Corretora</span>
+                            <span className="font-semibold text-[#0F172A] text-right break-all ml-2">{account.broker || 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between py-3 sm:py-4 lg:py-5 text-xs sm:text-[13px] items-center">
+                            <span className="text-[#64748B] font-medium">Servidor</span>
+                            <span className="font-semibold text-[#0F172A] text-right break-all ml-2">{account.server || 'N/A'}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <>
+                        <div className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
+                          <span className="text-[#64748B] font-medium">Login MT4</span>
+                          <span className="font-semibold text-[#0F172A] text-right break-all ml-2">-</span>
+                        </div>
+                        <div className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
+                          <span className="text-[#64748B] font-medium">Corretora</span>
+                          <span className="font-semibold text-[#0F172A] text-right break-all ml-2">-</span>
+                        </div>
+                        <div className="flex justify-between py-3 sm:py-4 lg:py-5 text-xs sm:text-[13px] items-center">
+                          <span className="text-[#64748B] font-medium">Servidor</span>
+                          <span className="font-semibold text-[#0F172A] text-right break-all ml-2">-</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -58,3 +58,24 @@ export const getAllMyfxbookConnections = async () => {
     }
   }
 }
+
+// Atualizar senha MyFXBook de um usuário (Admin)
+export const updateMyfxbookPassword = async (userId, password) => {
+  try {
+    const response = await api.put(`/api/admin/myfxbook-connections/${userId}/password`, {
+      password
+    })
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar senha MyFXBook:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao atualizar senha MyFXBook.',
+      error: error.response?.data
+    }
+  }
+}
