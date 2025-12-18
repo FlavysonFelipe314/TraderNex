@@ -16,8 +16,9 @@ RUN npm install --omit=dev && npm cache clean --force
 # Copie o código da aplicação (inclui docker-entrypoint.sh)
 COPY . .
 
-# Copie e configure o script de entrypoint
-RUN cp docker-entrypoint.sh /usr/local/bin/ && \
+# Configure o script de entrypoint no sistema
+RUN chmod +x docker-entrypoint.sh && \
+    cp docker-entrypoint.sh /usr/local/bin/ && \
     chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Crie um usuário não-root para segurança
