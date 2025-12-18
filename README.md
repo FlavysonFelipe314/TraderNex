@@ -431,3 +431,5 @@ Para questões e suporte:
 ---
 
 **TraderNex** - Gestão profissional de Forex e Cripto com IA 🚀
+#   T r a d e r N e x  
+ 
