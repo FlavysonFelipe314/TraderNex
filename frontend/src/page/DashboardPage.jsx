@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar'
 import MobileBottomNav from '../components/MobileBottomNav'
 import { useSidebar } from '../contexts/SidebarContext'
 import { useAuth } from '../contexts/AuthContext'
-import { getDashboardData, getMT4Accounts, getPerformanceStats, getMyfxbookStatus, getMyfxbookAccounts, getMyfxbookFullData } from '../services/dashboardService'
+import { getDashboardData, getMT4Accounts, getPerformanceStats, getMyfxbookData } from '../services/dashboardService'
 
 function DashboardPage() {
   const { isSidebarOpen } = useSidebar()
@@ -38,10 +38,10 @@ function DashboardPage() {
     const loadDashboardData = async () => {
       setLoading(true)
       try {
-        const [dashboardResult, mt4Result, myfxbookStatusResult] = await Promise.all([
+        const [dashboardResult, mt4Result, myfxbookDataResult] = await Promise.all([
           getDashboardData(),
           getMT4Accounts(),
-          getMyfxbookStatus()
+          getMyfxbookData()
         ])
 
         if (dashboardResult.success) {
@@ -58,34 +58,64 @@ function DashboardPage() {
           setMt4Accounts(mt4Result.data || [])
         }
 
-        // Carregar dados do MyFXBook
-        if (myfxbookStatusResult.success && myfxbookStatusResult.data) {
-          const isConnected = myfxbookStatusResult.data.connected || (myfxbookStatusResult.data.hasSession && myfxbookStatusResult.data.sessionValid)
+        // Carregar dados do MyFXBook usando credenciais padrão e accountId configurado
+        if (myfxbookDataResult.success && myfxbookDataResult.data) {
+          const isConnected = myfxbookDataResult.data.connected
           setMyfxbookConnected(isConnected)
           
-          if (isConnected && myfxbookStatusResult.data.accounts && myfxbookStatusResult.data.accounts.length > 0) {
-            setMyfxbookAccounts(myfxbookStatusResult.data.accounts)
-            const firstAccount = myfxbookStatusResult.data.accounts[0]
-            setSelectedMyfxbookAccount(firstAccount)
+          if (isConnected && myfxbookDataResult.data.account) {
+            // Usar os dados da conta retornados pela API
+            const accountData = myfxbookDataResult.data.account
+            console.log('[Dashboard] Dados MyFXBook recebidos:', accountData)
+            console.log('[Dashboard] Account ID configurado:', myfxbookDataResult.data.accountId)
+            console.log('[Dashboard] MT4 Account Number:', myfxbookDataResult.data.mt4AccountNumber)
             
-            // Carregar dados completos da conta
-            if (firstAccount.id || firstAccount.accountId) {
-              setLoadingMyfxbook(true)
-              try {
-                const accountDataResult = await getMyfxbookFullData(firstAccount.id || firstAccount.accountId)
-                if (accountDataResult.success) {
-                  setMyfxbookAccountData(accountDataResult.data)
-                }
-              } catch (error) {
-                console.error('Erro ao carregar dados completos do MyFXBook:', error)
-              } finally {
-                setLoadingMyfxbook(false)
-              }
+            // Se houver warning, mostrar no console
+            if (myfxbookDataResult.data.warning) {
+              console.warn('[Dashboard] Aviso MyFXBook:', myfxbookDataResult.data.warning)
             }
+            
+            setSelectedMyfxbookAccount({
+              id: accountData.id,
+              accountId: accountData.accountId,
+              name: accountData.name,
+              gain: accountData.gain,
+              profit: accountData.profit,
+              drawdown: accountData.drawdown,
+              equity: accountData.equity,
+              balance: accountData.balance,
+              absGain: accountData.absGain,
+              daily: accountData.daily,
+              monthly: accountData.monthly
+            })
+            
+            // Dados completos já vêm na resposta
+            setMyfxbookAccountData({
+              account: accountData,
+              openTrades: myfxbookDataResult.data.openTrades || [],
+              history: myfxbookDataResult.data.history || [],
+              dailyGain: myfxbookDataResult.data.dailyGain || [],
+              dataDaily: myfxbookDataResult.data.dataDaily || []
+            })
+            setLoadingMyfxbook(false)
+          } else {
+            console.log('[Dashboard] MyFXBook não conectado ou sem dados:', myfxbookDataResult.data?.message)
+            if (myfxbookDataResult.data?.warning) {
+              console.warn('[Dashboard] Aviso:', myfxbookDataResult.data.warning)
+            }
+            setMyfxbookConnected(false)
+            setSelectedMyfxbookAccount(null)
+            setMyfxbookAccountData(null)
           }
+        } else {
+          console.log('[Dashboard] Erro ao buscar dados MyFXBook:', myfxbookDataResult.message)
+          setMyfxbookConnected(false)
+          setSelectedMyfxbookAccount(null)
+          setMyfxbookAccountData(null)
         }
       } catch (error) {
         console.error('Erro ao carregar dados do dashboard:', error)
+        setMyfxbookConnected(false)
       } finally {
         setLoading(false)
       }

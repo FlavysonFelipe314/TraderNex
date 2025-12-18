@@ -25,6 +25,9 @@ function AdminPage() {
   const [editingAutomationEnabled, setEditingAutomationEnabled] = useState(true)
   const [editingRiskProfile, setEditingRiskProfile] = useState('moderado')
   const [saving, setSaving] = useState(false)
+  const [systemConfig, setSystemConfig] = useState(null)
+  const [systemEmail, setSystemEmail] = useState('')
+  const [systemPassword, setSystemPassword] = useState('')
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')

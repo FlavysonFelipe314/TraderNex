@@ -239,11 +239,47 @@ exports.getMyfxbookData = async (req, res) => {
     ]);
 
     // Encontrar a conta específica nos resultados
+    // O myfxbook_integration_login é o Account Number (accountId) no MyFXBook, não o id interno
     let accountData = null;
     if (accountsResult.success && accountsResult.accounts) {
-      accountData = accountsResult.accounts.find(acc => 
-        acc.id === parseInt(myfxbookAccountId) || acc.accountId === myfxbookAccountId || acc.accountId === parseInt(myfxbookAccountId)
-      );
+      // Tentar encontrar a conta por accountId (Account Number) - pode ser string ou número
+      const accountIdNum = parseInt(myfxbookAccountId);
+      const accountIdStr = String(myfxbookAccountId).trim();
+      
+      accountData = accountsResult.accounts.find(acc => {
+        // O accountId é o Account Number (ex: 7739458, 34182616)
+        // Comparar como número e como string
+        const accAccountId = acc.accountId;
+        if (accAccountId === accountIdNum || 
+            accAccountId === accountIdStr || 
+            String(accAccountId) === accountIdStr ||
+            parseInt(accAccountId) === accountIdNum) {
+          return true;
+        }
+        // Também tentar comparar com id interno (caso o admin tenha informado o id ao invés do accountId)
+        if (acc.id === accountIdNum || String(acc.id) === accountIdStr) {
+          return true;
+        }
+        return false;
+      });
+      
+      console.log(`[MyFXBook Data] Procurando Account Number: ${myfxbookAccountId} (tipo: ${typeof myfxbookAccountId})`);
+      console.log(`[MyFXBook Data] Contas disponíveis:`, accountsResult.accounts.map(acc => ({ 
+        id: acc.id, 
+        accountId: acc.accountId, 
+        name: acc.name,
+        accountIdType: typeof acc.accountId
+      })));
+      console.log(`[MyFXBook Data] Conta encontrada:`, accountData ? 'SIM' : 'NÃO');
+      if (accountData) {
+        console.log(`[MyFXBook Data] Dados da conta encontrada:`, {
+          id: accountData.id,
+          accountId: accountData.accountId,
+          name: accountData.name,
+          gain: accountData.gain,
+          profit: accountData.profit
+        });
+      }
     }
 
     // Calcular datas para ganho diário (últimos 30 dias)
@@ -258,17 +294,25 @@ exports.getMyfxbookData = async (req, res) => {
       getDataDaily(loginResult.session, myfxbookAccountId, startDateStr, endDateStr)
     ]);
 
+    // Se não encontrou a conta, ainda retornar os dados disponíveis
+    if (!accountData && accountsResult.success && accountsResult.accounts.length > 0) {
+      console.warn(`[MyFXBook Data] Conta com accountId ${myfxbookAccountId} não encontrada. Usando primeira conta disponível.`);
+      accountData = accountsResult.accounts[0];
+    }
+
     res.json({
       success: true,
       data: {
-        connected: true,
+        connected: !!accountData,
         accountId: myfxbookAccountId,
         mt4AccountNumber: mt4Account.account_number,
         account: accountData,
         openTrades: openTrades.success ? openTrades.trades : [],
         history: history.success ? history.history : [],
         dailyGain: dailyGain.success ? dailyGain.dailyGain : [],
-        dataDaily: dataDaily.success ? dataDaily.dataDaily : []
+        dataDaily: dataDaily.success ? dataDaily.dataDaily : [],
+        // Incluir mensagem se não encontrou a conta específica
+        warning: !accountData ? `Conta com Account ID ${myfxbookAccountId} não encontrada no MyFXBook. Verifique se o Account ID está correto.` : null
       }
     });
   } catch (error) {
