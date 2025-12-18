@@ -21,14 +21,21 @@ wait_for_db() {
         console.log('✅ Banco de dados está pronto!');
         process.exit(0);
       } catch (err) {
-        console.log('⏳ Banco de dados não está pronto ainda. Aguardando...');
+        // Mostra erro de autenticação claramente
+        if (err.message && err.message.includes('password authentication failed')) {
+          console.error('❌ ERRO DE AUTENTICAÇÃO: Senha incorreta para o usuário', process.env.DB_USER);
+          console.error('   Verifique se DB_PASSWORD corresponde à senha do banco de dados');
+          console.error('   Se o banco foi criado com outra senha, delete o volume ou ajuste a senha');
+        } else {
+          console.log('⏳ Banco de dados não está pronto ainda. Aguardando...');
+        }
         process.exit(1);
       } finally {
         await pool.end();
       }
     }
     check();
-  " 2>/dev/null || return 1
+  " || return 1
   return 0
 }
 
@@ -44,7 +51,11 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
 done
 
 if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-  echo "❌ Timeout aguardando banco de dados"
+  echo "❌ Timeout aguardando banco de dados após $MAX_ATTEMPTS tentativas"
+  echo "   Verifique:"
+  echo "   1. Se o container do banco está rodando"
+  echo "   2. Se DB_USER, DB_PASSWORD e DB_NAME estão corretos"
+  echo "   3. Se a senha corresponde à senha usada quando o banco foi criado"
   exit 1
 fi
 
