@@ -150,7 +150,7 @@ exports.getMT4Accounts = async (req, res) => {
     const result = await pool.query(
       `SELECT id, account_number, account_name, broker, server, balance,
               equity, currency, status, connected_at, last_sync,
-              automation_enabled, risk_profile
+              automation_enabled, risk_profile, myfxbook_integration_login
        FROM mt4_accounts WHERE user_id = $1
        ORDER BY created_at DESC`,
       [userId]
@@ -165,6 +165,117 @@ exports.getMT4Accounts = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao buscar contas MT4.',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Obter dados MyFXBook da conta do usuário usando accountId configurado pelo admin
+ * GET /api/dashboard/myfxbook-data
+ */
+exports.getMyfxbookData = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Buscar conta MT4 do usuário com myfxbook_integration_login configurado
+    const mt4Result = await pool.query(
+      `SELECT id, account_number, myfxbook_integration_login
+       FROM mt4_accounts 
+       WHERE user_id = $1 AND myfxbook_integration_login IS NOT NULL AND myfxbook_integration_login != ''
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (mt4Result.rows.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          connected: false,
+          message: 'Nenhuma conta MT4 com integração MyFXBook configurada.'
+        }
+      });
+    }
+
+    const mt4Account = mt4Result.rows[0];
+    const myfxbookAccountId = mt4Account.myfxbook_integration_login;
+
+    // Buscar credenciais padrão do sistema
+    const configResult = await pool.query(
+      'SELECT email, encrypted_password FROM system_myfxbook_config LIMIT 1'
+    );
+
+    if (configResult.rows.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          connected: false,
+          message: 'Sistema MyFXBook não configurado. Entre em contato com o administrador.'
+        }
+      });
+    }
+
+    const { email, encrypted_password } = configResult.rows[0];
+    const { decrypt } = require('../utils/encryption');
+    const password = decrypt(encrypted_password);
+
+    // Fazer login no MyFXBook usando credenciais padrão
+    const { loginMyfxbook, getMyAccounts, getOpenTrades, getHistory, getDailyGain, getDataDaily } = require('../services/myfxbookService');
+    const loginResult = await loginMyfxbook(email, password);
+
+    if (!loginResult.success) {
+      return res.status(401).json({
+        success: false,
+        message: 'Erro ao conectar ao MyFXBook: ' + loginResult.message
+      });
+    }
+
+    // Buscar dados da conta específica
+    const [accountsResult, openTrades, history] = await Promise.all([
+      getMyAccounts(loginResult.session),
+      getOpenTrades(loginResult.session, myfxbookAccountId),
+      getHistory(loginResult.session, myfxbookAccountId)
+    ]);
+
+    // Encontrar a conta específica nos resultados
+    let accountData = null;
+    if (accountsResult.success && accountsResult.accounts) {
+      accountData = accountsResult.accounts.find(acc => 
+        acc.id === parseInt(myfxbookAccountId) || acc.accountId === myfxbookAccountId || acc.accountId === parseInt(myfxbookAccountId)
+      );
+    }
+
+    // Calcular datas para ganho diário (últimos 30 dias)
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = endDate.toISOString().split('T')[0];
+
+    const [dailyGain, dataDaily] = await Promise.all([
+      getDailyGain(loginResult.session, myfxbookAccountId, startDateStr, endDateStr),
+      getDataDaily(loginResult.session, myfxbookAccountId, startDateStr, endDateStr)
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        connected: true,
+        accountId: myfxbookAccountId,
+        mt4AccountNumber: mt4Account.account_number,
+        account: accountData,
+        openTrades: openTrades.success ? openTrades.trades : [],
+        history: history.success ? history.history : [],
+        dailyGain: dailyGain.success ? dailyGain.dailyGain : [],
+        dataDaily: dataDaily.success ? dataDaily.dataDaily : []
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar dados MyFXBook:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar dados MyFXBook.',
       error: error.message
     });
   }

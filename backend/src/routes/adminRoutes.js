@@ -183,6 +183,71 @@ router.put('/myfxbook-connections/:userId/email', adminController.updateMyfxbook
  */
 router.put('/mt4-accounts/:accountId/operational-controls', adminController.updateOperationalControls);
 
+/**
+ * @swagger
+ * /api/admin/system/myfxbook-config:
+ *   post:
+ *     summary: Configurar credenciais padrão do sistema MyFXBook (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Credenciais configuradas com sucesso
+ *       403:
+ *         description: Acesso negado - apenas admins
+ */
+router.post('/system/myfxbook-config', adminController.setSystemMyfxbookConfig);
+
+/**
+ * @swagger
+ * /api/admin/system/myfxbook-config:
+ *   get:
+ *     summary: Obter credenciais padrão do sistema MyFXBook (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Configuração obtida com sucesso
+ *       403:
+ *         description: Acesso negado - apenas admins
+ */
+router.get('/system/myfxbook-config', adminController.getSystemMyfxbookConfig);
+
+/**
+ * @swagger
+ * /api/admin/myfxbook/account/:accountId/data:
+ *   get:
+ *     summary: Obter dados MyFXBook de uma conta específica por accountId (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: accountId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Dados obtidos com sucesso
+ *       403:
+ *         description: Acesso negado - apenas admins
+ */
+router.get('/myfxbook/account/:accountId/data', adminController.getMyfxbookAccountDataByAccountId);
+
 module.exports = router;
 
 

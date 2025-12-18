@@ -175,6 +175,7 @@ router.get('/performance', dashboardController.getPerformanceStats);
 router.get('/mt4-accounts', dashboardController.getMT4Accounts);
 router.post('/mt4-accounts', dashboardController.addMT4Account);
 router.put('/mt4-accounts/:accountId/settings', dashboardController.updateMT4Settings);
+router.get('/myfxbook-data', dashboardController.getMyfxbookData);
 
 /**
  * @swagger

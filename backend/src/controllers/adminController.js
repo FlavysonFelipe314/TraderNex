@@ -494,6 +494,194 @@ exports.updateMyfxbookEmail = async (req, res) => {
 };
 
 /**
+ * Configurar credenciais padrão do sistema MyFXBook (Admin)
+ * POST /api/admin/system/myfxbook-config
+ */
+exports.setSystemMyfxbookConfig = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const adminId = req.user.userId;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email e senha são obrigatórios.'
+      });
+    }
+
+    // Criptografar senha
+    const { encrypt } = require('../utils/encryption');
+    const encryptedPassword = encrypt(password);
+
+    // Verificar se já existe configuração
+    const existingConfig = await pool.query(
+      'SELECT id FROM system_myfxbook_config LIMIT 1'
+    );
+
+    if (existingConfig.rows.length > 0) {
+      // Atualizar configuração existente
+      await pool.query(
+        `UPDATE system_myfxbook_config 
+         SET email = $1, encrypted_password = $2, updated_at = NOW()
+         WHERE id = $3`,
+        [email, encryptedPassword, existingConfig.rows[0].id]
+      );
+    } else {
+      // Criar nova configuração
+      await pool.query(
+        `INSERT INTO system_myfxbook_config (email, encrypted_password, created_by)
+         VALUES ($1, $2, $3)`,
+        [email, encryptedPassword, adminId]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Credenciais padrão do sistema MyFXBook configuradas com sucesso!'
+    });
+  } catch (error) {
+    console.error('Erro ao configurar credenciais padrão MyFXBook:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao configurar credenciais padrão MyFXBook.',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Obter credenciais padrão do sistema MyFXBook (Admin)
+ * GET /api/admin/system/myfxbook-config
+ */
+exports.getSystemMyfxbookConfig = async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, email, created_at, updated_at FROM system_myfxbook_config LIMIT 1'
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          configured: false,
+          message: 'Credenciais padrão não configuradas'
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        configured: true,
+        email: result.rows[0].email,
+        created_at: result.rows[0].created_at,
+        updated_at: result.rows[0].updated_at
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar configuração padrão MyFXBook:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar configuração padrão MyFXBook.',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Obter dados MyFXBook de uma conta específica usando accountId
+ * GET /api/admin/myfxbook/account/:accountId/data
+ */
+exports.getMyfxbookAccountDataByAccountId = async (req, res) => {
+  try {
+    const { accountId } = req.params;
+
+    if (!accountId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Account ID é obrigatório.'
+      });
+    }
+
+    // Buscar credenciais padrão do sistema
+    const configResult = await pool.query(
+      'SELECT email, encrypted_password FROM system_myfxbook_config LIMIT 1'
+    );
+
+    if (configResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Credenciais padrão do sistema MyFXBook não configuradas. Configure-as no painel admin.'
+      });
+    }
+
+    const { email, encrypted_password } = configResult.rows[0];
+    const { decrypt } = require('../utils/encryption');
+    const password = decrypt(encrypted_password);
+
+    // Fazer login no MyFXBook usando credenciais padrão
+    const { loginMyfxbook, getMyAccounts } = require('../services/myfxbookService');
+    const loginResult = await loginMyfxbook(email, password);
+
+    if (!loginResult.success) {
+      return res.status(401).json({
+        success: false,
+        message: 'Erro ao fazer login no MyFXBook: ' + loginResult.message
+      });
+    }
+
+    // Buscar dados da conta específica usando o accountId
+    const { getOpenTrades, getHistory, getDailyGain, getDataDaily } = require('../services/myfxbookService');
+    
+    // Buscar múltiplos dados em paralelo
+    const [accountsResult, openTrades, history] = await Promise.all([
+      getMyAccounts(loginResult.session),
+      getOpenTrades(loginResult.session, accountId),
+      getHistory(loginResult.session, accountId)
+    ]);
+
+    // Encontrar a conta específica nos resultados
+    let accountData = null;
+    if (accountsResult.success && accountsResult.accounts) {
+      accountData = accountsResult.accounts.find(acc => 
+        acc.id === parseInt(accountId) || acc.accountId === accountId
+      );
+    }
+
+    // Calcular datas para ganho diário (últimos 30 dias)
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = endDate.toISOString().split('T')[0];
+
+    const [dailyGain, dataDaily] = await Promise.all([
+      getDailyGain(loginResult.session, accountId, startDateStr, endDateStr),
+      getDataDaily(loginResult.session, accountId, startDateStr, endDateStr)
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        accountId,
+        account: accountData,
+        openTrades: openTrades.success ? openTrades.trades : [],
+        history: history.success ? history.history : [],
+        dailyGain: dailyGain.success ? dailyGain.dailyGain : [],
+        dataDaily: dataDaily.success ? dataDaily.dataDaily : []
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar dados MyFXBook por accountId:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar dados MyFXBook.',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Atualizar controles operacionais de uma conta MT4 (Admin)
  * PUT /api/admin/mt4-accounts/:accountId/operational-controls
  */

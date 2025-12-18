@@ -134,6 +134,25 @@ export const getUserInvestments = async () => {
   }
 }
 
+// Obter dados MyFXBook usando accountId configurado pelo admin
+export const getMyfxbookData = async () => {
+  try {
+    const response = await api.get('/api/dashboard/myfxbook-data')
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao buscar dados MyFXBook:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao buscar dados MyFXBook.',
+      error: error.response?.data
+    }
+  }
+}
+
 // Obter transações
 export const getTransactions = async (filters = {}) => {
   try {

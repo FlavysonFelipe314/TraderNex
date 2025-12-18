@@ -6,7 +6,9 @@ import {
   updateMyfxbookIntegrationLogin, 
   updateMyfxbookPassword,
   updateMyfxbookEmail,
-  updateOperationalControls
+  updateOperationalControls,
+  setSystemMyfxbookConfig,
+  getSystemMyfxbookConfig
 } from '../services/adminService'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
@@ -37,7 +39,47 @@ function AdminPage() {
 
   useEffect(() => {
     loadUsers()
+    loadSystemConfig()
   }, [])
+
+  const loadSystemConfig = async () => {
+    try {
+      const result = await getSystemMyfxbookConfig()
+      if (result.success) {
+        setSystemConfig(result.data)
+        if (result.data.configured) {
+          setSystemEmail(result.data.email)
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configuração do sistema:', error)
+    }
+  }
+
+  const handleSaveSystemConfig = async () => {
+    if (!systemEmail || !systemPassword) {
+      alert('Por favor, preencha email e senha.')
+      return
+    }
+    
+    setSaving(true)
+    try {
+      const result = await setSystemMyfxbookConfig(systemEmail, systemPassword)
+      if (result.success) {
+        alert('Credenciais padrão do sistema configuradas com sucesso!')
+        await loadSystemConfig()
+        setSystemPassword('')
+        closeModal()
+      } else {
+        alert('Erro ao salvar: ' + (result.message || 'Erro desconhecido'))
+      }
+    } catch (error) {
+      console.error('Erro ao salvar:', error)
+      alert('Erro ao salvar credenciais padrão do sistema.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const loadUsers = async () => {
     setLoading(true)
@@ -64,6 +106,13 @@ function AdminPage() {
   const openModal = (user, modalType) => {
     setSelectedUser(user)
     setActiveModal(modalType)
+    
+    if (modalType === 'system-config') {
+      // Modal de configuração do sistema - não precisa de user
+      return
+    }
+    
+    if (!user) return
     
     if (modalType === 'mt4' && user.mt4_accounts && user.mt4_accounts.length > 0) {
       const firstAccount = user.mt4_accounts[0]
@@ -533,6 +582,67 @@ function AdminPage() {
                     </p>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Configuração do Sistema */}
+        {activeModal === 'system-config' && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+              <div className="sticky top-0 bg-white border-b border-[#e5e7eb] px-6 py-4 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-[#111827]">
+                  Configurar Credenciais MyFXBook do Sistema
+                </h2>
+                <button
+                  onClick={closeModal}
+                  className="text-[#6b7280] hover:text-[#111827] transition-colors"
+                >
+                  <Icon icon="lucide:x" className="text-2xl" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-[#111827] mb-2 block">
+                    Email MyFXBook do Sistema
+                  </label>
+                  <input
+                    type="email"
+                    value={systemEmail}
+                    onChange={(e) => setSystemEmail(e.target.value)}
+                    placeholder="email@myfxbook.com"
+                    className="w-full px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
+                    disabled={saving}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-[#111827] mb-2 block">
+                    Senha MyFXBook do Sistema
+                  </label>
+                  <input
+                    type="password"
+                    value={systemPassword}
+                    onChange={(e) => setSystemPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
+                    disabled={saving}
+                  />
+                </div>
+                {systemConfig && systemConfig.configured && (
+                  <div className="mt-4 pt-4 border-t border-[#e5e7eb]">
+                    <p className="text-xs text-[#6b7280]">
+                      Configurado em: {new Date(systemConfig.updated_at).toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                )}
+                <button
+                  onClick={handleSaveSystemConfig}
+                  disabled={saving}
+                  className="w-full px-4 py-2 bg-[#00afaa] text-white rounded-lg text-sm font-medium hover:bg-[#009a96] transition-colors disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Salvar Configuração'}
+                </button>
               </div>
             </div>
           </div>

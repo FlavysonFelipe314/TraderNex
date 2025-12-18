@@ -142,4 +142,63 @@ export const updateOperationalControls = async (accountId, automationEnabled, ri
   }
 }
 
+// Configurar credenciais padrão do sistema MyFXBook (Admin)
+export const setSystemMyfxbookConfig = async (email, password) => {
+  try {
+    const response = await api.post('/api/admin/system/myfxbook-config', {
+      email,
+      password
+    })
+    return {
+      success: response.data.success,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao configurar credenciais padrão MyFXBook:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao configurar credenciais padrão MyFXBook.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Obter configuração padrão do sistema MyFXBook (Admin)
+export const getSystemMyfxbookConfig = async () => {
+  try {
+    const response = await api.get('/api/admin/system/myfxbook-config')
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao buscar configuração padrão MyFXBook:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao buscar configuração padrão MyFXBook.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Obter dados MyFXBook por accountId (Admin)
+export const getMyfxbookAccountDataByAccountId = async (accountId) => {
+  try {
+    const response = await api.get(`/api/admin/myfxbook/account/${accountId}/data`)
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao buscar dados MyFXBook por accountId:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao buscar dados MyFXBook.',
+      error: error.response?.data
+    }
+  }
+}
+
 
