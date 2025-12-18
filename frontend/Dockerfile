@@ -11,7 +11,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instale todas as dependências (incluindo devDependencies para build)
-RUN npm ci && npm cache clean --force
+# Usa npm install para ser mais tolerante a dessincronização do package-lock.json
+RUN npm install && npm cache clean --force
 
 # Copie o código fonte
 COPY . .
