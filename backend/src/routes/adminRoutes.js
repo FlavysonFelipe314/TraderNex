@@ -228,6 +228,44 @@ router.get('/system/myfxbook-config', adminController.getSystemMyfxbookConfig);
 
 /**
  * @swagger
+ * /api/admin/system/myfxbook-health:
+ *   get:
+ *     summary: Testar conexão MyFXBook do sistema (Health Check) (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Status da conexão
+ *       403:
+ *         description: Acesso negado - apenas admins
+ */
+router.get('/system/myfxbook-health', adminController.testMyfxbookHealth);
+
+/**
+ * @swagger
+ * /api/admin/users/:userId/myfxbook-test:
+ *   get:
+ *     summary: Testar integração MyFXBook de um usuário específico (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Status da integração
+ *       403:
+ *         description: Acesso negado - apenas admins
+ */
+router.get('/users/:userId/myfxbook-test', adminController.testUserMyfxbookIntegration);
+
+/**
+ * @swagger
  * /api/admin/myfxbook/account/:accountId/data:
  *   get:
  *     summary: Obter dados MyFXBook de uma conta específica por accountId (Admin)

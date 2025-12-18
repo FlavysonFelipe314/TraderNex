@@ -201,4 +201,49 @@ export const getMyfxbookAccountDataByAccountId = async (accountId) => {
   }
 }
 
+// Testar saúde da conexão MyFXBook do sistema (Admin)
+export const testMyfxbookHealth = async () => {
+  try {
+    const response = await api.get('/api/admin/system/myfxbook-health')
+    return {
+      success: response.data.success,
+      connected: response.data.connected,
+      message: response.data.message,
+      accountsCount: response.data.accountsCount,
+      accounts: response.data.accounts
+    }
+  } catch (error) {
+    console.error('Erro ao testar saúde MyFXBook:', error)
+    return {
+      success: false,
+      connected: false,
+      message: error.response?.data?.message || 'Erro ao testar conexão MyFXBook.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Testar integração MyFXBook de um usuário específico (Admin)
+export const testUserMyfxbookIntegration = async (userId) => {
+  try {
+    const response = await api.get(`/api/admin/users/${userId}/myfxbook-test`)
+    return {
+      success: response.data.success,
+      connected: response.data.connected,
+      message: response.data.message,
+      account: response.data.account,
+      canFetchData: response.data.canFetchData,
+      availableAccounts: response.data.availableAccounts
+    }
+  } catch (error) {
+    console.error('Erro ao testar integração MyFXBook do usuário:', error)
+    return {
+      success: false,
+      connected: false,
+      message: error.response?.data?.message || 'Erro ao testar integração MyFXBook.',
+      error: error.response?.data
+    }
+  }
+}
+
 

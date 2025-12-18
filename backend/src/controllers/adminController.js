@@ -589,6 +589,198 @@ exports.getSystemMyfxbookConfig = async (req, res) => {
 };
 
 /**
+ * Testar conexão MyFXBook (Health Check)
+ * GET /api/admin/system/myfxbook-health
+ */
+exports.testMyfxbookHealth = async (req, res) => {
+  try {
+    // Buscar credenciais padrão do sistema
+    const configResult = await pool.query(
+      'SELECT email, encrypted_password FROM system_myfxbook_config LIMIT 1'
+    );
+
+    if (configResult.rows.length === 0) {
+      return res.json({
+        success: false,
+        connected: false,
+        message: 'Credenciais padrão do sistema MyFXBook não configuradas.'
+      });
+    }
+
+    const { email, encrypted_password } = configResult.rows[0];
+    const { decrypt } = require('../utils/encryption');
+    const password = decrypt(encrypted_password);
+
+    // Fazer login no MyFXBook
+    const { loginMyfxbook, getMyAccounts } = require('../services/myfxbookService');
+    const loginResult = await loginMyfxbook(email, password);
+
+    if (!loginResult.success) {
+      return res.json({
+        success: false,
+        connected: false,
+        message: 'Erro ao fazer login no MyFXBook: ' + loginResult.message
+      });
+    }
+
+    // Buscar contas para verificar se a conexão está funcionando
+    const accountsResult = await getMyAccounts(loginResult.session);
+
+    if (!accountsResult.success) {
+      return res.json({
+        success: false,
+        connected: false,
+        message: 'Erro ao buscar contas: ' + accountsResult.message
+      });
+    }
+
+    res.json({
+      success: true,
+      connected: true,
+      message: 'Conexão MyFXBook funcionando corretamente!',
+      accountsCount: accountsResult.accounts ? accountsResult.accounts.length : 0,
+      accounts: accountsResult.accounts || []
+    });
+  } catch (error) {
+    console.error('Erro ao testar saúde MyFXBook:', error);
+    res.status(500).json({
+      success: false,
+      connected: false,
+      message: 'Erro ao testar conexão MyFXBook: ' + error.message
+    });
+  }
+};
+
+/**
+ * Testar integração MyFXBook de um usuário específico
+ * GET /api/admin/users/:userId/myfxbook-test
+ */
+exports.testUserMyfxbookIntegration = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Buscar conta MT4 do usuário com myfxbook_integration_login configurado
+    const mt4Result = await pool.query(
+      `SELECT id, account_number, myfxbook_integration_login
+       FROM mt4_accounts 
+       WHERE user_id = $1 AND myfxbook_integration_login IS NOT NULL AND myfxbook_integration_login != ''
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (mt4Result.rows.length === 0) {
+      return res.json({
+        success: false,
+        connected: false,
+        message: 'Nenhuma conta MT4 com Account ID MyFXBook configurado para este usuário.'
+      });
+    }
+
+    const mt4Account = mt4Result.rows[0];
+    const myfxbookAccountId = mt4Account.myfxbook_integration_login;
+
+    // Buscar credenciais padrão do sistema
+    const configResult = await pool.query(
+      'SELECT email, encrypted_password FROM system_myfxbook_config LIMIT 1'
+    );
+
+    if (configResult.rows.length === 0) {
+      return res.json({
+        success: false,
+        connected: false,
+        message: 'Credenciais padrão do sistema MyFXBook não configuradas.'
+      });
+    }
+
+    const { email, encrypted_password } = configResult.rows[0];
+    const { decrypt } = require('../utils/encryption');
+    const password = decrypt(encrypted_password);
+
+    // Fazer login no MyFXBook
+    const { loginMyfxbook, getMyAccounts, getOpenTrades } = require('../services/myfxbookService');
+    const loginResult = await loginMyfxbook(email, password);
+
+    if (!loginResult.success) {
+      return res.json({
+        success: false,
+        connected: false,
+        message: 'Erro ao fazer login no MyFXBook: ' + loginResult.message
+      });
+    }
+
+    // Buscar contas e verificar se a conta específica existe
+    const accountsResult = await getMyAccounts(loginResult.session);
+
+    if (!accountsResult.success) {
+      return res.json({
+        success: false,
+        connected: false,
+        message: 'Erro ao buscar contas: ' + accountsResult.message
+      });
+    }
+
+    // Encontrar a conta específica
+    const accountIdNum = parseInt(myfxbookAccountId);
+    const accountIdStr = String(myfxbookAccountId).trim();
+    
+    const accountData = accountsResult.accounts.find(acc => {
+      const accAccountId = acc.accountId;
+      if (accAccountId === accountIdNum || 
+          accAccountId === accountIdStr || 
+          String(accAccountId) === accountIdStr ||
+          parseInt(accAccountId) === accountIdNum) {
+        return true;
+      }
+      if (acc.id === accountIdNum || String(acc.id) === accountIdStr) {
+        return true;
+      }
+      return false;
+    });
+
+    if (!accountData) {
+      return res.json({
+        success: false,
+        connected: false,
+        message: `Conta com Account ID ${myfxbookAccountId} não encontrada no MyFXBook. Verifique se o Account ID está correto.`,
+        availableAccounts: accountsResult.accounts.map(acc => ({
+          id: acc.id,
+          accountId: acc.accountId,
+          name: acc.name
+        }))
+      });
+    }
+
+    // Tentar buscar dados da conta para confirmar que está funcionando
+    const openTradesResult = await getOpenTrades(loginResult.session, myfxbookAccountId);
+
+    res.json({
+      success: true,
+      connected: true,
+      message: 'Integração MyFXBook funcionando corretamente!',
+      account: {
+        id: accountData.id,
+        accountId: accountData.accountId,
+        name: accountData.name,
+        gain: accountData.gain,
+        profit: accountData.profit,
+        drawdown: accountData.drawdown,
+        equity: accountData.equity
+      },
+      canFetchData: openTradesResult.success,
+      mt4AccountNumber: mt4Account.account_number
+    });
+  } catch (error) {
+    console.error('Erro ao testar integração MyFXBook do usuário:', error);
+    res.status(500).json({
+      success: false,
+      connected: false,
+      message: 'Erro ao testar integração: ' + error.message
+    });
+  }
+};
+
+/**
  * Obter dados MyFXBook de uma conta específica usando accountId
  * GET /api/admin/myfxbook/account/:accountId/data
  */

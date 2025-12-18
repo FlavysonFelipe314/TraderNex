@@ -6,7 +6,9 @@ import {
   updateMyfxbookIntegrationLogin, 
   updateOperationalControls,
   setSystemMyfxbookConfig,
-  getSystemMyfxbookConfig
+  getSystemMyfxbookConfig,
+  testMyfxbookHealth,
+  testUserMyfxbookIntegration
 } from '../services/adminService'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
@@ -28,6 +30,9 @@ function AdminPage() {
   const [systemConfig, setSystemConfig] = useState(null)
   const [systemEmail, setSystemEmail] = useState('')
   const [systemPassword, setSystemPassword] = useState('')
+  const [testingHealth, setTestingHealth] = useState(false)
+  const [healthStatus, setHealthStatus] = useState(null)
+  const [testingUser, setTestingUser] = useState(null)
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -76,6 +81,8 @@ function AdminPage() {
         alert('Credenciais padrão do sistema configuradas com sucesso!')
         await loadSystemConfig()
         setSystemPassword('')
+        // Testar conexão automaticamente após salvar
+        await handleTestHealth()
         closeModal()
       } else {
         alert('Erro ao salvar: ' + (result.message || 'Erro desconhecido'))
@@ -85,6 +92,56 @@ function AdminPage() {
       alert('Erro ao salvar credenciais padrão do sistema.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleTestHealth = async () => {
+    setTestingHealth(true)
+    setHealthStatus(null)
+    try {
+      const result = await testMyfxbookHealth()
+      setHealthStatus({
+        connected: result.connected,
+        message: result.message,
+        accountsCount: result.accountsCount
+      })
+      if (result.connected) {
+        alert(`✅ Conexão MyFXBook funcionando! ${result.accountsCount || 0} conta(s) encontrada(s).`)
+      } else {
+        alert(`❌ Erro na conexão: ${result.message}`)
+      }
+    } catch (error) {
+      console.error('Erro ao testar saúde:', error)
+      setHealthStatus({
+        connected: false,
+        message: 'Erro ao testar conexão'
+      })
+      alert('Erro ao testar conexão MyFXBook.')
+    } finally {
+      setTestingHealth(false)
+    }
+  }
+
+  const handleTestUserIntegration = async (user) => {
+    if (!user.id) return
+    
+    setTestingUser(user.id)
+    try {
+      const result = await testUserMyfxbookIntegration(user.id)
+      if (result.connected) {
+        alert(`✅ Integração funcionando!\n\nConta: ${result.account?.name || 'N/A'}\nAccount ID: ${result.account?.accountId || 'N/A'}\nGanho: ${result.account?.gain || 0}%\nLucro: $${result.account?.profit || 0}`)
+      } else {
+        let message = `❌ Integração não funcionando:\n${result.message}`
+        if (result.availableAccounts && result.availableAccounts.length > 0) {
+          message += `\n\nContas disponíveis no MyFXBook:\n${result.availableAccounts.map(acc => `- ID: ${acc.id}, Account ID: ${acc.accountId}, Nome: ${acc.name}`).join('\n')}`
+        }
+        alert(message)
+      }
+    } catch (error) {
+      console.error('Erro ao testar integração do usuário:', error)
+      alert('Erro ao testar integração MyFXBook do usuário.')
+    } finally {
+      setTestingUser(null)
     }
   }
 
@@ -250,6 +307,61 @@ function AdminPage() {
           </div>
         </div>
 
+        {/* Botão de Configuração do Sistema e Status */}
+        <div className="mb-4 flex justify-between items-center flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            {systemConfig && systemConfig.configured ? (
+              <div className="flex items-center gap-2 px-4 py-2 bg-[#d1fae5] border border-[#10b981] rounded-lg">
+                <Icon icon="lucide:check-circle" className="text-[#10b981] text-lg" />
+                <span className="text-sm font-medium text-[#065f46]">
+                  Credenciais configuradas
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-2 bg-[#fee2e2] border border-[#ef4444] rounded-lg">
+                <Icon icon="lucide:alert-circle" className="text-[#ef4444] text-lg" />
+                <span className="text-sm font-medium text-[#991b1b]">
+                  ⚠️ Credenciais não configuradas - Configure agora!
+                </span>
+              </div>
+            )}
+            {healthStatus && (
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                healthStatus.connected 
+                  ? 'bg-[#dbeafe] border border-[#3b82f6]' 
+                  : 'bg-[#fee2e2] border border-[#ef4444]'
+              }`}>
+                <Icon 
+                  icon={healthStatus.connected ? "lucide:check-circle" : "lucide:x-circle"} 
+                  className={`text-lg ${healthStatus.connected ? 'text-[#3b82f6]' : 'text-[#ef4444]'}`} 
+                />
+                <span className={`text-sm font-medium ${
+                  healthStatus.connected ? 'text-[#1e40af]' : 'text-[#991b1b]'
+                }`}>
+                  {healthStatus.connected ? `Conexão OK (${healthStatus.accountsCount || 0} conta(s))` : 'Conexão Falhou'}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleTestHealth}
+              disabled={testingHealth || !systemConfig?.configured}
+              className="px-4 py-2 bg-white border border-[#e5e7eb] text-[#111827] rounded-lg text-sm font-medium hover:bg-[#f9fafb] transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
+            >
+              <Icon icon="lucide:activity" className="text-sm" />
+              {testingHealth ? 'Testando...' : 'Testar Conexão'}
+            </button>
+            <button
+              onClick={() => openModal(null, 'system-config')}
+              className="px-4 py-2 bg-gradient-to-r from-[#00afaa] to-[#009a96] text-white rounded-lg text-sm font-medium hover:from-[#009a96] hover:to-[#008882] transition-all shadow-md flex items-center gap-2"
+            >
+              <Icon icon="lucide:settings" className="text-sm" />
+              {systemConfig?.configured ? 'Editar Credenciais' : 'Configurar Credenciais'}
+            </button>
+          </div>
+        </div>
+
         {/* Filtros */}
         <div className="mb-6 flex flex-wrap gap-2">
           <button
@@ -370,6 +482,16 @@ function AdminPage() {
                     <Icon icon="lucide:database" className="text-sm" />
                     MT4
                   </button>
+                  {user.has_mt4 && user.mt4_accounts && user.mt4_accounts.some(acc => acc.myfxbook_integration_login) && (
+                    <button
+                      onClick={() => handleTestUserIntegration(user)}
+                      disabled={testingUser === user.id}
+                      className="flex-1 px-3 py-2 bg-[#dbeafe] hover:bg-[#bfdbfe] text-[#1e40af] rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                    >
+                      <Icon icon="lucide:activity" className="text-sm" />
+                      {testingUser === user.id ? 'Testando...' : 'Testar'}
+                    </button>
+                  )}
                   {user.has_mt4 && (
                     <button
                       onClick={() => openModal(user, 'controls')}
@@ -427,9 +549,21 @@ function AdminPage() {
                         </div>
                         {index === 0 && (
                           <div className="mt-4 pt-4 border-t border-[#e5e7eb]">
-                            <label className="text-sm font-medium text-[#111827] mb-2 block">
-                              Account ID MyFXBook
-                            </label>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-sm font-medium text-[#111827]">
+                                Account ID MyFXBook
+                              </label>
+                              {account.myfxbook_integration_login && (
+                                <button
+                                  onClick={() => handleTestUserIntegration(selectedUser)}
+                                  disabled={testingUser === selectedUser.id}
+                                  className="px-3 py-1 bg-[#dbeafe] hover:bg-[#bfdbfe] text-[#1e40af] rounded-lg text-xs font-medium transition-colors flex items-center gap-1 disabled:opacity-50"
+                                >
+                                  <Icon icon="lucide:activity" className="text-xs" />
+                                  {testingUser === selectedUser.id ? 'Testando...' : 'Testar'}
+                                </button>
+                              )}
+                            </div>
                             <p className="text-xs text-[#6b7280] mb-2">
                               Informe o Account Number do MyFXBook (ex: 7739458, 34182616). O sistema usará as credenciais padrão configuradas.
                             </p>
@@ -450,6 +584,12 @@ function AdminPage() {
                                 {saving ? 'Salvando...' : 'Salvar'}
                               </button>
                             </div>
+                            {account.myfxbook_integration_login && (
+                              <p className="text-xs text-[#10b981] mt-2 flex items-center gap-1">
+                                <Icon icon="lucide:check-circle" className="text-xs" />
+                                Account ID configurado: {account.myfxbook_integration_login}
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>
