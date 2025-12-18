@@ -233,23 +233,15 @@ exports.getMyfxbookData = async (req, res) => {
 
     // Buscar dados da conta específica
     console.log(`[MyFXBook Data] Buscando dados para Account ID: ${myfxbookAccountId}`);
-    const [accountsResult, openTrades, history] = await Promise.all([
-      getMyAccounts(loginResult.session),
-      getOpenTrades(loginResult.session, myfxbookAccountId),
-      getHistory(loginResult.session, myfxbookAccountId)
-    ]);
     
-    console.log(`[MyFXBook Data] Resultado getHistory:`, {
-      success: history.success,
-      hasHistory: !!history.history,
-      historyLength: history.history ? history.history.length : 0,
-      message: history.message,
-      error: history.error
-    });
-
+    // Primeiro, buscar as contas para encontrar o ID interno
+    const accountsResult = await getMyAccounts(loginResult.session);
+    
     // Encontrar a conta específica nos resultados
     // O myfxbook_integration_login é o Account Number (accountId) no MyFXBook, não o id interno
     let accountData = null;
+    let internalAccountId = null;
+    
     if (accountsResult.success && accountsResult.accounts) {
       // Tentar encontrar a conta por accountId (Account Number) - pode ser string ou número
       const accountIdNum = parseInt(myfxbookAccountId);
@@ -272,24 +264,36 @@ exports.getMyfxbookData = async (req, res) => {
         return false;
       });
       
-      console.log(`[MyFXBook Data] Procurando Account Number: ${myfxbookAccountId} (tipo: ${typeof myfxbookAccountId})`);
-      console.log(`[MyFXBook Data] Contas disponíveis:`, accountsResult.accounts.map(acc => ({ 
-        id: acc.id, 
-        accountId: acc.accountId, 
-        name: acc.name,
-        accountIdType: typeof acc.accountId
-      })));
-      console.log(`[MyFXBook Data] Conta encontrada:`, accountData ? 'SIM' : 'NÃO');
       if (accountData) {
-        console.log(`[MyFXBook Data] Dados da conta encontrada:`, {
-          id: accountData.id,
-          accountId: accountData.accountId,
-          name: accountData.name,
-          gain: accountData.gain,
-          profit: accountData.profit
-        });
+        // Usar o ID interno (id) para buscar histórico, trades, etc.
+        internalAccountId = accountData.id;
+        console.log(`[MyFXBook Data] Conta encontrada! ID interno: ${internalAccountId}, Account Number: ${accountData.accountId}`);
+      } else {
+        console.warn(`[MyFXBook Data] Conta com accountId ${myfxbookAccountId} não encontrada.`);
       }
     }
+    
+    // Se não encontrou a conta, ainda tentar usar o accountId fornecido
+    if (!internalAccountId) {
+      internalAccountId = myfxbookAccountId;
+      console.warn(`[MyFXBook Data] Usando accountId fornecido como ID interno: ${internalAccountId}`);
+    }
+    
+    // Buscar dados usando o ID interno
+    const [openTrades, history] = await Promise.all([
+      getOpenTrades(loginResult.session, internalAccountId),
+      getHistory(loginResult.session, internalAccountId)
+    ]);
+    
+    console.log(`[MyFXBook Data] Resultado getHistory:`, {
+      success: history.success,
+      hasHistory: !!history.history,
+      historyLength: history.history ? history.history.length : 0,
+      message: history.message,
+      error: history.error
+    });
+
+    // accountData já foi encontrado acima
 
     // Calcular datas para ganho diário (últimos 30 dias)
     const endDate = new Date();
@@ -298,9 +302,10 @@ exports.getMyfxbookData = async (req, res) => {
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
 
+    // Usar o ID interno para buscar dados diários também
     const [dailyGain, dataDaily] = await Promise.all([
-      getDailyGain(loginResult.session, myfxbookAccountId, startDateStr, endDateStr),
-      getDataDaily(loginResult.session, myfxbookAccountId, startDateStr, endDateStr)
+      getDailyGain(loginResult.session, internalAccountId, startDateStr, endDateStr),
+      getDataDaily(loginResult.session, internalAccountId, startDateStr, endDateStr)
     ]);
 
     // Se não encontrou a conta, ainda retornar os dados disponíveis
