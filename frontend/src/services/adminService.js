@@ -80,4 +80,47 @@ export const updateMyfxbookPassword = async (userId, password) => {
   }
 }
 
+// Atualizar email MyFXBook de um usuário (Admin)
+export const updateMyfxbookEmail = async (userId, email) => {
+  try {
+    const response = await api.put(`/api/admin/myfxbook-connections/${userId}/email`, {
+      email
+    })
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar email MyFXBook:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao atualizar email MyFXBook.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Atualizar controles operacionais de uma conta MT4 (Admin)
+export const updateOperationalControls = async (accountId, automationEnabled, riskProfile) => {
+  try {
+    const response = await api.put(`/api/admin/mt4-accounts/${accountId}/operational-controls`, {
+      automation_enabled: automationEnabled,
+      risk_profile: riskProfile
+    })
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar controles operacionais:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao atualizar controles operacionais.',
+      error: error.response?.data
+    }
+  }
+}
+
 

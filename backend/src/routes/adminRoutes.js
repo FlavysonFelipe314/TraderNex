@@ -102,6 +102,71 @@ router.get('/myfxbook-connections', adminController.getAllMyfxbookConnections);
  */
 router.put('/myfxbook-connections/:userId/password', adminController.updateMyfxbookPassword);
 
+/**
+ * @swagger
+ * /api/admin/myfxbook-connections/{userId}/email:
+ *   put:
+ *     summary: Atualizar email MyFXBook de um usuário (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Email atualizado com sucesso
+ *       403:
+ *         description: Acesso negado - apenas admins
+ */
+router.put('/myfxbook-connections/:userId/email', adminController.updateMyfxbookEmail);
+
+/**
+ * @swagger
+ * /api/admin/mt4-accounts/{accountId}/operational-controls:
+ *   put:
+ *     summary: Atualizar controles operacionais de uma conta MT4 (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: accountId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               automation_enabled:
+ *                 type: boolean
+ *               risk_profile:
+ *                 type: string
+ *                 enum: [conservador, moderado, agressivo]
+ *     responses:
+ *       200:
+ *         description: Controles atualizados com sucesso
+ *       403:
+ *         description: Acesso negado - apenas admins
+ */
+router.put('/mt4-accounts/:accountId/operational-controls', adminController.updateOperationalControls);
+
 module.exports = router;
 
 
