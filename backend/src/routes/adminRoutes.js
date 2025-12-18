@@ -10,6 +10,22 @@ router.use(adminAuthMiddleware);
 
 /**
  * @swagger
+ * /api/admin/users:
+ *   get:
+ *     summary: Obter todos os usuários com informações agregadas (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de usuários com informações de MT4 e MyFXBook
+ *       403:
+ *         description: Acesso negado - apenas admins
+ */
+router.get('/users', adminController.getAllUsers);
+
+/**
+ * @swagger
  * /api/admin/mt4-accounts:
  *   get:
  *     summary: Obter todas as contas MT4 (Admin)

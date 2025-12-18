@@ -1,13 +1,9 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
 import { 
   getMT4Accounts, 
   addMT4Account,
-  getMyfxbookStatus,
-  getMyfxbookAccounts,
-  getMyfxbookAccountData,
-  getMyfxbookFullData,
   updateMT4Settings
 } from '../services/dashboardService'
 
@@ -17,11 +13,6 @@ function ContaForexMT4Page() {
   const [lastUpdated, setLastUpdated] = useState('2 min')
   const [mt4Accounts, setMt4Accounts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [myfxbookConnected, setMyfxbookConnected] = useState(false)
-  const [myfxbookAccounts, setMyfxbookAccounts] = useState([])
-  const [selectedMyfxbookAccount, setSelectedMyfxbookAccount] = useState(null)
-  const [myfxbookAccountData, setMyfxbookAccountData] = useState(null)
-  const [loadingMyfxbookData, setLoadingMyfxbookData] = useState(false)
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -65,101 +56,8 @@ function ContaForexMT4Page() {
     loadMT4Accounts()
   }, [])
 
-  // Carregar status Myfxbook
-  useEffect(() => {
-    const loadMyfxbookStatus = async () => {
-      try {
-        const result = await getMyfxbookStatus()
-        console.log('Resultado getMyfxbookStatus:', result)
-        if (result.success && result.data) {
-          // Se há conexão salva (mesmo que sessão expirada), manter a informação
-          const hasConnection = result.data.hasSession || result.data.email || result.data.hasSavedConnection
-          const isConnected = result.data.connected || (result.data.hasSession && result.data.sessionValid)
-          
-          setMyfxbookConnected(isConnected)
-          
-          // Se não está conectado E não tem conexão salva, limpar dados
-          if (!isConnected && !hasConnection) {
-            setMyfxbookAccounts([])
-            setSelectedMyfxbookAccount(null)
-            setMyfxbookAccountData(null)
-          }
-          
-          // Se tem sessão mas não tem contas ainda, tentar buscar contas novamente após alguns segundos
-          if (result.data.hasSession && (!result.data.accounts || result.data.accounts.length === 0) && isConnected) {
-            console.log('Tem sessão mas sem contas, tentando buscar novamente em 3 segundos...')
-            setTimeout(async () => {
-              const retryResult = await getMyfxbookStatus()
-              if (retryResult.success && retryResult.data) {
-                const retryIsConnected = retryResult.data.connected || (retryResult.data.hasSession && retryResult.data.sessionValid)
-                if (retryIsConnected && retryResult.data.accounts && retryResult.data.accounts.length > 0) {
-                  setMyfxbookAccounts(retryResult.data.accounts)
-                  setMyfxbookConnected(true)
-                  if (!selectedMyfxbookAccount) {
-                    const firstAccount = retryResult.data.accounts[0]
-                    setSelectedMyfxbookAccount(firstAccount)
-                    if (firstAccount.id || firstAccount.accountId) {
-                      loadMyfxbookAccountData(firstAccount.id || firstAccount.accountId)
-                    }
-                  }
-                }
-              }
-            }, 3000)
-          }
-          
-          // Se tem contas disponíveis, carregar
-          if (result.data.accounts && result.data.accounts.length > 0 && isConnected) {
-            setMyfxbookAccounts(result.data.accounts)
-            // Selecionar primeira conta e carregar dados
-            if (!selectedMyfxbookAccount) {
-              const firstAccount = result.data.accounts[0]
-              setSelectedMyfxbookAccount(firstAccount)
-              if (firstAccount.id || firstAccount.accountId) {
-                loadMyfxbookAccountData(firstAccount.id || firstAccount.accountId)
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao carregar status Myfxbook:', error)
-        // Se der erro 404, significa que não há conexão - isso é normal
-        if (error.response?.status === 404 || error.response?.status === 400) {
-          // Não há conexão - garantir que estado está limpo
-          setMyfxbookConnected(false)
-          setMyfxbookAccounts([])
-          setSelectedMyfxbookAccount(null)
-          setMyfxbookAccountData(null)
-        } else {
-          console.error('Erro inesperado ao carregar status Myfxbook:', error)
-        }
-      }
-    }
+  // MyFXBook removido - apenas admin pode configurar via painel admin
 
-    loadMyfxbookStatus()
-  }, [])
-
-  // Função para carregar dados de uma conta Myfxbook
-  const loadMyfxbookAccountData = useCallback(async (accountId) => {
-    if (!accountId) return
-    
-    setLoadingMyfxbookData(true)
-    try {
-      const result = await getMyfxbookFullData(accountId)
-      if (result.success) {
-        setMyfxbookAccountData(result.data)
-      }
-    } catch (error) {
-      console.error('Erro ao carregar dados da conta Myfxbook:', error)
-    } finally {
-      setLoadingMyfxbookData(false)
-    }
-  }, [])
-
-  // Funções de conexão MyFXBook removidas - apenas admin pode conectar via painel admin
-
-  const pulseStyle = {
-    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
-  }
 
   return (
     <DashboardLayout 
@@ -175,70 +73,16 @@ function ContaForexMT4Page() {
       <div className="max-w-[1080px] flex flex-col gap-4 sm:gap-6 lg:gap-7">
         {/* Top Cards Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Status Card */}
+          {/* Broker Card */}
           <div className="bg-white rounded-xl sm:rounded-2xl border border-[#e5e7eb] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.03)] h-auto sm:h-[110px] flex items-center px-4 sm:px-7 py-4 sm:py-0 gap-4 sm:gap-5 hover:-translate-y-0.5 transition-transform">
-            <div className="relative w-3.5 h-3.5 flex items-center justify-center">
-              <div 
-                className={`absolute w-2.5 h-2.5 rounded-full opacity-50 ${
-                  myfxbookConnected ? 'bg-[#00c853]' : 'bg-[#9ca3af]'
-                }`}
-                style={myfxbookConnected ? pulseStyle : {}}
-              />
-              <div className={`relative w-2.5 h-2.5 rounded-full z-10 ${
-                myfxbookConnected ? 'bg-[#00c853]' : 'bg-[#9ca3af]'
-              }`} />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#f9fafb] rounded-xl flex items-center justify-center text-[#4b5563]">
+              <Icon icon="lucide:server" className="text-lg sm:text-xl" />
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">Status da Conexão</span>
-              <div className="flex flex-col gap-0.5">
-                <span className={`text-base font-bold ${
-                  myfxbookConnected ? 'text-[#059669]' : 'text-[#6b7280]'
-                }`}>
-                  {myfxbookConnected ? 'Conectado' : 'Desconectado'}
-                </span>
-              </div>
+              <span className="text-[10px] sm:text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">Broker Conectado</span>
+              <span className="text-sm sm:text-base font-bold text-[#111827]">{mt4Accounts.length > 0 ? mt4Accounts[0].broker || 'N/A' : 'N/A'}</span>
             </div>
           </div>
-
-          {/* Myfxbook Stats Card - Substitui o Broker Card */}
-          {myfxbookConnected && selectedMyfxbookAccount ? (
-            <div className="bg-white rounded-xl sm:rounded-2xl border border-[#e5e7eb] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.03)] h-auto sm:h-[110px] flex items-center px-4 sm:px-7 py-4 sm:py-0 gap-4 sm:gap-5 hover:-translate-y-0.5 transition-transform">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#3b82f6] rounded-xl flex items-center justify-center text-white">
-                <Icon icon="lucide:bar-chart-3" className="text-lg sm:text-xl" />
-              </div>
-              <div className="flex flex-col gap-1 flex-1 min-w-0">
-                <span className="text-[10px] sm:text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">Ganho Total</span>
-                <span className={`text-sm sm:text-base font-bold truncate ${
-                  (selectedMyfxbookAccount.gain || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
-                }`}>
-                  {selectedMyfxbookAccount.gain ? `${parseFloat(selectedMyfxbookAccount.gain).toFixed(2)}%` : 'N/A'}
-                </span>
-                <div className="flex gap-3 mt-1">
-                  <span className={`text-[10px] font-medium ${
-                    (selectedMyfxbookAccount.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
-                  }`}>
-                    {selectedMyfxbookAccount.profit ? `Lucro: $${parseFloat(selectedMyfxbookAccount.profit).toFixed(2)}` : ''}
-                  </span>
-                  <span className="text-[10px] font-medium text-[#dc2626]">
-                    {selectedMyfxbookAccount.drawdown ? `DD: ${parseFloat(selectedMyfxbookAccount.drawdown).toFixed(2)}%` : ''}
-                  </span>
-                </div>
-                <span className="text-[10px] font-semibold text-[#111827] mt-0.5">
-                  {selectedMyfxbookAccount.equity ? `Equity: $${parseFloat(selectedMyfxbookAccount.equity).toFixed(2)}` : ''}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl sm:rounded-2xl border border-[#e5e7eb] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.03)] h-auto sm:h-[110px] flex items-center px-4 sm:px-7 py-4 sm:py-0 gap-4 sm:gap-5 hover:-translate-y-0.5 transition-transform">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#f9fafb] rounded-xl flex items-center justify-center text-[#4b5563]">
-                <Icon icon="lucide:server" className="text-lg sm:text-xl" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] sm:text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">Broker Conectado</span>
-                <span className="text-sm sm:text-base font-bold text-[#111827]">{mt4Accounts.length > 0 ? mt4Accounts[0].broker || 'N/A' : 'N/A'}</span>
-              </div>
-            </div>
-          )}
 
           {/* Falcon AI Card */}
           <div className="bg-[#0e0e10] rounded-xl sm:rounded-2xl border border-[#1f2937] shadow-[0_8px_30px_rgba(0,255,136,0.05)] h-auto sm:h-[110px] flex items-center justify-between px-4 sm:px-7 py-4 sm:py-0 hover:-translate-y-0.5 transition-transform sm:col-span-2 lg:col-span-1">
@@ -279,7 +123,7 @@ function ContaForexMT4Page() {
                   <div className="text-[#6b7280] text-sm">Carregando dados da conta...</div>
                 </div>
               ) : mt4Accounts.length > 0 ? (
-                // Mostrar dados MT4 quando não houver Myfxbook conectado
+                // Mostrar dados MT4
                 <div className="flex flex-col gap-3 sm:gap-4 mb-6 sm:mb-8">
                   <div className="flex justify-between items-center text-xs sm:text-sm gap-2">
                     <div className="flex items-center gap-2.5">
@@ -345,7 +189,7 @@ function ContaForexMT4Page() {
                     <Icon icon="lucide:database" className="text-2xl text-[#9ca3af]" />
                   </div>
                   <p className="text-[#6b7280] text-sm text-center mb-2">Nenhuma conta cadastrada</p>
-                  <p className="text-[#9ca3af] text-xs text-center">Configure suas credenciais ou conecte o Myfxbook</p>
+                  <p className="text-[#9ca3af] text-xs text-center">Configure suas credenciais MT4</p>
                 </div>
               )}
 

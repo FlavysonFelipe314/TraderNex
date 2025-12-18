@@ -1,14 +1,112 @@
 const pool = require('../config/database');
 
 /**
+ * Obter todos os usuários com informações agregadas
+ * GET /api/admin/users
+ * Retorna TODOS os usuários com suas informações de MT4 e MyFXBook agregadas
+ */
+exports.getAllUsers = async (req, res) => {
+  try {
+    // Buscar todos os usuários não-admin
+    const usersResult = await pool.query(
+      `SELECT 
+        u.id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.created_at,
+        u.is_active,
+        u.email_verified
+      FROM users u
+      WHERE u.is_admin = FALSE
+      ORDER BY u.created_at DESC`
+    );
+
+    const users = usersResult.rows;
+
+    // Para cada usuário, buscar suas contas MT4 e conexão MyFXBook
+    const usersWithDetails = await Promise.all(
+      users.map(async (user) => {
+        // Buscar contas MT4
+        const mt4Result = await pool.query(
+          `SELECT 
+            id,
+            account_number,
+            account_name,
+            broker,
+            server,
+            balance,
+            equity,
+            currency,
+            status,
+            connected_at,
+            last_sync,
+            myfxbook_integration_login,
+            automation_enabled,
+            risk_profile,
+            created_at
+          FROM mt4_accounts 
+          WHERE user_id = $1
+          ORDER BY created_at DESC`,
+          [user.id]
+        );
+
+        // Buscar conexão MyFXBook
+        const myfxbookResult = await pool.query(
+          `SELECT 
+            id,
+            email,
+            connected_at,
+            updated_at
+          FROM myfxbook_connections 
+          WHERE user_id = $1
+          LIMIT 1`,
+          [user.id]
+        );
+
+        return {
+          ...user,
+          mt4_accounts: mt4Result.rows,
+          myfxbook: myfxbookResult.rows[0] || null,
+          has_mt4: mt4Result.rows.length > 0,
+          has_myfxbook: myfxbookResult.rows.length > 0,
+          mt4_count: mt4Result.rows.length
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: usersWithDetails
+    });
+  } catch (error) {
+    console.error('Erro ao buscar usuários:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar usuários.',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Obter todas as contas MT4 de todos os usuários
  * GET /api/admin/mt4-accounts
+ * Retorna TODOS os usuários, mesmo sem conta MT4 ou MyFXBook
  */
 exports.getAllMT4Accounts = async (req, res) => {
   try {
+    // Buscar todos os usuários com suas contas MT4 e conexões MyFXBook
     const result = await pool.query(
       `SELECT 
-        ma.id,
+        u.id as user_id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.created_at as user_created_at,
+        u.is_admin,
+        -- Dados da conta MT4 (pode ser NULL se não tiver)
+        ma.id as mt4_account_id,
         ma.account_number,
         ma.account_name,
         ma.broker,
@@ -22,19 +120,151 @@ exports.getAllMT4Accounts = async (req, res) => {
         ma.myfxbook_integration_login,
         ma.automation_enabled,
         ma.risk_profile,
-        ma.created_at,
-        u.id as user_id,
-        u.email,
-        u.first_name,
-        u.last_name
-      FROM mt4_accounts ma
-      INNER JOIN users u ON ma.user_id = u.id
-      ORDER BY ma.created_at DESC`
+        ma.created_at as mt4_created_at,
+        -- Dados da conexão MyFXBook (pode ser NULL se não tiver)
+        mc.id as myfxbook_connection_id,
+        mc.email as myfxbook_email,
+        mc.connected_at as myfxbook_connected_at,
+        mc.updated_at as myfxbook_updated_at
+      FROM users u
+      LEFT JOIN mt4_accounts ma ON u.id = ma.user_id
+      LEFT JOIN myfxbook_connections mc ON u.id = mc.user_id
+      WHERE u.is_admin = FALSE
+      ORDER BY u.created_at DESC, ma.created_at DESC`
     );
 
+    // Agrupar resultados por usuário (um usuário pode ter múltiplas contas MT4)
+    const usersMap = new Map();
+    
+    result.rows.forEach(row => {
+      const userId = row.user_id;
+      
+      if (!usersMap.has(userId)) {
+        // Primeira vez vendo este usuário - criar entrada
+        usersMap.set(userId, {
+          user_id: userId,
+          email: row.email,
+          first_name: row.first_name,
+          last_name: row.last_name,
+          user_created_at: row.user_created_at,
+          is_admin: row.is_admin,
+          // Dados MyFXBook (mesmo se tiver múltiplas contas MT4, MyFXBook é por usuário)
+          myfxbook_connection_id: row.myfxbook_connection_id,
+          myfxbook_email: row.myfxbook_email,
+          myfxbook_connected_at: row.myfxbook_connected_at,
+          myfxbook_updated_at: row.myfxbook_updated_at,
+          // Contas MT4 (array para suportar múltiplas contas)
+          mt4_accounts: []
+        });
+      }
+      
+      const userData = usersMap.get(userId);
+      
+      // Adicionar conta MT4 se existir e ainda não foi adicionada
+      if (row.mt4_account_id) {
+        const accountExists = userData.mt4_accounts.some(acc => acc.id === row.mt4_account_id);
+        if (!accountExists) {
+          userData.mt4_accounts.push({
+            id: row.mt4_account_id,
+            account_number: row.account_number,
+            account_name: row.account_name,
+            broker: row.broker,
+            server: row.server,
+            balance: row.balance,
+            equity: row.equity,
+            currency: row.currency,
+            status: row.status,
+            connected_at: row.connected_at,
+            last_sync: row.last_sync,
+            myfxbook_integration_login: row.myfxbook_integration_login,
+            automation_enabled: row.automation_enabled,
+            risk_profile: row.risk_profile,
+            created_at: row.mt4_created_at
+          });
+        }
+      }
+    });
+    
+    console.log(`[Admin] Total de linhas retornadas pela query: ${result.rows.length}`);
+    
+    // Converter para array e expandir contas MT4 (uma linha por conta MT4, ou uma linha se não tiver conta)
+    const finalData = [];
+    usersMap.forEach((userData, userId) => {
+      if (userData.mt4_accounts.length > 0) {
+        // Se tem contas MT4, criar uma linha para cada conta
+        userData.mt4_accounts.forEach(account => {
+          finalData.push({
+            id: account.id,
+            user_id: userId,
+            email: userData.email,
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            user_created_at: userData.user_created_at,
+            is_admin: userData.is_admin,
+            account_number: account.account_number,
+            account_name: account.account_name,
+            broker: account.broker,
+            server: account.server,
+            balance: account.balance,
+            equity: account.equity,
+            currency: account.currency,
+            status: account.status,
+            connected_at: account.connected_at,
+            last_sync: account.last_sync,
+            myfxbook_integration_login: account.myfxbook_integration_login,
+            automation_enabled: account.automation_enabled,
+            risk_profile: account.risk_profile,
+            created_at: account.created_at,
+            // Dados MyFXBook (do usuário, não da conta)
+            myfxbook_connection_id: userData.myfxbook_connection_id,
+            myfxbook_email: userData.myfxbook_email,
+            myfxbook_connected_at: userData.myfxbook_connected_at,
+            myfxbook_updated_at: userData.myfxbook_updated_at
+          });
+        });
+      } else {
+        // Se não tem conta MT4, criar uma linha mesmo assim (para mostrar o usuário)
+        finalData.push({
+          id: null,
+          user_id: userId,
+          email: userData.email,
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          user_created_at: userData.user_created_at,
+          is_admin: userData.is_admin,
+          account_number: null,
+          account_name: null,
+          broker: null,
+          server: null,
+          balance: null,
+          equity: null,
+          currency: null,
+          status: null,
+          connected_at: null,
+          last_sync: null,
+          myfxbook_integration_login: null,
+          automation_enabled: null,
+          risk_profile: null,
+          created_at: null,
+          // Dados MyFXBook (mesmo sem conta MT4, pode ter MyFXBook)
+          myfxbook_connection_id: userData.myfxbook_connection_id,
+          myfxbook_email: userData.myfxbook_email,
+          myfxbook_connected_at: userData.myfxbook_connected_at,
+          myfxbook_updated_at: userData.myfxbook_updated_at
+        });
+      }
+    });
+
+    console.log(`[Admin] Total de registros finais após processamento: ${finalData.length}`);
+    console.log(`[Admin] Usuários únicos: ${usersMap.size}`);
+    
     res.json({
       success: true,
-      data: result.rows
+      data: finalData,
+      meta: {
+        total_users: usersMap.size,
+        total_records: finalData.length
+      }
     });
   } catch (error) {
     console.error('Erro ao buscar contas MT4:', error);

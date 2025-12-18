@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
 import { 
-  getAllMT4Accounts, 
+  getAllUsers,
   updateMyfxbookIntegrationLogin, 
   updateMyfxbookPassword,
   updateMyfxbookEmail,
@@ -14,22 +14,19 @@ import { useNavigate } from 'react-router-dom'
 function AdminPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [mt4Accounts, setMt4Accounts] = useState([])
+  const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [editingAccountId, setEditingAccountId] = useState(null)
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [activeModal, setActiveModal] = useState(null) // 'mt4', 'myfxbook', 'controls'
+  const [filter, setFilter] = useState('all') // 'all', 'with-mt4', 'without-mt4', 'with-myfxbook', 'without-myfxbook'
+  
+  // Estados para edição
   const [editingLogin, setEditingLogin] = useState('')
-  const [editingPasswordUserId, setEditingPasswordUserId] = useState(null)
   const [editingPassword, setEditingPassword] = useState('')
-  const [editingEmailUserId, setEditingEmailUserId] = useState(null)
   const [editingEmail, setEditingEmail] = useState('')
-  const [editingControlsAccountId, setEditingControlsAccountId] = useState(null)
   const [editingAutomationEnabled, setEditingAutomationEnabled] = useState(true)
   const [editingRiskProfile, setEditingRiskProfile] = useState('moderado')
   const [saving, setSaving] = useState(false)
-  const [savingPassword, setSavingPassword] = useState(false)
-  const [savingEmail, setSavingEmail] = useState(false)
-  const [savingControls, setSavingControls] = useState(false)
-  const [activeTab, setActiveTab] = useState('mt4-accounts')
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -39,23 +36,23 @@ function AdminPage() {
   }, [])
 
   useEffect(() => {
-    loadMT4Accounts()
+    loadUsers()
   }, [])
 
-  const loadMT4Accounts = async () => {
+  const loadUsers = async () => {
     setLoading(true)
     try {
-      const result = await getAllMT4Accounts()
+      const result = await getAllUsers()
       if (result.success) {
-        setMt4Accounts(result.data || [])
+        setUsers(result.data || [])
       } else {
-        console.error('Erro ao carregar contas MT4:', result.message)
+        console.error('Erro ao carregar usuários:', result.message)
         if (result.error?.status === 403) {
           navigate('/dashboard')
         }
       }
     } catch (error) {
-      console.error('Erro ao carregar contas MT4:', error)
+      console.error('Erro ao carregar usuários:', error)
       if (error.response?.status === 403) {
         navigate('/dashboard')
       }
@@ -64,24 +61,48 @@ function AdminPage() {
     }
   }
 
-  const handleEditClick = (account) => {
-    setEditingAccountId(account.id)
-    setEditingLogin(account.myfxbook_integration_login || '')
+  const openModal = (user, modalType) => {
+    setSelectedUser(user)
+    setActiveModal(modalType)
+    
+    if (modalType === 'mt4' && user.mt4_accounts && user.mt4_accounts.length > 0) {
+      const firstAccount = user.mt4_accounts[0]
+      setEditingLogin(firstAccount.myfxbook_integration_login || '')
+    }
+    
+    if (modalType === 'myfxbook' && user.myfxbook) {
+      setEditingEmail(user.myfxbook.email || '')
+      setEditingPassword('')
+    }
+    
+    if (modalType === 'controls' && user.mt4_accounts && user.mt4_accounts.length > 0) {
+      const firstAccount = user.mt4_accounts[0]
+      setEditingAutomationEnabled(firstAccount.automation_enabled !== undefined ? firstAccount.automation_enabled : true)
+      setEditingRiskProfile(firstAccount.risk_profile || 'moderado')
+    }
   }
 
-  const handleCancelEdit = () => {
-    setEditingAccountId(null)
+  const closeModal = () => {
+    setSelectedUser(null)
+    setActiveModal(null)
     setEditingLogin('')
+    setEditingPassword('')
+    setEditingEmail('')
   }
 
-  const handleSave = async (accountId) => {
+  const handleSaveMyfxbookLogin = async () => {
+    if (!selectedUser || !selectedUser.mt4_accounts || selectedUser.mt4_accounts.length === 0) {
+      alert('Este usuário não possui conta MT4 cadastrada.')
+      return
+    }
+    
     setSaving(true)
     try {
+      const accountId = selectedUser.mt4_accounts[0].id
       const result = await updateMyfxbookIntegrationLogin(accountId, editingLogin)
       if (result.success) {
-        await loadMT4Accounts()
-        setEditingAccountId(null)
-        setEditingLogin('')
+        await loadUsers()
+        closeModal()
       } else {
         alert('Erro ao salvar: ' + (result.message || 'Erro desconhecido'))
       }
@@ -93,439 +114,489 @@ function AdminPage() {
     }
   }
 
-  const handleEditPasswordClick = (account) => {
-    setEditingPasswordUserId(account.user_id)
-    setEditingPassword('')
-  }
-
-  const handleCancelPasswordEdit = () => {
-    setEditingPasswordUserId(null)
-    setEditingPassword('')
-  }
-
-  const handleSavePassword = async (userId) => {
-    if (!editingPassword) {
-      alert('Por favor, digite a senha MyFXBook.')
-      return
-    }
-
-    setSavingPassword(true)
+  const handleSaveMyfxbookEmail = async () => {
+    if (!selectedUser) return
+    
+    setSaving(true)
     try {
-      const result = await updateMyfxbookPassword(userId, editingPassword)
+      const result = await updateMyfxbookEmail(selectedUser.id, editingEmail)
       if (result.success) {
-        alert('Senha MyFXBook salva com sucesso!')
-        setEditingPasswordUserId(null)
-        setEditingPassword('')
+        await loadUsers()
+        closeModal()
       } else {
         alert('Erro ao salvar: ' + (result.message || 'Erro desconhecido'))
       }
     } catch (error) {
-      console.error('Erro ao salvar senha:', error)
-      alert('Erro ao salvar senha MyFXBook.')
-    } finally {
-      setSavingPassword(false)
-    }
-  }
-
-  const handleEditEmailClick = (account) => {
-    setEditingEmailUserId(account.user_id)
-    setEditingEmail('')
-  }
-
-  const handleCancelEmailEdit = () => {
-    setEditingEmailUserId(null)
-    setEditingEmail('')
-  }
-
-  const handleSaveEmail = async (userId) => {
-    if (!editingEmail) {
-      alert('Por favor, digite o email MyFXBook.')
-      return
-    }
-
-    setSavingEmail(true)
-    try {
-      const result = await updateMyfxbookEmail(userId, editingEmail)
-      if (result.success) {
-        alert('Email MyFXBook salvo com sucesso!')
-        setEditingEmailUserId(null)
-        setEditingEmail('')
-      } else {
-        alert('Erro ao salvar: ' + (result.message || 'Erro desconhecido'))
-      }
-    } catch (error) {
-      console.error('Erro ao salvar email:', error)
+      console.error('Erro ao salvar:', error)
       alert('Erro ao salvar email MyFXBook.')
     } finally {
-      setSavingEmail(false)
+      setSaving(false)
     }
   }
 
-  const handleEditControlsClick = (account) => {
-    setEditingControlsAccountId(account.id)
-    setEditingAutomationEnabled(account.automation_enabled !== undefined ? account.automation_enabled : true)
-    setEditingRiskProfile(account.risk_profile || 'moderado')
-  }
-
-  const handleCancelControlsEdit = () => {
-    setEditingControlsAccountId(null)
-    setEditingAutomationEnabled(true)
-    setEditingRiskProfile('moderado')
-  }
-
-  const handleSaveControls = async (accountId) => {
-    setSavingControls(true)
+  const handleSaveMyfxbookPassword = async () => {
+    if (!selectedUser) return
+    
+    if (!editingPassword) {
+      alert('Por favor, informe a senha.')
+      return
+    }
+    
+    setSaving(true)
     try {
-      const result = await updateOperationalControls(accountId, editingAutomationEnabled, editingRiskProfile)
+      const result = await updateMyfxbookPassword(selectedUser.id, editingPassword)
       if (result.success) {
-        alert('Controles operacionais salvos com sucesso!')
-        await loadMT4Accounts()
-        setEditingControlsAccountId(null)
+        await loadUsers()
+        setEditingPassword('')
+        alert('Senha atualizada com sucesso!')
       } else {
         alert('Erro ao salvar: ' + (result.message || 'Erro desconhecido'))
       }
     } catch (error) {
-      console.error('Erro ao salvar controles:', error)
+      console.error('Erro ao salvar:', error)
+      alert('Erro ao salvar senha MyFXBook.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSaveControls = async () => {
+    if (!selectedUser || !selectedUser.mt4_accounts || selectedUser.mt4_accounts.length === 0) {
+      alert('Este usuário não possui conta MT4 cadastrada.')
+      return
+    }
+    
+    setSaving(true)
+    try {
+      const accountId = selectedUser.mt4_accounts[0].id
+      const result = await updateOperationalControls(accountId, editingAutomationEnabled, editingRiskProfile)
+      if (result.success) {
+        await loadUsers()
+        closeModal()
+      } else {
+        alert('Erro ao salvar: ' + (result.message || 'Erro desconhecido'))
+      }
+    } catch (error) {
+      console.error('Erro ao salvar:', error)
       alert('Erro ao salvar controles operacionais.')
     } finally {
-      setSavingControls(false)
+      setSaving(false)
     }
+  }
+
+  const filteredUsers = users.filter(user => {
+    if (filter === 'all') return true
+    if (filter === 'with-mt4') return user.has_mt4
+    if (filter === 'without-mt4') return !user.has_mt4
+    if (filter === 'with-myfxbook') return user.has_myfxbook
+    if (filter === 'without-myfxbook') return !user.has_myfxbook
+    return true
+  })
+
+  const stats = {
+    total: users.length,
+    with_mt4: users.filter(u => u.has_mt4).length,
+    with_myfxbook: users.filter(u => u.has_myfxbook).length,
+    without_mt4: users.filter(u => !u.has_mt4).length
   }
 
   return (
     <DashboardLayout 
       title="Painel Administrativo"
-      subtitle="Gerencie contas MT4, integrações MyFXBook e controles operacionais"
+      subtitle="Gerencie usuários, contas MT4 e integrações MyFXBook"
     >
-      <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6">
-        {/* Header Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-[#00afaa] to-[#009a96] rounded-xl p-6 text-white shadow-lg">
+      <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-gradient-to-br from-[#00afaa] to-[#009a96] rounded-2xl p-6 text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm opacity-90 mb-1">Total de Contas</p>
-                <p className="text-3xl font-bold">{mt4Accounts.length}</p>
+                <p className="text-sm opacity-90 mb-1">Total de Usuários</p>
+                <p className="text-3xl font-bold">{stats.total}</p>
+              </div>
+              <Icon icon="lucide:users" className="text-4xl opacity-80" />
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-[#3b82f6] to-[#2563eb] rounded-2xl p-6 text-white shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm opacity-90 mb-1">Com MT4</p>
+                <p className="text-3xl font-bold">{stats.with_mt4}</p>
               </div>
               <Icon icon="lucide:database" className="text-4xl opacity-80" />
             </div>
           </div>
-          <div className="bg-gradient-to-br from-[#3b82f6] to-[#2563eb] rounded-xl p-6 text-white shadow-lg">
+          <div className="bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] rounded-2xl p-6 text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm opacity-90 mb-1">Contas Ativas</p>
-                <p className="text-3xl font-bold">
-                  {mt4Accounts.filter(a => a.automation_enabled).length}
-                </p>
-              </div>
-              <Icon icon="lucide:activity" className="text-4xl opacity-80" />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] rounded-xl p-6 text-white shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm opacity-90 mb-1">MyFXBook Configurado</p>
-                <p className="text-3xl font-bold">
-                  {mt4Accounts.filter(a => a.myfxbook_integration_login).length}
-                </p>
+                <p className="text-sm opacity-90 mb-1">Com MyFXBook</p>
+                <p className="text-3xl font-bold">{stats.with_myfxbook}</p>
               </div>
               <Icon icon="lucide:bar-chart-3" className="text-4xl opacity-80" />
             </div>
           </div>
+          <div className="bg-gradient-to-br from-[#ef4444] to-[#dc2626] rounded-2xl p-6 text-white shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm opacity-90 mb-1">Sem MT4</p>
+                <p className="text-3xl font-bold">{stats.without_mt4}</p>
+              </div>
+              <Icon icon="lucide:alert-circle" className="text-4xl opacity-80" />
+            </div>
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-[#e5e7eb]">
+        {/* Filtros */}
+        <div className="mb-6 flex flex-wrap gap-2">
           <button
-            onClick={() => setActiveTab('mt4-accounts')}
-            className={`px-6 py-3 font-semibold text-sm transition-colors relative ${
-              activeTab === 'mt4-accounts'
-                ? 'text-[#00afaa]'
-                : 'text-[#6b7280] hover:text-[#111827]'
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              filter === 'all'
+                ? 'bg-[#00afaa] text-white shadow-md'
+                : 'bg-white text-[#6b7280] border border-[#e5e7eb] hover:bg-[#f9fafb]'
             }`}
           >
-            Contas MT4
-            {activeTab === 'mt4-accounts' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00afaa] rounded-t-full" />
-            )}
+            Todos
+          </button>
+          <button
+            onClick={() => setFilter('with-mt4')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              filter === 'with-mt4'
+                ? 'bg-[#3b82f6] text-white shadow-md'
+                : 'bg-white text-[#6b7280] border border-[#e5e7eb] hover:bg-[#f9fafb]'
+            }`}
+          >
+            Com MT4
+          </button>
+          <button
+            onClick={() => setFilter('without-mt4')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              filter === 'without-mt4'
+                ? 'bg-[#ef4444] text-white shadow-md'
+                : 'bg-white text-[#6b7280] border border-[#e5e7eb] hover:bg-[#f9fafb]'
+            }`}
+          >
+            Sem MT4
+          </button>
+          <button
+            onClick={() => setFilter('with-myfxbook')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              filter === 'with-myfxbook'
+                ? 'bg-[#8b5cf6] text-white shadow-md'
+                : 'bg-white text-[#6b7280] border border-[#e5e7eb] hover:bg-[#f9fafb]'
+            }`}
+          >
+            Com MyFXBook
+          </button>
+          <button
+            onClick={() => setFilter('without-myfxbook')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              filter === 'without-myfxbook'
+                ? 'bg-[#f59e0b] text-white shadow-md'
+                : 'bg-white text-[#6b7280] border border-[#e5e7eb] hover:bg-[#f9fafb]'
+            }`}
+          >
+            Sem MyFXBook
           </button>
         </div>
 
-        {/* Conteúdo */}
-        {activeTab === 'mt4-accounts' && (
-          <div className="bg-white rounded-xl sm:rounded-2xl border border-[#e5e7eb] shadow-lg overflow-hidden">
-            <div className="px-6 py-5 border-b border-[#f3f4f6] bg-gradient-to-r from-[#f9fafb] to-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#00afaa] to-[#009a96] rounded-xl flex items-center justify-center text-white shadow-md">
-                    <Icon icon="lucide:database" className="text-xl" />
+        {/* Grid de Usuários */}
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00afaa]"></div>
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="p-12 text-center text-[#6b7280] bg-white rounded-2xl shadow-sm">
+            <Icon icon="lucide:inbox" className="text-5xl mx-auto mb-4 text-[#9ca3af]" />
+            <p className="text-base font-medium">Nenhum usuário encontrado.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredUsers.map((user) => (
+              <div
+                key={user.id}
+                className="bg-white rounded-2xl shadow-sm border border-[#e5e7eb] p-6 hover:shadow-md transition-all"
+              >
+                {/* Header do Card */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-[#111827] mb-1">
+                      {user.first_name} {user.last_name}
+                    </h3>
+                    <p className="text-sm text-[#6b7280]">{user.email}</p>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-[#111827] m-0">Contas MT4 de Todos os Usuários</h3>
-                    <p className="text-sm text-[#6b7280] m-0 mt-0.5">Gerencie credenciais, MyFXBook e controles operacionais</p>
+                  <div className="flex gap-2">
+                    {user.has_mt4 && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[#dbeafe] text-[#1e40af]">
+                        <Icon icon="lucide:database" className="text-xs mr-1" />
+                        MT4
+                      </span>
+                    )}
+                    {user.has_myfxbook && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[#ede9fe] text-[#6d28d9]">
+                        <Icon icon="lucide:bar-chart-3" className="text-xs mr-1" />
+                        MyFXBook
+                      </span>
+                    )}
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {loading ? (
-              <div className="p-12 text-center">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#00afaa] border-t-transparent"></div>
-                <p className="text-[#6b7280] text-sm mt-4">Carregando contas MT4...</p>
+                {/* Status */}
+                <div className="mb-4 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[#6b7280]">Contas MT4:</span>
+                    <span className="font-semibold text-[#111827]">
+                      {user.mt4_count || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[#6b7280]">MyFXBook:</span>
+                    <span className={`font-semibold ${user.has_myfxbook ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
+                      {user.has_myfxbook ? 'Conectado' : 'Não conectado'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Botões de Ação */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => openModal(user, 'mt4')}
+                    className="flex-1 px-3 py-2 bg-[#f3f4f6] hover:bg-[#e5e7eb] text-[#111827] rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                  >
+                    <Icon icon="lucide:database" className="text-sm" />
+                    MT4
+                  </button>
+                  <button
+                    onClick={() => openModal(user, 'myfxbook')}
+                    className="flex-1 px-3 py-2 bg-[#f3f4f6] hover:bg-[#e5e7eb] text-[#111827] rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                  >
+                    <Icon icon="lucide:bar-chart-3" className="text-sm" />
+                    MyFXBook
+                  </button>
+                  {user.has_mt4 && (
+                    <button
+                      onClick={() => openModal(user, 'controls')}
+                      className="flex-1 px-3 py-2 bg-[#f3f4f6] hover:bg-[#e5e7eb] text-[#111827] rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Icon icon="lucide:settings" className="text-sm" />
+                      Controles
+                    </button>
+                  )}
+                </div>
               </div>
-            ) : mt4Accounts.length === 0 ? (
-              <div className="p-12 text-center text-[#6b7280]">
-                <Icon icon="lucide:inbox" className="text-5xl mx-auto mb-4 text-[#9ca3af]" />
-                <p className="text-base font-medium">Nenhuma conta MT4 encontrada.</p>
+            ))}
+          </div>
+        )}
+
+        {/* Modal MT4 */}
+        {activeModal === 'mt4' && selectedUser && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-[#e5e7eb] px-6 py-4 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-[#111827]">
+                  Contas MT4 - {selectedUser.first_name} {selectedUser.last_name}
+                </h2>
+                <button
+                  onClick={closeModal}
+                  className="text-[#6b7280] hover:text-[#111827] transition-colors"
+                >
+                  <Icon icon="lucide:x" className="text-2xl" />
+                </button>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gradient-to-r from-[#f9fafb] to-[#f3f4f6]">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-[#6b7280] font-semibold text-xs uppercase tracking-wider">Usuário</th>
-                      <th className="px-6 py-4 text-left text-[#6b7280] font-semibold text-xs uppercase tracking-wider">Login MT4</th>
-                      <th className="px-6 py-4 text-left text-[#6b7280] font-semibold text-xs uppercase tracking-wider">Corretora</th>
-                      <th className="px-6 py-4 text-left text-[#6b7280] font-semibold text-xs uppercase tracking-wider">Servidor</th>
-                      <th className="px-6 py-4 text-left text-[#6b7280] font-semibold text-xs uppercase tracking-wider">Saldo</th>
-                      <th className="px-6 py-4 text-left text-[#6b7280] font-semibold text-xs uppercase tracking-wider">Trading Auto</th>
-                      <th className="px-6 py-4 text-left text-[#6b7280] font-semibold text-xs uppercase tracking-wider">Perfil Risco</th>
-                      <th className="px-6 py-4 text-left text-[#6b7280] font-semibold text-xs uppercase tracking-wider">MyFXBook</th>
-                      <th className="px-6 py-4 text-left text-[#6b7280] font-semibold text-xs uppercase tracking-wider">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#f3f4f6]">
-                    {mt4Accounts.map((account) => (
-                      <tr key={account.id} className="hover:bg-[#f9fafb] transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-[#111827]">
-                              {account.first_name} {account.last_name}
-                            </span>
-                            <span className="text-xs text-[#6b7280] mt-0.5">{account.email}</span>
+              <div className="p-6">
+                {selectedUser.mt4_accounts && selectedUser.mt4_accounts.length > 0 ? (
+                  <div className="space-y-4">
+                    {selectedUser.mt4_accounts.map((account, index) => (
+                      <div key={account.id} className="border border-[#e5e7eb] rounded-xl p-4">
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <label className="text-xs text-[#6b7280] mb-1 block">Número da Conta</label>
+                            <p className="font-mono text-sm font-semibold text-[#111827]">{account.account_number}</p>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="font-mono text-[#111827] font-medium bg-[#f9fafb] px-2 py-1 rounded text-xs">
-                            {account.account_number}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-[#111827] font-medium">
-                          {account.broker || <span className="text-[#9ca3af]">N/A</span>}
-                        </td>
-                        <td className="px-6 py-4 text-[#111827] font-medium">
-                          {account.server || <span className="text-[#9ca3af]">N/A</span>}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="font-semibold text-[#111827]">
-                            ${account.balance ? parseFloat(account.balance).toFixed(2) : '0.00'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          {editingControlsAccountId === account.id ? (
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={editingAutomationEnabled}
-                                onChange={(e) => setEditingAutomationEnabled(e.target.checked)}
-                                className="w-4 h-4 text-[#00afaa] rounded focus:ring-[#00afaa]"
-                              />
-                              <span className="text-xs text-[#6b7280]">
-                                {editingAutomationEnabled ? 'Ativo' : 'Inativo'}
-                              </span>
+                          <div>
+                            <label className="text-xs text-[#6b7280] mb-1 block">Corretora</label>
+                            <p className="text-sm text-[#111827]">{account.broker || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs text-[#6b7280] mb-1 block">Servidor</label>
+                            <p className="text-sm text-[#111827]">{account.server || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs text-[#6b7280] mb-1 block">Saldo</label>
+                            <p className="text-sm font-semibold text-[#111827]">
+                              {account.balance ? `$${parseFloat(account.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                        {index === 0 && (
+                          <div className="mt-4 pt-4 border-t border-[#e5e7eb]">
+                            <label className="text-sm font-medium text-[#111827] mb-2 block">
+                              Login de Integração MyFXBook
                             </label>
-                          ) : (
-                            <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-                              account.automation_enabled 
-                                ? 'bg-[#d1fae5] text-[#065f46]' 
-                                : 'bg-[#fee2e2] text-[#991b1b]'
-                            }`}>
-                              {account.automation_enabled ? 'Ativo' : 'Inativo'}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {editingControlsAccountId === account.id ? (
-                            <select
-                              value={editingRiskProfile}
-                              onChange={(e) => setEditingRiskProfile(e.target.value)}
-                              className="px-2 py-1 border border-[#e5e7eb] rounded text-xs focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
-                            >
-                              <option value="conservador">Conservador</option>
-                              <option value="moderado">Moderado</option>
-                              <option value="agressivo">Agressivo</option>
-                            </select>
-                          ) : (
-                            <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#f3f4f6] text-[#374151] capitalize">
-                              {account.risk_profile || 'N/A'}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col gap-1.5">
-                            <div className="text-xs text-[#6b7280]">Login:</div>
-                            {editingAccountId === account.id ? (
+                            <div className="flex gap-2">
                               <input
                                 type="text"
                                 value={editingLogin}
                                 onChange={(e) => setEditingLogin(e.target.value)}
                                 placeholder="Login MyFXBook"
-                                className="w-full px-2 py-1 border border-[#e5e7eb] rounded text-xs focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
+                                className="flex-1 px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
                                 disabled={saving}
                               />
-                            ) : (
-                              <span className="text-[#111827] font-mono text-xs">
-                                {account.myfxbook_integration_login || (
-                                  <span className="text-[#9ca3af] italic">Não configurado</span>
-                                )}
-                              </span>
-                            )}
-                            <div className="text-xs text-[#6b7280] mt-1">Email:</div>
-                            {editingEmailUserId === account.user_id ? (
-                              <input
-                                type="email"
-                                value={editingEmail}
-                                onChange={(e) => setEditingEmail(e.target.value)}
-                                placeholder="Email MyFXBook"
-                                className="w-full px-2 py-1 border border-[#e5e7eb] rounded text-xs focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
-                                disabled={savingEmail}
-                              />
-                            ) : (
-                              <span className="text-[#111827] text-xs">
-                                <span className="text-[#9ca3af] italic">••••••••</span>
-                              </span>
-                            )}
-                            <div className="text-xs text-[#6b7280] mt-1">Senha:</div>
-                            {editingPasswordUserId === account.user_id ? (
-                              <input
-                                type="password"
-                                value={editingPassword}
-                                onChange={(e) => setEditingPassword(e.target.value)}
-                                placeholder="Senha MyFXBook"
-                                className="w-full px-2 py-1 border border-[#e5e7eb] rounded text-xs focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
-                                disabled={savingPassword}
-                              />
-                            ) : (
-                              <span className="text-[#111827] text-xs">
-                                <span className="text-[#9ca3af] italic">••••••••</span>
-                              </span>
-                            )}
+                              <button
+                                onClick={handleSaveMyfxbookLogin}
+                                disabled={saving}
+                                className="px-4 py-2 bg-[#00afaa] text-white rounded-lg text-sm font-medium hover:bg-[#009a96] transition-colors disabled:opacity-50"
+                              >
+                                {saving ? 'Salvando...' : 'Salvar'}
+                              </button>
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {editingAccountId === account.id || editingEmailUserId === account.user_id || editingPasswordUserId === account.user_id || editingControlsAccountId === account.id ? (
-                            <div className="flex flex-col gap-2">
-                              {editingAccountId === account.id && (
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => handleSave(account.id)}
-                                    disabled={saving}
-                                    className="px-3 py-1.5 bg-[#00afaa] text-white rounded-lg text-xs font-semibold hover:bg-[#009a96] transition-colors disabled:opacity-50 flex items-center gap-1"
-                                  >
-                                    {saving ? 'Salvando...' : <><Icon icon="lucide:check" className="text-xs" /> Salvar</>}
-                                  </button>
-                                  <button
-                                    onClick={handleCancelEdit}
-                                    disabled={saving}
-                                    className="px-3 py-1.5 bg-white border border-[#e5e7eb] text-[#6b7280] rounded-lg text-xs font-semibold hover:bg-[#f9fafb] transition-colors disabled:opacity-50"
-                                  >
-                                    Cancelar
-                                  </button>
-                                </div>
-                              )}
-                              {editingEmailUserId === account.user_id && (
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => handleSaveEmail(account.user_id)}
-                                    disabled={savingEmail}
-                                    className="px-3 py-1.5 bg-[#3b82f6] text-white rounded-lg text-xs font-semibold hover:bg-[#2563eb] transition-colors disabled:opacity-50 flex items-center gap-1"
-                                  >
-                                    {savingEmail ? 'Salvando...' : <><Icon icon="lucide:check" className="text-xs" /> Salvar</>}
-                                  </button>
-                                  <button
-                                    onClick={handleCancelEmailEdit}
-                                    disabled={savingEmail}
-                                    className="px-3 py-1.5 bg-white border border-[#e5e7eb] text-[#6b7280] rounded-lg text-xs font-semibold hover:bg-[#f9fafb] transition-colors disabled:opacity-50"
-                                  >
-                                    Cancelar
-                                  </button>
-                                </div>
-                              )}
-                              {editingPasswordUserId === account.user_id && (
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => handleSavePassword(account.user_id)}
-                                    disabled={savingPassword}
-                                    className="px-3 py-1.5 bg-[#8b5cf6] text-white rounded-lg text-xs font-semibold hover:bg-[#7c3aed] transition-colors disabled:opacity-50 flex items-center gap-1"
-                                  >
-                                    {savingPassword ? 'Salvando...' : <><Icon icon="lucide:check" className="text-xs" /> Salvar</>}
-                                  </button>
-                                  <button
-                                    onClick={handleCancelPasswordEdit}
-                                    disabled={savingPassword}
-                                    className="px-3 py-1.5 bg-white border border-[#e5e7eb] text-[#6b7280] rounded-lg text-xs font-semibold hover:bg-[#f9fafb] transition-colors disabled:opacity-50"
-                                  >
-                                    Cancelar
-                                  </button>
-                                </div>
-                              )}
-                              {editingControlsAccountId === account.id && (
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => handleSaveControls(account.id)}
-                                    disabled={savingControls}
-                                    className="px-3 py-1.5 bg-[#10b981] text-white rounded-lg text-xs font-semibold hover:bg-[#059669] transition-colors disabled:opacity-50 flex items-center gap-1"
-                                  >
-                                    {savingControls ? 'Salvando...' : <><Icon icon="lucide:check" className="text-xs" /> Salvar</>}
-                                  </button>
-                                  <button
-                                    onClick={handleCancelControlsEdit}
-                                    disabled={savingControls}
-                                    className="px-3 py-1.5 bg-white border border-[#e5e7eb] text-[#6b7280] rounded-lg text-xs font-semibold hover:bg-[#f9fafb] transition-colors disabled:opacity-50"
-                                  >
-                                    Cancelar
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex flex-col gap-1.5">
-                              <button
-                                onClick={() => handleEditClick(account)}
-                                className="px-3 py-1.5 bg-[#f9fafb] border border-[#e5e7eb] text-[#6b7280] rounded-lg text-xs font-semibold hover:bg-[#f3f4f6] transition-colors flex items-center gap-1"
-                              >
-                                <Icon icon="lucide:edit" className="text-xs" />
-                                Login
-                              </button>
-                              <button
-                                onClick={() => handleEditEmailClick(account)}
-                                className="px-3 py-1.5 bg-[#f9fafb] border border-[#e5e7eb] text-[#6b7280] rounded-lg text-xs font-semibold hover:bg-[#f3f4f6] transition-colors flex items-center gap-1"
-                              >
-                                <Icon icon="lucide:mail" className="text-xs" />
-                                Email
-                              </button>
-                              <button
-                                onClick={() => handleEditPasswordClick(account)}
-                                className="px-3 py-1.5 bg-[#f9fafb] border border-[#e5e7eb] text-[#6b7280] rounded-lg text-xs font-semibold hover:bg-[#f3f4f6] transition-colors flex items-center gap-1"
-                              >
-                                <Icon icon="lucide:key" className="text-xs" />
-                                Senha
-                              </button>
-                              <button
-                                onClick={() => handleEditControlsClick(account)}
-                                className="px-3 py-1.5 bg-[#f9fafb] border border-[#e5e7eb] text-[#6b7280] rounded-lg text-xs font-semibold hover:bg-[#f3f4f6] transition-colors flex items-center gap-1"
-                              >
-                                <Icon icon="lucide:settings" className="text-xs" />
-                                Controles
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
+                        )}
+                      </div>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-[#6b7280]">
+                    <Icon icon="lucide:database-off" className="text-4xl mx-auto mb-2 text-[#9ca3af]" />
+                    <p>Este usuário não possui contas MT4 cadastradas.</p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+          </div>
+        )}
+
+        {/* Modal MyFXBook */}
+        {activeModal === 'myfxbook' && selectedUser && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+              <div className="sticky top-0 bg-white border-b border-[#e5e7eb] px-6 py-4 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-[#111827]">
+                  MyFXBook - {selectedUser.first_name} {selectedUser.last_name}
+                </h2>
+                <button
+                  onClick={closeModal}
+                  className="text-[#6b7280] hover:text-[#111827] transition-colors"
+                >
+                  <Icon icon="lucide:x" className="text-2xl" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-[#111827] mb-2 block">
+                    Email MyFXBook
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={editingEmail}
+                      onChange={(e) => setEditingEmail(e.target.value)}
+                      placeholder="email@myfxbook.com"
+                      className="flex-1 px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
+                      disabled={saving}
+                    />
+                    <button
+                      onClick={handleSaveMyfxbookEmail}
+                      disabled={saving}
+                      className="px-4 py-2 bg-[#00afaa] text-white rounded-lg text-sm font-medium hover:bg-[#009a96] transition-colors disabled:opacity-50"
+                    >
+                      {saving ? 'Salvando...' : 'Salvar'}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-[#111827] mb-2 block">
+                    Senha MyFXBook
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={editingPassword}
+                      onChange={(e) => setEditingPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="flex-1 px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
+                      disabled={saving}
+                    />
+                    <button
+                      onClick={handleSaveMyfxbookPassword}
+                      disabled={saving}
+                      className="px-4 py-2 bg-[#00afaa] text-white rounded-lg text-sm font-medium hover:bg-[#009a96] transition-colors disabled:opacity-50"
+                    >
+                      {saving ? 'Salvando...' : 'Salvar'}
+                    </button>
+                  </div>
+                </div>
+                {selectedUser.myfxbook && (
+                  <div className="mt-4 pt-4 border-t border-[#e5e7eb]">
+                    <p className="text-xs text-[#6b7280]">
+                      Conectado em: {new Date(selectedUser.myfxbook.connected_at).toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Controles */}
+        {activeModal === 'controls' && selectedUser && selectedUser.mt4_accounts && selectedUser.mt4_accounts.length > 0 && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+              <div className="sticky top-0 bg-white border-b border-[#e5e7eb] px-6 py-4 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-[#111827]">
+                  Controles Operacionais - {selectedUser.first_name} {selectedUser.last_name}
+                </h2>
+                <button
+                  onClick={closeModal}
+                  className="text-[#6b7280] hover:text-[#111827] transition-colors"
+                >
+                  <Icon icon="lucide:x" className="text-2xl" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-[#111827] mb-2 block">
+                    Conta: {selectedUser.mt4_accounts[0].account_number}
+                  </label>
+                </div>
+                <div>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editingAutomationEnabled}
+                      onChange={(e) => setEditingAutomationEnabled(e.target.checked)}
+                      className="w-5 h-5 text-[#00afaa] rounded focus:ring-[#00afaa]"
+                      disabled={saving}
+                    />
+                    <span className="text-sm font-medium text-[#111827]">
+                      Trading Automatizado
+                    </span>
+                  </label>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-[#111827] mb-2 block">
+                    Perfil de Risco
+                  </label>
+                  <select
+                    value={editingRiskProfile}
+                    onChange={(e) => setEditingRiskProfile(e.target.value)}
+                    className="w-full px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
+                    disabled={saving}
+                  >
+                    <option value="conservador">Conservador</option>
+                    <option value="moderado">Moderado</option>
+                    <option value="agressivo">Agressivo</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleSaveControls}
+                  disabled={saving}
+                  className="w-full px-4 py-2 bg-[#00afaa] text-white rounded-lg text-sm font-medium hover:bg-[#009a96] transition-colors disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Salvar Controles'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

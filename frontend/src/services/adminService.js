@@ -1,5 +1,24 @@
 import api from './api'
 
+// Obter todos os usuários com informações agregadas (Admin)
+export const getAllUsers = async () => {
+  try {
+    const response = await api.get('/api/admin/users')
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao buscar usuários:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao buscar usuários.',
+      error: error.response?.data
+    }
+  }
+}
+
 // Obter todas as contas MT4 (Admin)
 export const getAllMT4Accounts = async () => {
   try {
