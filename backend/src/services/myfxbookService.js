@@ -11,18 +11,23 @@ const MYFXBOOK_API_BASE = 'https://www.myfxbook.com/api';
 async function loginMyfxbook(email, password) {
   try {
     console.log(`[Myfxbook] Tentando fazer login para: ${email}`);
-    const url = `${MYFXBOOK_API_BASE}/login.json`;
-    console.log(`[Myfxbook] URL: ${url}`);
+    console.log(`[Myfxbook] Senha (tamanho): ${password ? password.length : 0} caracteres`);
+    
+    // Construir URL manualmente para garantir encoding correto, especialmente para caracteres especiais na senha
+    const emailParam = encodeURIComponent(email);
+    const passwordParam = encodeURIComponent(password);
+    const url = `${MYFXBOOK_API_BASE}/login.json?email=${emailParam}&password=${passwordParam}`;
+    
+    console.log(`[Myfxbook] URL completa (primeiros 100 chars): ${url.substring(0, 100)}...`);
     
     const response = await axios.get(url, {
-      params: {
-        email: email,
-        password: password
-      },
       timeout: 15000, // 15 segundos de timeout
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'application/json'
+      },
+      validateStatus: function (status) {
+        return status < 500; // Aceitar qualquer status < 500 para ver a resposta
       }
     });
 
@@ -30,7 +35,8 @@ async function loginMyfxbook(email, password) {
       status: response.status,
       hasError: response.data.error,
       hasSession: !!response.data.session,
-      message: response.data.message
+      message: response.data.message,
+      fullResponse: response.data
     });
 
     if (response.data.error) {
@@ -52,6 +58,7 @@ async function loginMyfxbook(email, password) {
     }
 
     console.log(`[Myfxbook] Login bem-sucedido! Session: ${response.data.session.substring(0, 20)}...`);
+    console.log(`[Myfxbook] Session completa (length): ${response.data.session.length}`);
     return {
       success: true,
       session: response.data.session,
