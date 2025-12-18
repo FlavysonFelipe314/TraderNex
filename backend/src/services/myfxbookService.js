@@ -189,10 +189,9 @@ async function getMyAccounts(session) {
  */
 async function getOpenTrades(session, accountId) {
   try {
-    // Construir URL manualmente para garantir encoding correto
-    const sessionParam = encodeURIComponent(session);
+    // IMPORTANTE: A sessão já vem URL-encoded da API do MyFXBook, não codificar novamente
     const accountParam = encodeURIComponent(accountId);
-    const url = `${MYFXBOOK_API_BASE}/get-open-trades.json?session=${sessionParam}&id=${accountParam}`;
+    const url = `${MYFXBOOK_API_BASE}/get-open-trades.json?session=${session}&id=${accountParam}`;
     
     const response = await axios.get(url, {
       timeout: 15000,
@@ -236,9 +235,12 @@ async function getOpenTrades(session, accountId) {
  */
 async function getHistory(session, accountId) {
   try {
+    console.log(`[Myfxbook] Buscando histórico para accountId: ${accountId}`);
     // IMPORTANTE: A sessão já vem URL-encoded da API do MyFXBook, não codificar novamente
     const accountParam = encodeURIComponent(accountId);
     const url = `${MYFXBOOK_API_BASE}/get-history.json?session=${session}&id=${accountParam}`;
+    
+    console.log(`[Myfxbook] URL get-history (primeiros 100 chars): ${url.substring(0, 100)}...`);
     
     const response = await axios.get(url, {
       timeout: 15000,
@@ -251,7 +253,16 @@ async function getHistory(session, accountId) {
       }
     });
 
+    console.log(`[Myfxbook] Resposta get-history:`, {
+      status: response.status,
+      hasError: response.data.error,
+      hasHistory: !!response.data.history,
+      historyLength: response.data.history ? response.data.history.length : 0,
+      message: response.data.message
+    });
+
     if (response.data.error) {
+      console.error(`[Myfxbook] Erro na resposta get-history:`, response.data);
       return {
         success: false,
         message: response.data.message || 'Erro ao buscar histórico',
@@ -259,13 +270,32 @@ async function getHistory(session, accountId) {
       };
     }
 
+    const historyData = response.data.history || [];
+    console.log(`[Myfxbook] Histórico obtido com sucesso! Total de registros: ${historyData.length}`);
+    if (historyData.length > 0) {
+      console.log(`[Myfxbook] Primeiro registro do histórico:`, {
+        symbol: historyData[0].symbol,
+        side: historyData[0].side,
+        profit: historyData[0].profit,
+        openTime: historyData[0].openTime,
+        closeTime: historyData[0].closeTime
+      });
+    }
+
     return {
       success: true,
-      history: response.data.history || [],
+      history: historyData,
       message: 'Histórico obtido com sucesso'
     };
   } catch (error) {
-    console.error('Erro ao buscar histórico:', error);
+    console.error('[Myfxbook] Erro ao buscar histórico:', {
+      message: error.message,
+      code: error.code,
+      response: error.response ? {
+        status: error.response.status,
+        data: error.response.data
+      } : null
+    });
     return {
       success: false,
       message: 'Erro ao buscar histórico',
@@ -284,10 +314,9 @@ async function getHistory(session, accountId) {
  */
 async function getDailyGain(session, accountId, startDate, endDate) {
   try {
-    // Construir URL manualmente para garantir encoding correto
-    const sessionParam = encodeURIComponent(session);
+    // IMPORTANTE: A sessão já vem URL-encoded da API do MyFXBook, não codificar novamente
     const accountParam = encodeURIComponent(accountId);
-    const url = `${MYFXBOOK_API_BASE}/get-daily-gain.json?session=${sessionParam}&id=${accountParam}&start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}`;
+    const url = `${MYFXBOOK_API_BASE}/get-daily-gain.json?session=${session}&id=${accountParam}&start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}`;
     
     const response = await axios.get(url, {
       timeout: 15000,

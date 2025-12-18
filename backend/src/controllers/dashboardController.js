@@ -232,11 +232,20 @@ exports.getMyfxbookData = async (req, res) => {
     }
 
     // Buscar dados da conta específica
+    console.log(`[MyFXBook Data] Buscando dados para Account ID: ${myfxbookAccountId}`);
     const [accountsResult, openTrades, history] = await Promise.all([
       getMyAccounts(loginResult.session),
       getOpenTrades(loginResult.session, myfxbookAccountId),
       getHistory(loginResult.session, myfxbookAccountId)
     ]);
+    
+    console.log(`[MyFXBook Data] Resultado getHistory:`, {
+      success: history.success,
+      hasHistory: !!history.history,
+      historyLength: history.history ? history.history.length : 0,
+      message: history.message,
+      error: history.error
+    });
 
     // Encontrar a conta específica nos resultados
     // O myfxbook_integration_login é o Account Number (accountId) no MyFXBook, não o id interno

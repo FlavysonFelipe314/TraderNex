@@ -90,6 +90,16 @@ function DashboardPage() {
             })
             
             // Dados completos já vêm na resposta
+            console.log('[Dashboard] Histórico recebido:', {
+              hasHistory: !!myfxbookDataResult.data.history,
+              historyLength: myfxbookDataResult.data.history ? myfxbookDataResult.data.history.length : 0,
+              history: myfxbookDataResult.data.history
+            })
+            console.log('[Dashboard] Open Trades recebidos:', {
+              hasOpenTrades: !!myfxbookDataResult.data.openTrades,
+              openTradesLength: myfxbookDataResult.data.openTrades ? myfxbookDataResult.data.openTrades.length : 0
+            })
+            
             setMyfxbookAccountData({
               account: accountData,
               openTrades: myfxbookDataResult.data.openTrades || [],
