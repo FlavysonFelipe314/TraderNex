@@ -149,7 +149,8 @@ exports.getMT4Accounts = async (req, res) => {
 
     const result = await pool.query(
       `SELECT id, account_number, account_name, broker, server, balance,
-              equity, currency, status, connected_at, last_sync
+              equity, currency, status, connected_at, last_sync,
+              automation_enabled, risk_profile
        FROM mt4_accounts WHERE user_id = $1
        ORDER BY created_at DESC`,
       [userId]
@@ -185,12 +186,32 @@ exports.addMT4Account = async (req, res) => {
       });
     }
 
-    const result = await pool.query(
-      `INSERT INTO mt4_accounts (user_id, account_number, account_name, broker, server, balance, equity, currency, connected_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $6, $7, NOW())
-       RETURNING *`,
-      [userId, finalAccountNumber, accountName || `MT4-${finalAccountNumber}`, broker, server, balance || 0, currency || 'USD']
+    // Verificar se já existe uma conta com esse número para o usuário
+    const existingAccount = await pool.query(
+      `SELECT id FROM mt4_accounts WHERE user_id = $1 AND account_number = $2`,
+      [userId, finalAccountNumber]
     );
+
+    let result;
+    if (existingAccount.rows.length > 0) {
+      // Atualizar conta existente
+      result = await pool.query(
+        `UPDATE mt4_accounts 
+         SET account_name = $3, broker = $4, server = $5, balance = $6, equity = $6, currency = $7, 
+             connected_at = NOW(), updated_at = NOW()
+         WHERE user_id = $1 AND account_number = $2
+         RETURNING *`,
+        [userId, finalAccountNumber, accountName || `MT4-${finalAccountNumber}`, broker, server, balance || 0, currency || 'USD']
+      );
+    } else {
+      // Criar nova conta
+      result = await pool.query(
+        `INSERT INTO mt4_accounts (user_id, account_number, account_name, broker, server, balance, equity, currency, connected_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $6, $7, NOW())
+         RETURNING *`,
+        [userId, finalAccountNumber, accountName || `MT4-${finalAccountNumber}`, broker, server, balance || 0, currency || 'USD']
+      );
+    }
 
     res.status(201).json({
       success: true,
@@ -202,6 +223,90 @@ exports.addMT4Account = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao adicionar conta MT4.',
+      error: error.message
+    });
+  }
+};
+
+// Atualizar configurações operacionais da conta MT4
+exports.updateMT4Settings = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { accountId } = req.params;
+    const { automationEnabled, riskProfile } = req.body;
+
+    if (!accountId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID da conta é obrigatório.'
+      });
+    }
+
+    // Verificar se a conta pertence ao usuário
+    const accountCheck = await pool.query(
+      'SELECT id FROM mt4_accounts WHERE id = $1 AND user_id = $2',
+      [accountId, userId]
+    );
+
+    if (accountCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Conta MT4 não encontrada.'
+      });
+    }
+
+    // Construir query de atualização dinamicamente
+    const updateFields = [];
+    const updateValues = [];
+    let paramIndex = 1;
+
+    if (automationEnabled !== undefined) {
+      updateFields.push(`automation_enabled = $${paramIndex}`);
+      updateValues.push(automationEnabled);
+      paramIndex++;
+    }
+
+    if (riskProfile !== undefined) {
+      if (!['conservador', 'moderado', 'agressivo'].includes(riskProfile)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Perfil de risco inválido. Use: conservador, moderado ou agressivo.'
+        });
+      }
+      updateFields.push(`risk_profile = $${paramIndex}`);
+      updateValues.push(riskProfile);
+      paramIndex++;
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nenhum campo para atualizar foi fornecido.'
+      });
+    }
+
+    updateFields.push(`updated_at = NOW()`);
+    updateValues.push(accountId);
+    paramIndex++;
+
+    const result = await pool.query(
+      `UPDATE mt4_accounts 
+       SET ${updateFields.join(', ')} 
+       WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}
+       RETURNING *`,
+      [...updateValues, userId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Configurações atualizadas com sucesso!',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar configurações MT4:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao atualizar configurações.',
       error: error.message
     });
   }

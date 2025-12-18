@@ -132,6 +132,8 @@ function AdminPage() {
                       <th className="px-4 py-3 text-left text-[#6b7280] font-semibold">Corretora</th>
                       <th className="px-4 py-3 text-left text-[#6b7280] font-semibold">Servidor</th>
                       <th className="px-4 py-3 text-left text-[#6b7280] font-semibold">Saldo</th>
+                      <th className="px-4 py-3 text-left text-[#6b7280] font-semibold">Trading Auto</th>
+                      <th className="px-4 py-3 text-left text-[#6b7280] font-semibold">Perfil Risco</th>
                       <th className="px-4 py-3 text-left text-[#6b7280] font-semibold">Login MyFXBook</th>
                       <th className="px-4 py-3 text-left text-[#6b7280] font-semibold">Ações</th>
                     </tr>
@@ -158,6 +160,20 @@ function AdminPage() {
                         </td>
                         <td className="px-4 py-3 text-[#111827]">
                           ${account.balance ? parseFloat(account.balance).toFixed(2) : '0.00'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            account.automation_enabled 
+                              ? 'bg-[#d1fae5] text-[#065f46]' 
+                              : 'bg-[#fee2e2] text-[#991b1b]'
+                          }`}>
+                            {account.automation_enabled ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-1 rounded text-xs font-medium bg-[#f3f4f6] text-[#374151]">
+                            {account.risk_profile || 'N/A'}
+                          </span>
                         </td>
                         <td className="px-4 py-3">
                           {editingAccountId === account.id ? (

@@ -72,6 +72,8 @@ CREATE TABLE IF NOT EXISTS mt4_accounts (
     connected_at TIMESTAMP,
     last_sync TIMESTAMP,
     myfxbook_integration_login VARCHAR(100),
+    automation_enabled BOOLEAN DEFAULT TRUE,
+    risk_profile VARCHAR(20) DEFAULT 'moderado' CHECK (risk_profile IN ('conservador', 'moderado', 'agressivo')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, account_number) -- Um usuário não pode ter a mesma conta MT4 duplicada

@@ -42,6 +42,13 @@ UPDATE users
 SET is_admin = TRUE 
 WHERE email = 'admin@tradernex.com';
 
+-- 4. Adicionar colunas de configurações operacionais MT4
+ALTER TABLE mt4_accounts
+ADD COLUMN IF NOT EXISTS automation_enabled BOOLEAN DEFAULT TRUE;
+
+ALTER TABLE mt4_accounts
+ADD COLUMN IF NOT EXISTS risk_profile VARCHAR(20) DEFAULT 'moderado' CHECK (risk_profile IN ('conservador', 'moderado', 'agressivo'));
+
 -- Verificar resultados
 SELECT 'Migração 1: Coluna is_admin' as status, 
        CASE WHEN EXISTS (
@@ -59,6 +66,18 @@ SELECT 'Migração 3: Usuário admin atualizado' as status,
        CASE WHEN EXISTS (
            SELECT 1 FROM users WHERE email = 'admin@tradernex.com' AND is_admin = TRUE
        ) THEN '✅ OK' ELSE '⚠️  Verifique se o email está correto' END as resultado;
+
+SELECT 'Migração 4: Coluna automation_enabled' as status,
+       CASE WHEN EXISTS (
+           SELECT 1 FROM information_schema.columns 
+           WHERE table_name = 'mt4_accounts' AND column_name = 'automation_enabled'
+       ) THEN '✅ OK' ELSE '❌ ERRO' END as resultado;
+
+SELECT 'Migração 5: Coluna risk_profile' as status,
+       CASE WHEN EXISTS (
+           SELECT 1 FROM information_schema.columns 
+           WHERE table_name = 'mt4_accounts' AND column_name = 'risk_profile'
+       ) THEN '✅ OK' ELSE '❌ ERRO' END as resultado;
 
 SELECT id, email, first_name, last_name, is_admin 
 FROM users 

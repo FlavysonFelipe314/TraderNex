@@ -77,6 +77,25 @@ export const addMT4Account = async (accountData) => {
   }
 }
 
+// Atualizar configurações operacionais da conta MT4
+export const updateMT4Settings = async (accountId, settings) => {
+  try {
+    const response = await api.put(`/api/dashboard/mt4-accounts/${accountId}/settings`, settings)
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar configurações MT4:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao atualizar configurações.',
+      error: error.response?.data
+    }
+  }
+}
+
 // Obter planos de investimento
 export const getInvestmentPlans = async () => {
   try {

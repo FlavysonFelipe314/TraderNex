@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
-import { addMT4Account } from '../services/dashboardService'
+import { addMT4Account, getMT4Accounts } from '../services/dashboardService'
 import { useNavigate } from 'react-router-dom'
 
 function Mt4CredentialsPage() {
@@ -13,6 +13,7 @@ function Mt4CredentialsPage() {
     broker: ''
   })
   const [loading, setLoading] = useState(false)
+  const [loadingData, setLoadingData] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
 
@@ -21,6 +22,31 @@ function Mt4CredentialsPage() {
     return () => {
       document.body.classList.remove('scroll-enabled')
     }
+  }, [])
+
+  // Carregar dados existentes da conta MT4
+  useEffect(() => {
+    const loadExistingAccount = async () => {
+      setLoadingData(true)
+      try {
+        const result = await getMT4Accounts()
+        if (result.success && result.data && result.data.length > 0) {
+          const account = result.data[0] // Pegar a primeira conta
+          setFormData({
+            login: account.account_number || '',
+            password: '', // Senha não é retornada por segurança
+            server: account.server || '',
+            broker: account.broker || ''
+          })
+        }
+      } catch (error) {
+        console.error('Erro ao carregar conta MT4 existente:', error)
+      } finally {
+        setLoadingData(false)
+      }
+    }
+
+    loadExistingAccount()
   }, [])
 
   const handleChange = (e) => {

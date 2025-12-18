@@ -9,7 +9,8 @@ import {
   getMyfxbookStatus,
   getMyfxbookAccounts,
   getMyfxbookAccountData,
-  getMyfxbookFullData
+  getMyfxbookFullData,
+  updateMT4Settings
 } from '../services/dashboardService'
 
 function ContaForexMT4Page() {
@@ -47,6 +48,17 @@ function ContaForexMT4Page() {
           const accounts = result.data || []
           console.log('Contas MT4 carregadas:', accounts)
           setMt4Accounts(accounts)
+          
+          // Carregar configurações operacionais da primeira conta
+          if (accounts.length > 0) {
+            const firstAccount = accounts[0]
+            if (firstAccount.automation_enabled !== undefined) {
+              setAutomationEnabled(firstAccount.automation_enabled)
+            }
+            if (firstAccount.risk_profile) {
+              setRiskProfile(firstAccount.risk_profile)
+            }
+          }
         } else {
           console.warn('Falha ao carregar contas MT4:', result.message)
         }
@@ -642,7 +654,23 @@ function ContaForexMT4Page() {
                     className={`w-12 h-7 rounded-full relative cursor-pointer transition-all duration-300 ${
                       automationEnabled ? 'bg-[#00ff88] shadow-[0_0_10px_rgba(0,255,136,0.4)]' : 'bg-[#e5e7eb]'
                     }`}
-                    onClick={() => setAutomationEnabled(!automationEnabled)}
+                    onClick={async () => {
+                      const newValue = !automationEnabled
+                      setAutomationEnabled(newValue)
+                      
+                      // Salvar no backend
+                      if (mt4Accounts.length > 0) {
+                        try {
+                          await updateMT4Settings(mt4Accounts[0].id, {
+                            automationEnabled: newValue
+                          })
+                        } catch (error) {
+                          console.error('Erro ao salvar configuração:', error)
+                          // Reverter em caso de erro
+                          setAutomationEnabled(!newValue)
+                        }
+                      }
+                    }}
                   >
                     <div className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.1)] transition-transform duration-300 ${
                       automationEnabled ? 'translate-x-5' : 'translate-x-0'
@@ -665,7 +693,18 @@ function ContaForexMT4Page() {
                           ? 'bg-white text-[#111827] font-semibold shadow-[0_2px_4px_rgba(0,0,0,0.05)]' 
                           : 'text-[#6b7280] hover:text-[#374151]'
                       }`}
-                      onClick={() => setRiskProfile('conservador')}
+                      onClick={async () => {
+                        setRiskProfile('conservador')
+                        if (mt4Accounts.length > 0) {
+                          try {
+                            await updateMT4Settings(mt4Accounts[0].id, {
+                              riskProfile: 'conservador'
+                            })
+                          } catch (error) {
+                            console.error('Erro ao salvar perfil de risco:', error)
+                          }
+                        }
+                      }}
                     >
                       Conservador
                     </button>
@@ -675,7 +714,18 @@ function ContaForexMT4Page() {
                           ? 'bg-white text-[#111827] font-semibold shadow-[0_2px_4px_rgba(0,0,0,0.05)]' 
                           : 'text-[#6b7280] hover:text-[#374151]'
                       }`}
-                      onClick={() => setRiskProfile('moderado')}
+                      onClick={async () => {
+                        setRiskProfile('moderado')
+                        if (mt4Accounts.length > 0) {
+                          try {
+                            await updateMT4Settings(mt4Accounts[0].id, {
+                              riskProfile: 'moderado'
+                            })
+                          } catch (error) {
+                            console.error('Erro ao salvar perfil de risco:', error)
+                          }
+                        }
+                      }}
                     >
                       Moderado
                     </button>
@@ -685,7 +735,18 @@ function ContaForexMT4Page() {
                           ? 'bg-white text-[#111827] font-semibold shadow-[0_2px_4px_rgba(0,0,0,0.05)]' 
                           : 'text-[#6b7280] hover:text-[#374151]'
                       }`}
-                      onClick={() => setRiskProfile('agressivo')}
+                      onClick={async () => {
+                        setRiskProfile('agressivo')
+                        if (mt4Accounts.length > 0) {
+                          try {
+                            await updateMT4Settings(mt4Accounts[0].id, {
+                              riskProfile: 'agressivo'
+                            })
+                          } catch (error) {
+                            console.error('Erro ao salvar perfil de risco:', error)
+                          }
+                        }
+                      }}
                     >
                       Agressivo
                     </button>

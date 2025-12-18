@@ -20,6 +20,8 @@ exports.getAllMT4Accounts = async (req, res) => {
         ma.connected_at,
         ma.last_sync,
         ma.myfxbook_integration_login,
+        ma.automation_enabled,
+        ma.risk_profile,
         ma.created_at,
         u.id as user_id,
         u.email,
