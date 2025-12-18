@@ -24,6 +24,10 @@ function Sidebar() {
     { id: 'support', label: 'Suporte', icon: 'lucide:life-buoy', path: '/suporte-cliente' },
   ]
 
+  const adminNavItems = [
+    { id: 'admin', label: 'Painel Admin', icon: 'lucide:shield', path: '/admin' },
+  ]
+
   const isActive = (path) => {
     return location.pathname === path || location.pathname.startsWith(path + '/')
   }
@@ -264,6 +268,35 @@ function Sidebar() {
               </div>
             )
           })}
+
+          {/* Admin Section - apenas se for admin */}
+          {(user?.is_admin || user?.isAdmin) && (
+            <>
+              <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
+                Administração
+              </div>
+              {adminNavItems.map((item) => {
+                const active = isActive(item.path)
+                return (
+                  <div
+                    key={item.id}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                      active
+                        ? 'bg-gradient-to-r from-[rgba(255,193,7,0.1)] to-[rgba(255,193,7,0.02)] text-[#ffc107] border border-[rgba(255,193,7,0.15)]'
+                        : 'text-[#ffc107] border border-transparent hover:bg-[rgba(255,193,7,0.05)] hover:text-[#ffd54f]'
+                    }`}
+                    onClick={() => handleNavigation(item.path)}
+                    data-media-type="banani-button"
+                  >
+                    <div className="w-[18px] h-[18px] flex items-center justify-center">
+                      <Icon icon={item.icon} className="text-lg" />
+                    </div>
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </div>
+                )
+              })}
+            </>
+          )}
         </nav>
 
         {/* Footer - User Card */}

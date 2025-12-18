@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar'
 import MobileBottomNav from '../components/MobileBottomNav'
 import { useSidebar } from '../contexts/SidebarContext'
 import { useAuth } from '../contexts/AuthContext'
-import { getDashboardData, getMT4Accounts, getPerformanceStats } from '../services/dashboardService'
+import { getDashboardData, getMT4Accounts, getPerformanceStats, getMyfxbookStatus, getMyfxbookAccounts, getMyfxbookFullData } from '../services/dashboardService'
 
 function DashboardPage() {
   const { isSidebarOpen } = useSidebar()
@@ -14,6 +14,11 @@ function DashboardPage() {
   const [period, setPeriod] = useState('30d')
   const [performanceData, setPerformanceData] = useState([])
   const [loading, setLoading] = useState(true)
+  const [myfxbookConnected, setMyfxbookConnected] = useState(false)
+  const [myfxbookAccounts, setMyfxbookAccounts] = useState([])
+  const [selectedMyfxbookAccount, setSelectedMyfxbookAccount] = useState(null)
+  const [myfxbookAccountData, setMyfxbookAccountData] = useState(null)
+  const [loadingMyfxbook, setLoadingMyfxbook] = useState(false)
 
   // Adicionar animação pulse
   const pulseStyle = {
@@ -33,9 +38,10 @@ function DashboardPage() {
     const loadDashboardData = async () => {
       setLoading(true)
       try {
-        const [dashboardResult, mt4Result] = await Promise.all([
+        const [dashboardResult, mt4Result, myfxbookStatusResult] = await Promise.all([
           getDashboardData(),
-          getMT4Accounts()
+          getMT4Accounts(),
+          getMyfxbookStatus()
         ])
 
         if (dashboardResult.success) {
@@ -50,6 +56,33 @@ function DashboardPage() {
 
         if (mt4Result.success) {
           setMt4Accounts(mt4Result.data || [])
+        }
+
+        // Carregar dados do MyFXBook
+        if (myfxbookStatusResult.success && myfxbookStatusResult.data) {
+          const isConnected = myfxbookStatusResult.data.connected || (myfxbookStatusResult.data.hasSession && myfxbookStatusResult.data.sessionValid)
+          setMyfxbookConnected(isConnected)
+          
+          if (isConnected && myfxbookStatusResult.data.accounts && myfxbookStatusResult.data.accounts.length > 0) {
+            setMyfxbookAccounts(myfxbookStatusResult.data.accounts)
+            const firstAccount = myfxbookStatusResult.data.accounts[0]
+            setSelectedMyfxbookAccount(firstAccount)
+            
+            // Carregar dados completos da conta
+            if (firstAccount.id || firstAccount.accountId) {
+              setLoadingMyfxbook(true)
+              try {
+                const accountDataResult = await getMyfxbookFullData(firstAccount.id || firstAccount.accountId)
+                if (accountDataResult.success) {
+                  setMyfxbookAccountData(accountDataResult.data)
+                }
+              } catch (error) {
+                console.error('Erro ao carregar dados completos do MyFXBook:', error)
+              } finally {
+                setLoadingMyfxbook(false)
+              }
+            }
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar dados do dashboard:', error)
@@ -200,6 +233,133 @@ function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Dados MyFXBook - Se conectado */}
+        {myfxbookConnected && selectedMyfxbookAccount && (
+          <div className="bg-white rounded-xl sm:rounded-2xl border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] overflow-hidden">
+            <div className="p-4 sm:p-6 lg:p-8 border-b border-[#F8FAFC] flex justify-between items-center bg-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 bg-[#3b82f6] rounded-[10px] flex items-center justify-center text-white">
+                  <Icon icon="lucide:bar-chart-3" className="text-lg" />
+                </div>
+                <div>
+                  <div className="text-base font-bold text-[#0F172A] tracking-[-0.01em]">
+                    Dados Myfxbook
+                  </div>
+                  <div className="text-[13px] text-[#64748B] mt-1">
+                    Estatísticas e histórico de transações
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 sm:p-6 lg:p-8">
+              {/* Cards de Métricas */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <div className="bg-[#f9fafb] rounded-lg p-4 border border-[#f3f4f6]">
+                  <div className="text-xs text-[#6b7280] font-medium mb-1">Ganho Total</div>
+                  <div className={`text-lg sm:text-xl font-bold ${
+                    (selectedMyfxbookAccount.gain || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
+                  }`}>
+                    {selectedMyfxbookAccount.gain ? `${parseFloat(selectedMyfxbookAccount.gain).toFixed(2)}%` : 'N/A'}
+                  </div>
+                </div>
+                <div className="bg-[#f9fafb] rounded-lg p-4 border border-[#f3f4f6]">
+                  <div className="text-xs text-[#6b7280] font-medium mb-1">Lucro</div>
+                  <div className={`text-lg sm:text-xl font-bold ${
+                    (selectedMyfxbookAccount.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
+                  }`}>
+                    {selectedMyfxbookAccount.profit ? `$${parseFloat(selectedMyfxbookAccount.profit).toFixed(2)}` : 'N/A'}
+                  </div>
+                </div>
+                <div className="bg-[#f9fafb] rounded-lg p-4 border border-[#f3f4f6]">
+                  <div className="text-xs text-[#6b7280] font-medium mb-1">Drawdown</div>
+                  <div className="text-lg sm:text-xl font-bold text-[#dc2626]">
+                    {selectedMyfxbookAccount.drawdown ? `${parseFloat(selectedMyfxbookAccount.drawdown).toFixed(2)}%` : 'N/A'}
+                  </div>
+                </div>
+                <div className="bg-[#f9fafb] rounded-lg p-4 border border-[#f3f4f6]">
+                  <div className="text-xs text-[#6b7280] font-medium mb-1">Equity</div>
+                  <div className="text-lg sm:text-xl font-bold text-[#111827]">
+                    {selectedMyfxbookAccount.equity ? `$${parseFloat(selectedMyfxbookAccount.equity).toFixed(2)}` : 'N/A'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Histórico Recente */}
+              {myfxbookAccountData?.history && myfxbookAccountData.history.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Icon icon="lucide:clock" className="text-base text-[#64748B]" />
+                    <h4 className="text-sm font-bold text-[#0F172A]">
+                      Histórico Recente (últimas 10 transações)
+                    </h4>
+                  </div>
+                  <div className="bg-[#f9fafb] rounded-lg border border-[#f3f4f6] overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs sm:text-sm">
+                        <thead className="bg-[#f3f4f6]">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-[#6b7280] font-semibold">Data</th>
+                            <th className="px-3 py-2 text-left text-[#6b7280] font-semibold">Tipo</th>
+                            <th className="px-3 py-2 text-left text-[#6b7280] font-semibold">Par</th>
+                            <th className="px-3 py-2 text-right text-[#6b7280] font-semibold">Lots</th>
+                            <th className="px-3 py-2 text-right text-[#6b7280] font-semibold">Preço</th>
+                            <th className="px-3 py-2 text-right text-[#6b7280] font-semibold">Lucro</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#f3f4f6]">
+                          {myfxbookAccountData.history.slice(0, 10).map((trade, idx) => {
+                            const closeTime = trade.closeTime || trade.openTime
+                            const formattedDate = closeTime 
+                              ? new Date(closeTime).toLocaleString('pt-BR', { 
+                                  day: '2-digit', 
+                                  month: '2-digit', 
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : 'N/A'
+                            
+                            return (
+                              <tr key={idx} className="hover:bg-white">
+                                <td className="px-3 py-2 text-[#6b7280]">{formattedDate}</td>
+                                <td className="px-3 py-2">
+                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                    trade.side === 'buy' 
+                                      ? 'bg-[#d1fae5] text-[#065f46]' 
+                                      : 'bg-[#fee2e2] text-[#991b1b]'
+                                  }`}>
+                                    {trade.side === 'buy' ? 'Compra' : 'Venda'}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 font-medium text-[#111827]">{trade.symbol || 'N/A'}</td>
+                                <td className="px-3 py-2 text-right text-[#111827]">{trade.lots || '0'}</td>
+                                <td className="px-3 py-2 text-right text-[#111827]">{trade.closePrice || trade.openPrice || 'N/A'}</td>
+                                <td className={`px-3 py-2 text-right font-bold ${
+                                  (trade.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
+                                }`}>
+                                  {trade.profit ? `$${parseFloat(trade.profit).toFixed(2)}` : '$0.00'}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {(!myfxbookAccountData || !myfxbookAccountData.history || myfxbookAccountData.history.length === 0) && (
+                <div className="text-center py-8 text-[#6b7280] text-sm">
+                  <Icon icon="lucide:info" className="text-2xl mx-auto mb-2 text-[#9ca3af]" />
+                  <p>{loadingMyfxbook ? 'Carregando histórico...' : 'Nenhum histórico disponível ainda.'}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Dashboard Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-[2.2fr_1.3fr] gap-4 sm:gap-6 items-stretch">

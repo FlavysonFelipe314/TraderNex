@@ -19,6 +19,7 @@ import SuporteClientePage from "./page/SuporteClientePage";
 import RelatoriosPerformancePage from "./page/RelatoriosPerformancePage";
 import FaturasPerformancePage from "./page/FaturasPerformancePage";
 import Mt4CredentialsPage from "./page/Mt4CredentialsPage";
+import AdminPage from "./page/AdminPage";
 
 function App() {
   return (
@@ -112,6 +113,14 @@ function App() {
           element={
             <ProtectedRoute>
               <FaturasPerformancePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminPage />
             </ProtectedRoute>
           }
         />

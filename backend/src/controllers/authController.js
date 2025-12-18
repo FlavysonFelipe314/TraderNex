@@ -178,7 +178,8 @@ exports.login = async (req, res) => {
           email: user.email,
           firstName: user.first_name,
           lastName: user.last_name,
-          emailVerified: user.email_verified
+          emailVerified: user.email_verified,
+          isAdmin: user.is_admin || false
         },
         token
       }
@@ -444,7 +445,9 @@ exports.getProfile = async (req, res) => {
       balance: profile.balance != null ? parseFloat(profile.balance) : 0,
       total_invested: profile.total_invested != null ? parseFloat(profile.total_invested) : 0,
       total_profit: profile.total_profit != null ? parseFloat(profile.total_profit) : 0,
-      profit_percentage: profile.profit_percentage != null ? parseFloat(profile.profit_percentage) : 0
+      profit_percentage: profile.profit_percentage != null ? parseFloat(profile.profit_percentage) : 0,
+      is_admin: profile.is_admin || false,
+      isAdmin: profile.is_admin || false
     };
 
     console.log(`[getProfile] Perfil normalizado enviado com sucesso para userId: ${userId}`);

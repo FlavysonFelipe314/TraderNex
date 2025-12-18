@@ -8,6 +8,7 @@ const authRoutes = require('./routes/authRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 const myfxbookRoutes = require('./routes/myfxbookRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -122,6 +123,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/myfxbook', myfxbookRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Rota 404
 app.use((req, res) => {

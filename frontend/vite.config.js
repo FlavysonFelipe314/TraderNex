@@ -19,4 +19,12 @@ export default defineConfig({
       },
     },
   },
+  // Configuração para SPA - importante para roteamento
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
+  }
 })
