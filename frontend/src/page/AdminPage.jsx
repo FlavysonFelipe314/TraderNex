@@ -4,8 +4,6 @@ import DashboardLayout from '../components/DashboardLayout'
 import { 
   getAllUsers,
   updateMyfxbookIntegrationLogin, 
-  updateMyfxbookPassword,
-  updateMyfxbookEmail,
   updateOperationalControls,
   setSystemMyfxbookConfig,
   getSystemMyfxbookConfig
@@ -19,13 +17,11 @@ function AdminPage() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState(null)
-  const [activeModal, setActiveModal] = useState(null) // 'mt4', 'myfxbook', 'controls'
+  const [activeModal, setActiveModal] = useState(null) // 'mt4', 'controls', 'system-config'
   const [filter, setFilter] = useState('all') // 'all', 'with-mt4', 'without-mt4', 'with-myfxbook', 'without-myfxbook'
   
   // Estados para edição
   const [editingLogin, setEditingLogin] = useState('')
-  const [editingPassword, setEditingPassword] = useState('')
-  const [editingEmail, setEditingEmail] = useState('')
   const [editingAutomationEnabled, setEditingAutomationEnabled] = useState(true)
   const [editingRiskProfile, setEditingRiskProfile] = useState('moderado')
   const [saving, setSaving] = useState(false)
@@ -49,10 +45,18 @@ function AdminPage() {
         setSystemConfig(result.data)
         if (result.data.configured) {
           setSystemEmail(result.data.email)
+        } else {
+          // Pré-preencher com as credenciais padrão da empresa
+          setSystemEmail('contato@tradernex.com')
         }
+      } else {
+        // Pré-preencher com as credenciais padrão da empresa
+        setSystemEmail('contato@tradernex.com')
       }
     } catch (error) {
       console.error('Erro ao carregar configuração do sistema:', error)
+      // Pré-preencher com as credenciais padrão da empresa
+      setSystemEmail('contato@tradernex.com')
     }
   }
 
@@ -119,11 +123,6 @@ function AdminPage() {
       setEditingLogin(firstAccount.myfxbook_integration_login || '')
     }
     
-    if (modalType === 'myfxbook' && user.myfxbook) {
-      setEditingEmail(user.myfxbook.email || '')
-      setEditingPassword('')
-    }
-    
     if (modalType === 'controls' && user.mt4_accounts && user.mt4_accounts.length > 0) {
       const firstAccount = user.mt4_accounts[0]
       setEditingAutomationEnabled(firstAccount.automation_enabled !== undefined ? firstAccount.automation_enabled : true)
@@ -135,8 +134,6 @@ function AdminPage() {
     setSelectedUser(null)
     setActiveModal(null)
     setEditingLogin('')
-    setEditingPassword('')
-    setEditingEmail('')
   }
 
   const handleSaveMyfxbookLogin = async () => {
@@ -163,51 +160,6 @@ function AdminPage() {
     }
   }
 
-  const handleSaveMyfxbookEmail = async () => {
-    if (!selectedUser) return
-    
-    setSaving(true)
-    try {
-      const result = await updateMyfxbookEmail(selectedUser.id, editingEmail)
-      if (result.success) {
-        await loadUsers()
-        closeModal()
-      } else {
-        alert('Erro ao salvar: ' + (result.message || 'Erro desconhecido'))
-      }
-    } catch (error) {
-      console.error('Erro ao salvar:', error)
-      alert('Erro ao salvar email MyFXBook.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleSaveMyfxbookPassword = async () => {
-    if (!selectedUser) return
-    
-    if (!editingPassword) {
-      alert('Por favor, informe a senha.')
-      return
-    }
-    
-    setSaving(true)
-    try {
-      const result = await updateMyfxbookPassword(selectedUser.id, editingPassword)
-      if (result.success) {
-        await loadUsers()
-        setEditingPassword('')
-        alert('Senha atualizada com sucesso!')
-      } else {
-        alert('Erro ao salvar: ' + (result.message || 'Erro desconhecido'))
-      }
-    } catch (error) {
-      console.error('Erro ao salvar:', error)
-      alert('Erro ao salvar senha MyFXBook.')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   const handleSaveControls = async () => {
     if (!selectedUser || !selectedUser.mt4_accounts || selectedUser.mt4_accounts.length === 0) {
@@ -400,8 +352,8 @@ function AdminPage() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-[#6b7280]">MyFXBook:</span>
-                    <span className={`font-semibold ${user.has_myfxbook ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
-                      {user.has_myfxbook ? 'Conectado' : 'Não conectado'}
+                    <span className={`font-semibold ${user.mt4_accounts && user.mt4_accounts.some(acc => acc.myfxbook_integration_login) ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
+                      {user.mt4_accounts && user.mt4_accounts.some(acc => acc.myfxbook_integration_login) ? 'Configurado' : 'Não configurado'}
                     </span>
                   </div>
                 </div>
@@ -414,13 +366,6 @@ function AdminPage() {
                   >
                     <Icon icon="lucide:database" className="text-sm" />
                     MT4
-                  </button>
-                  <button
-                    onClick={() => openModal(user, 'myfxbook')}
-                    className="flex-1 px-3 py-2 bg-[#f3f4f6] hover:bg-[#e5e7eb] text-[#111827] rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
-                  >
-                    <Icon icon="lucide:bar-chart-3" className="text-sm" />
-                    MyFXBook
                   </button>
                   {user.has_mt4 && (
                     <button
@@ -480,14 +425,17 @@ function AdminPage() {
                         {index === 0 && (
                           <div className="mt-4 pt-4 border-t border-[#e5e7eb]">
                             <label className="text-sm font-medium text-[#111827] mb-2 block">
-                              Login de Integração MyFXBook
+                              Account ID MyFXBook
                             </label>
+                            <p className="text-xs text-[#6b7280] mb-2">
+                              Informe o Account Number do MyFXBook (ex: 7739458, 34182616). O sistema usará as credenciais padrão configuradas.
+                            </p>
                             <div className="flex gap-2">
                               <input
                                 type="text"
                                 value={editingLogin}
                                 onChange={(e) => setEditingLogin(e.target.value)}
-                                placeholder="Login MyFXBook"
+                                placeholder="Ex: 7739458"
                                 className="flex-1 px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
                                 disabled={saving}
                               />
@@ -515,77 +463,6 @@ function AdminPage() {
           </div>
         )}
 
-        {/* Modal MyFXBook */}
-        {activeModal === 'myfxbook' && selectedUser && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
-              <div className="sticky top-0 bg-white border-b border-[#e5e7eb] px-6 py-4 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-[#111827]">
-                  MyFXBook - {selectedUser.first_name} {selectedUser.last_name}
-                </h2>
-                <button
-                  onClick={closeModal}
-                  className="text-[#6b7280] hover:text-[#111827] transition-colors"
-                >
-                  <Icon icon="lucide:x" className="text-2xl" />
-                </button>
-              </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-[#111827] mb-2 block">
-                    Email MyFXBook
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      value={editingEmail}
-                      onChange={(e) => setEditingEmail(e.target.value)}
-                      placeholder="email@myfxbook.com"
-                      className="flex-1 px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
-                      disabled={saving}
-                    />
-                    <button
-                      onClick={handleSaveMyfxbookEmail}
-                      disabled={saving}
-                      className="px-4 py-2 bg-[#00afaa] text-white rounded-lg text-sm font-medium hover:bg-[#009a96] transition-colors disabled:opacity-50"
-                    >
-                      {saving ? 'Salvando...' : 'Salvar'}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-[#111827] mb-2 block">
-                    Senha MyFXBook
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="password"
-                      value={editingPassword}
-                      onChange={(e) => setEditingPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="flex-1 px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
-                      disabled={saving}
-                    />
-                    <button
-                      onClick={handleSaveMyfxbookPassword}
-                      disabled={saving}
-                      className="px-4 py-2 bg-[#00afaa] text-white rounded-lg text-sm font-medium hover:bg-[#009a96] transition-colors disabled:opacity-50"
-                    >
-                      {saving ? 'Salvando...' : 'Salvar'}
-                    </button>
-                  </div>
-                </div>
-                {selectedUser.myfxbook && (
-                  <div className="mt-4 pt-4 border-t border-[#e5e7eb]">
-                    <p className="text-xs text-[#6b7280]">
-                      Conectado em: {new Date(selectedUser.myfxbook.connected_at).toLocaleString('pt-BR')}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Modal Configuração do Sistema */}
         {activeModal === 'system-config' && (
