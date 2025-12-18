@@ -103,3 +103,4 @@ router.get('/myfxbook-connections', adminController.getAllMyfxbookConnections);
 router.put('/myfxbook-connections/:userId/password', adminController.updateMyfxbookPassword);
 
 module.exports = router;
+

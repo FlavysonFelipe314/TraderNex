@@ -79,3 +79,4 @@ export const updateMyfxbookPassword = async (userId, password) => {
     }
   }
 }
+

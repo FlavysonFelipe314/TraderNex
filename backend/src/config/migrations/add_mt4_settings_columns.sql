@@ -10,3 +10,4 @@ ADD COLUMN IF NOT EXISTS risk_profile VARCHAR(20) DEFAULT 'moderado' CHECK (risk
 
 COMMENT ON COLUMN mt4_accounts.automation_enabled IS 'Indica se o trading automatizado está habilitado';
 COMMENT ON COLUMN mt4_accounts.risk_profile IS 'Perfil de risco: conservador, moderado ou agressivo';
+

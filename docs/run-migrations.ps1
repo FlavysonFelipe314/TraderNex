@@ -106,3 +106,4 @@ WHERE is_admin = TRUE;
     Write-Host "   Veja MIGRACOES.md para instruções detalhadas" -ForegroundColor Yellow
     exit 1
 }
+

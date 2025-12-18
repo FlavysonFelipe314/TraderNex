@@ -85,3 +85,4 @@ else
     echo "   Veja MIGRACOES.md para instruções detalhadas"
     exit 1
 fi
+

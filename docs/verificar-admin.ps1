@@ -76,3 +76,4 @@ Write-Host ""
 Write-Host "💡 Para reiniciar tudo:" -ForegroundColor Cyan
 Write-Host "   docker-compose restart frontend" -ForegroundColor Yellow
 Write-Host ""
+

@@ -182,3 +182,4 @@ WHERE email = 'seu-email@exemplo.com';
 2. Faça login com o usuário admin e acesse `/admin` para testar o painel administrativo
 
 3. Verifique se o link "Painel Admin" aparece no Sidebar (apenas para admins)
+

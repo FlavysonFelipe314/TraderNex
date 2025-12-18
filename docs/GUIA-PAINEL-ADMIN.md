@@ -206,3 +206,4 @@ Se tiver problemas:
 ---
 
 **Pronto! Agora você pode gerenciar todas as contas MT4 e configurar os logins de integração MyFXBook! 🎉**
+

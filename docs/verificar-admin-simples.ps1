@@ -31,3 +31,4 @@ if (Get-Command docker-compose -ErrorAction SilentlyContinue) {
 Write-Host ""
 Write-Host "Acesse: http://localhost:3000/admin" -ForegroundColor Cyan
 Write-Host "Ou reinicie: docker-compose restart frontend" -ForegroundColor Yellow
+

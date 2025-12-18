@@ -67,3 +67,4 @@ Get-Content MIGRACOES-SIMPLES.sql | docker-compose exec -T db psql -U postgres -
 - `MIGRACOES-COMPLETAS.sql` - Versão completa (com comentários e verificações)
 
 **Use `MIGRACOES-SIMPLES.sql` para copiar e colar rapidamente!**
+

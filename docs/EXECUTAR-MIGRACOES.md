@@ -137,3 +137,4 @@ docker-compose exec db psql -U postgres -d tradernex -c "SELECT email, is_admin 
 ```
 
 Ele faz tudo automaticamente e mostra se deu certo ou não!
+

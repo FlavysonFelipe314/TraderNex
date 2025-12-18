@@ -30,3 +30,4 @@ FROM information_schema.columns
 WHERE table_name = 'mt4_accounts' 
 AND column_name IN ('automation_enabled', 'risk_profile');
 ```
+

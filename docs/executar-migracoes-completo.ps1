@@ -34,3 +34,4 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "Erro ao executar migracoes!" -ForegroundColor Red
 }
+

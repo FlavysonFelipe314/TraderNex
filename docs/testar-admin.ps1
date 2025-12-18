@@ -49,3 +49,4 @@ Write-Host "5. Se ainda nao funcionar, reconstrua:" -ForegroundColor Yellow
 Write-Host "   docker-compose down" -ForegroundColor Yellow
 Write-Host "   docker-compose up -d --build" -ForegroundColor Yellow
 Write-Host ""
+

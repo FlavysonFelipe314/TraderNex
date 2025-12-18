@@ -53,3 +53,4 @@ AND column_name IN ('myfxbook_integration_login', 'automation_enabled', 'risk_pr
 SELECT id, email, first_name, last_name, is_admin 
 FROM users 
 WHERE is_admin = TRUE;
+

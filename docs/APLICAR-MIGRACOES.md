@@ -171,3 +171,4 @@ Após aplicar as migrations, você pode:
 - ✅ Acessar o painel admin (se você for admin)
 - ✅ Configurar login MyFXBook para usuários
 - ✅ Controlar trading automatizado e perfil de risco
+

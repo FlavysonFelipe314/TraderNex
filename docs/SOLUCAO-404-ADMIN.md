@@ -227,3 +227,4 @@ Se estiver em **desenvolvimento local**, certifique-se de:
 - Ter executado `npm install` no frontend
 - O servidor Vite está rodando
 - A porta não está sendo usada por outro processo
+
