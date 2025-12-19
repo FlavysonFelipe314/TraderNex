@@ -172,6 +172,26 @@ export const getMyfxbookData = async () => {
   }
 }
 
+// Registrar interesse em cripto
+export const registerCryptoInterest = async () => {
+  try {
+    const response = await api.post('/api/dashboard/crypto/register-interest')
+    return {
+      success: response.data.success,
+      message: response.data.message,
+      data: response.data.data,
+      alreadyRegistered: response.data.alreadyRegistered || false
+    }
+  } catch (error) {
+    console.error('Erro ao registrar interesse em cripto:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao registrar interesse.',
+      error: error.response?.data
+    }
+  }
+}
+
 // Obter transações
 export const getTransactions = async (filters = {}) => {
   try {

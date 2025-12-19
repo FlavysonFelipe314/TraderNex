@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const dashboardController = require('../controllers/dashboardController');
+const cryptoController = require('../controllers/cryptoController');
 const authMiddleware = require('../middleware/auth');
 
 // Aplicar autenticação em todas as rotas
@@ -414,5 +415,8 @@ router.get('/invoices', dashboardController.getInvoices);
  *               $ref: '#/components/schemas/Error'
  */
 router.get('/referrals', dashboardController.getReferrals);
+
+// Registrar interesse em cripto
+router.post('/crypto/register-interest', cryptoController.registerInterest);
 
 module.exports = router;

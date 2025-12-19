@@ -28,6 +28,7 @@ function Sidebar() {
     { id: 'admin', label: 'Painel Admin', icon: 'lucide:shield', path: '/admin' },
     { id: 'plans', label: 'Planos', icon: 'lucide:package', path: '/admin/plans' },
     { id: 'users', label: 'Usuários', icon: 'lucide:users', path: '/admin/users' },
+    { id: 'crypto-interested', label: 'Interessados Cripto', icon: 'lucide:rocket', path: '/admin/crypto-interested' },
   ]
 
   const isActive = (path) => {

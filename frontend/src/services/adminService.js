@@ -356,4 +356,47 @@ export const deleteUser = async (userId) => {
   }
 }
 
+// Obter todos os interessados em cripto (Admin)
+export const getCryptoInterested = async (page = 1, limit = 50, notified = null) => {
+  try {
+    const params = new URLSearchParams({ page, limit })
+    if (notified !== null) {
+      params.append('notified', notified)
+    }
+    const response = await api.get(`/api/admin/crypto/interested?${params.toString()}`)
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      pagination: response.data.pagination,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao buscar interessados em cripto:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao buscar interessados.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Marcar interessado como notificado (Admin)
+export const markCryptoInterestedAsNotified = async (id) => {
+  try {
+    const response = await api.put(`/api/admin/crypto/interested/${id}/notify`)
+    return {
+      success: response.data.success,
+      message: response.data.message,
+      data: response.data.data
+    }
+  } catch (error) {
+    console.error('Erro ao marcar como notificado:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao marcar como notificado.',
+      error: error.response?.data
+    }
+  }
+}
+
 

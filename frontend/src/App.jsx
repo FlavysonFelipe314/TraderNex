@@ -24,6 +24,7 @@ import Mt4CredentialsPage from "./page/Mt4CredentialsPage";
 import AdminPage from "./page/AdminPage";
 import AdminPlansPage from "./page/AdminPlansPage";
 import AdminUsersPage from "./page/AdminUsersPage";
+import AdminCryptoInterestedPage from "./page/AdminCryptoInterestedPage";
 
 function App() {
   return (
@@ -143,6 +144,14 @@ function App() {
           element={
             <AdminProtectedRoute>
               <AdminUsersPage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/crypto-interested"
+          element={
+            <AdminProtectedRoute>
+              <AdminCryptoInterestedPage />
             </AdminProtectedRoute>
           }
         />

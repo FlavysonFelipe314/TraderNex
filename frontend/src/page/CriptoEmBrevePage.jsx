@@ -1,14 +1,38 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
+import { registerCryptoInterest } from '../services/dashboardService'
 
 function CriptoEmBrevePage() {
+  const [loading, setLoading] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false)
+
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
     return () => {
       document.body.classList.remove('scroll-enabled')
     }
   }, [])
+
+  const handleRegisterInterest = async () => {
+    setLoading(true)
+    try {
+      const result = await registerCryptoInterest()
+      if (result.success) {
+        if (result.alreadyRegistered) {
+          setAlreadyRegistered(true)
+        } else {
+          setShowSuccess(true)
+          setTimeout(() => setShowSuccess(false), 5000)
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao registrar interesse:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <DashboardLayout>
@@ -61,10 +85,46 @@ function CriptoEmBrevePage() {
               <p className="text-[13px] text-[#6b7280] m-0 font-medium">
                 Seja o primeiro a saber quando lançarmos.
               </p>
-              <button className="h-11 sm:h-12 px-6 sm:px-8 bg-[#0e0e10] text-[#00ff88] border border-[rgba(0,255,136,0.2)] rounded-xl font-semibold text-xs sm:text-sm cursor-pointer flex items-center gap-2 sm:gap-2.5 transition-all shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-black hover:shadow-[0_8px_20px_rgba(0,255,136,0.15)] hover:-translate-y-0.5">
-                <Icon icon="lucide:bell" className="text-lg" />
-                Quero ser avisado
+              <button 
+                onClick={handleRegisterInterest}
+                disabled={loading || showSuccess || alreadyRegistered}
+                className={`h-11 sm:h-12 px-6 sm:px-8 rounded-xl font-semibold text-xs sm:text-sm cursor-pointer flex items-center gap-2 sm:gap-2.5 transition-all relative overflow-hidden ${
+                  showSuccess || alreadyRegistered
+                    ? 'bg-[#00ff88] text-[#0e0e10] border border-[#00ff88] shadow-[0_4px_12px_rgba(0,255,136,0.3)]'
+                    : 'bg-[#0e0e10] text-[#00ff88] border border-[rgba(0,255,136,0.2)] shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-black hover:shadow-[0_8px_20px_rgba(0,255,136,0.15)] hover:-translate-y-0.5'
+                } ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                style={{
+                  animation: showSuccess ? 'bounceIn 0.6s ease-out' : alreadyRegistered ? 'pulse 2s infinite' : 'none'
+                }}
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-[#00ff88] border-t-transparent rounded-full animate-spin" />
+                    Registrando...
+                  </>
+                ) : showSuccess || alreadyRegistered ? (
+                  <>
+                    <Icon icon="lucide:check-circle" className="text-lg" />
+                    {alreadyRegistered ? 'Já registrado!' : 'Registrado com sucesso!'}
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="lucide:bell" className="text-lg" />
+                    Quero ser avisado
+                  </>
+                )}
               </button>
+              
+              {/* Success Message */}
+              {showSuccess && (
+                <div 
+                  className="absolute -bottom-16 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#00ff88] to-[#00afaa] text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2 z-20"
+                  style={{ animation: 'fadeInDown 0.5s ease-out' }}
+                >
+                  <Icon icon="lucide:check-circle" className="text-xl" />
+                  <span className="text-sm font-semibold">Você será avisado quando lançarmos!</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

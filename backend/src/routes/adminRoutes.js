@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
 const plansController = require('../controllers/plansController');
+const cryptoController = require('../controllers/cryptoController');
 const authMiddleware = require('../middleware/auth');
 const adminAuthMiddleware = require('../middleware/adminAuth');
 
@@ -315,6 +316,10 @@ router.put('/users/:userId/plan', plansController.updateUserPlan);
  *         description: Acesso negado - apenas admins
  */
 router.delete('/users/:userId', adminController.deleteUser);
+
+// Rotas de Interessados em Cripto
+router.get('/crypto/interested', cryptoController.getAllInterested);
+router.put('/crypto/interested/:id/notify', cryptoController.markAsNotified);
 
 module.exports = router;
 
