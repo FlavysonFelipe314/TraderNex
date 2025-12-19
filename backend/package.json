@@ -9,6 +9,7 @@
     "init-db": "node src/config/initDB.js",
     "seed": "node src/config/seed.js",
     "migrate": "node src/config/runMigration.js",
+    "migrate:selected-plan": "node src/config/runMigrationSelectedPlanId.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:unit": "jest --testPathPattern=tests/unit"

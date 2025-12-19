@@ -18,7 +18,15 @@ const createTransporter = () => {
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD
-      }
+      },
+      // Configurações de timeout para evitar timeouts longos
+      connectionTimeout: 10000, // 10 segundos para estabelecer conexão
+      greetingTimeout: 10000, // 10 segundos para greeting
+      socketTimeout: 10000, // 10 segundos para operações de socket
+      // Retry configuration
+      pool: true,
+      maxConnections: 1,
+      maxMessages: 3
     });
     console.log('[emailService] Transporter SMTP criado com sucesso');
     return transporter;
@@ -206,11 +214,23 @@ exports.sendVerificationEmail = async (email, name, token) => {
       html: getVerificationEmailTemplate(name, verificationLink)
     };
 
-    const info = await transporter.sendMail(mailOptions);
+    // Usar Promise.race para timeout de 15 segundos
+    const sendPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout ao enviar email (15s)')), 15000)
+    );
+
+    const info = await Promise.race([sendPromise, timeoutPromise]);
     console.log(`✅ Email de verificação enviado para ${email}: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('❌ Erro ao enviar email de verificação:', error);
+    console.error('❌ Erro ao enviar email de verificação:', error.message);
+    if (error.code === 'ETIMEDOUT' || error.message.includes('Timeout')) {
+      console.error('   ⚠️  Timeout na conexão SMTP. Verifique:');
+      console.error('      - Se o servidor SMTP está acessível');
+      console.error('      - Se as credenciais estão corretas');
+      console.error('      - Se há firewall bloqueando a conexão');
+    }
     throw error;
   }
 };
@@ -246,11 +266,23 @@ exports.sendPasswordResetEmail = async (email, name, token) => {
       html: getPasswordResetEmailTemplate(name, resetLink)
     };
 
-    const info = await transporter.sendMail(mailOptions);
+    // Usar Promise.race para timeout de 15 segundos
+    const sendPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout ao enviar email (15s)')), 15000)
+    );
+
+    const info = await Promise.race([sendPromise, timeoutPromise]);
     console.log(`✅ Email de recuperação enviado para ${email}: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('❌ Erro ao enviar email de recuperação:', error);
+    console.error('❌ Erro ao enviar email de recuperação:', error.message);
+    if (error.code === 'ETIMEDOUT' || error.message.includes('Timeout')) {
+      console.error('   ⚠️  Timeout na conexão SMTP. Verifique:');
+      console.error('      - Se o servidor SMTP está acessível');
+      console.error('      - Se as credenciais estão corretas');
+      console.error('      - Se há firewall bloqueando a conexão');
+    }
     throw error;
   }
 };
