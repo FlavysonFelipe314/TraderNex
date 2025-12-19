@@ -568,3 +568,123 @@ exports.getUserInvestments = async (req, res) => {
     });
   }
 };
+
+// Obter transações do usuário
+exports.getTransactions = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { type, limit = 50, offset = 0 } = req.query;
+
+    let query = `SELECT id, type, amount, status, description, created_at
+                 FROM transactions WHERE user_id = $1`;
+    const queryParams = [userId];
+    let paramIndex = 2;
+
+    if (type) {
+      query += ` AND type = $${paramIndex}`;
+      queryParams.push(type);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    queryParams.push(parseInt(limit), parseInt(offset));
+
+    const result = await pool.query(query, queryParams);
+
+    res.json({
+      success: true,
+      data: result.rows.map(row => ({
+        ...row,
+        amount: parseFloat(row.amount) || 0
+      }))
+    });
+  } catch (error) {
+    console.error('Erro ao buscar transações:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar transações.',
+      error: error.message
+    });
+  }
+};
+
+// Obter faturas do usuário
+exports.getInvoices = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const result = await pool.query(
+      `SELECT id, invoice_number, amount, status, due_date, created_at
+       FROM invoices WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      data: result.rows.map(row => ({
+        ...row,
+        amount: parseFloat(row.amount) || 0
+      }))
+    });
+  } catch (error) {
+    console.error('Erro ao buscar faturas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar faturas.',
+      error: error.message
+    });
+  }
+};
+
+// Obter dados de indicações do usuário
+exports.getReferrals = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Buscar código de referência do usuário
+    const profileResult = await pool.query(
+      'SELECT referral_code FROM client_profiles WHERE user_id = $1',
+      [userId]
+    );
+
+    const referralCode = profileResult.rows[0]?.referral_code || null;
+
+    // Buscar indicações feitas por este usuário
+    const referralsResult = await pool.query(
+      `SELECT r.id, r.commission, r.status, r.created_at,
+              u.email as referred_email, u.first_name as referred_first_name, u.last_name as referred_last_name
+       FROM referrals r
+       JOIN users u ON r.referred_id = u.id
+       WHERE r.referrer_id = $1
+       ORDER BY r.created_at DESC`,
+      [userId]
+    );
+
+    // Calcular totais
+    const totalReferrals = referralsResult.rows.length;
+    const totalEarnings = referralsResult.rows.reduce((sum, ref) => {
+      return sum + (parseFloat(ref.commission) || 0);
+    }, 0);
+
+    res.json({
+      success: true,
+      data: {
+        referralCode,
+        totalReferrals,
+        totalEarnings,
+        referrals: referralsResult.rows.map(row => ({
+          ...row,
+          commission: parseFloat(row.commission) || 0
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar dados de indicações:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar dados de indicações.',
+      error: error.message
+    });
+  }
+};
