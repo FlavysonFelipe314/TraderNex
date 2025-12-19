@@ -61,7 +61,19 @@ export const getMT4Accounts = async () => {
 // Adicionar conta MT4
 export const addMT4Account = async (accountData) => {
   try {
-    const response = await api.post('/api/dashboard/mt4-accounts', accountData)
+    // Mapear campos do frontend para o backend
+    const payload = {
+      account_number: accountData.login || accountData.account_number || accountData.accountNumber,
+      broker: accountData.broker,
+      server: accountData.server,
+      // Campos opcionais
+      account_name: accountData.account_name || null,
+      balance: accountData.balance || 0,
+      equity: accountData.equity || 0,
+      currency: accountData.currency || 'USD'
+    }
+    
+    const response = await api.post('/api/dashboard/mt4-accounts', payload)
     return {
       success: response.data.success,
       data: response.data.data,
