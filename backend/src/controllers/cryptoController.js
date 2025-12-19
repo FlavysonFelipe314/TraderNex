@@ -7,7 +7,8 @@ const pool = require('../config/database');
 exports.registerInterest = async (req, res) => {
   try {
     const userId = req.user?.userId || null;
-    const { email } = req.body;
+    // req.body pode ser undefined se o body estiver vazio, então verificamos de forma segura
+    const email = (req.body && req.body.email) ? req.body.email : null;
 
     // Se não tiver userId, email é obrigatório
     if (!userId && !email) {
@@ -42,12 +43,19 @@ exports.registerInterest = async (req, res) => {
     }
 
     // Verificar se já está registrado
-    const existingCheck = await pool.query(
-      userId 
-        ? 'SELECT id FROM crypto_interested WHERE user_id = $1'
-        : 'SELECT id FROM crypto_interested WHERE email = $1',
-      userId ? [userId] : [userEmail]
-    );
+    // Se tiver userId, verificar por user_id, senão verificar por email
+    let existingCheck;
+    if (userId) {
+      existingCheck = await pool.query(
+        'SELECT id FROM crypto_interested WHERE user_id = $1',
+        [userId]
+      );
+    } else {
+      existingCheck = await pool.query(
+        'SELECT id FROM crypto_interested WHERE email = $1',
+        [userEmail]
+      );
+    }
 
     if (existingCheck.rows.length > 0) {
       return res.json({

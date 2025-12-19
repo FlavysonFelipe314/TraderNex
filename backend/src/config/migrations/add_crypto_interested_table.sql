@@ -8,18 +8,25 @@ CREATE TABLE IF NOT EXISTS crypto_interested (
     notified BOOLEAN DEFAULT FALSE,
     notified_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id) -- Um usuário só pode se registrar uma vez
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Comentários
-COMMENT ON TABLE crypto_interested IS 'Usuários interessados em ser avisados sobre o lançamento do módulo de Cripto Futures';
-COMMENT ON COLUMN crypto_interested.user_id IS 'ID do usuário que se interessou (pode ser NULL se não estiver logado)';
-COMMENT ON COLUMN crypto_interested.email IS 'Email do interessado';
-COMMENT ON COLUMN crypto_interested.notified IS 'Indica se o usuário já foi notificado sobre o lançamento';
-COMMENT ON COLUMN crypto_interested.notified_at IS 'Data e hora em que o usuário foi notificado';
+-- Constraint ?nica para user_id (apenas quando n?o for NULL)
+-- Para email, tamb?m garantimos unicidade
+CREATE UNIQUE INDEX IF NOT EXISTS idx_crypto_interested_user_id_unique 
+ON crypto_interested(user_id) WHERE user_id IS NOT NULL;
 
--- Índices
+CREATE UNIQUE INDEX IF NOT EXISTS idx_crypto_interested_email_unique 
+ON crypto_interested(email);
+
+-- Coment?rios
+COMMENT ON TABLE crypto_interested IS 'Usu?rios interessados em ser avisados sobre o lan?amento do m?dulo de Cripto Futures';
+COMMENT ON COLUMN crypto_interested.user_id IS 'ID do usu?rio que se interessou (pode ser NULL se n?o estiver logado)';
+COMMENT ON COLUMN crypto_interested.email IS 'Email do interessado';
+COMMENT ON COLUMN crypto_interested.notified IS 'Indica se o usu?rio j? foi notificado sobre o lan?amento';
+COMMENT ON COLUMN crypto_interested.notified_at IS 'Data e hora em que o usu?rio foi notificado';
+
+-- ?ndices
 CREATE INDEX IF NOT EXISTS idx_crypto_interested_user_id ON crypto_interested(user_id);
 CREATE INDEX IF NOT EXISTS idx_crypto_interested_email ON crypto_interested(email);
 CREATE INDEX IF NOT EXISTS idx_crypto_interested_created_at ON crypto_interested(created_at DESC);
