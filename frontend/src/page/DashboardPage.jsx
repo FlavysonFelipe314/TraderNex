@@ -131,7 +131,7 @@ function DashboardPage() {
     }
 
     loadDashboardData()
-  }, [period])
+  }, [])
 
   const pulseKeyframes = `
     @keyframes pulse {
