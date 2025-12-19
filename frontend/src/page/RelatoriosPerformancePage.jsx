@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
-import { getPerformanceStats } from '../services/dashboardService'
+import { getPerformanceStats, getMyfxbookData } from '../services/dashboardService'
 
 function RelatoriosPerformancePage() {
   const [selectedPeriod, setSelectedPeriod] = useState('este-mes')
   const [performanceData, setPerformanceData] = useState(null)
+  const [myfxbookData, setMyfxbookData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -15,11 +16,18 @@ function RelatoriosPerformancePage() {
     }
   }, [])
 
-  // Carregar dados de performance
+  // Carregar dados de performance e MyFXBook
   useEffect(() => {
     const loadPerformanceData = async () => {
       setLoading(true)
       try {
+        // Carregar dados do MyFXBook
+        const myfxbookResult = await getMyfxbookData()
+        if (myfxbookResult.success && myfxbookResult.data?.connected) {
+          setMyfxbookData(myfxbookResult.data)
+        }
+
+        // Carregar dados de performance como fallback
         const periodMap = {
           'hoje': 'day',
           '7-dias': 'week',
@@ -41,19 +49,151 @@ function RelatoriosPerformancePage() {
     loadPerformanceData()
   }, [selectedPeriod])
 
+  // Calcular KPIs baseados em dados do MyFXBook
+  const kpis = useMemo(() => {
+    if (!myfxbookData?.account) {
+      return {
+        totalReturn: 0,
+        netProfit: 0,
+        profitFactor: 0,
+        maxDrawdown: 0
+      }
+    }
+
+    const account = myfxbookData.account
+    return {
+      totalReturn: parseFloat(account.absGain || account.gain || 0),
+      netProfit: parseFloat(account.profit || 0),
+      profitFactor: parseFloat(account.profitFactor || 0),
+      maxDrawdown: Math.abs(parseFloat(account.drawdown || 0))
+    }
+  }, [myfxbookData])
+
+  // Processar histórico mensal dos dados do MyFXBook
+  const monthlyHistory = useMemo(() => {
+    if (!myfxbookData?.history || myfxbookData.history.length === 0) {
+      return []
+    }
+
+    // Agrupar trades por mês
+    const monthlyMap = new Map()
+    
+    myfxbookData.history.forEach(trade => {
+      const date = new Date(trade.closeTime || trade.time || trade.date)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const monthLabel = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+      
+      if (!monthlyMap.has(monthKey)) {
+        monthlyMap.set(monthKey, {
+          period: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
+          trades: 0,
+          profit: 0,
+          drawdown: 0,
+          return: 0
+        })
+      }
+      
+      const monthData = monthlyMap.get(monthKey)
+      monthData.trades += 1
+      const profit = parseFloat(trade.profit || 0)
+      monthData.profit += profit
+    })
+
+    // Calcular drawdown e retorno para cada mês
+    if (myfxbookData.dailyGain && myfxbookData.dailyGain.length > 0) {
+      myfxbookData.dailyGain.forEach(day => {
+        const date = new Date(day.date || day.time)
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        
+        if (monthlyMap.has(monthKey)) {
+          const monthData = monthlyMap.get(monthKey)
+          const drawdown = Math.abs(parseFloat(day.drawdown || 0))
+          if (drawdown > monthData.drawdown) {
+            monthData.drawdown = drawdown
+          }
+        }
+      })
+    }
+
+    // Converter para array e ordenar por data (mais recente primeiro)
+    const history = Array.from(monthlyMap.values())
+      .map(month => ({
+        ...month,
+        profitFormatted: month.profit >= 0 
+          ? `$ ${month.profit.toFixed(2)}` 
+          : `-$ ${Math.abs(month.profit).toFixed(2)}`,
+        drawdownFormatted: `${month.drawdown.toFixed(2)}%`,
+        returnFormatted: month.profit >= 0 
+          ? `+${((month.profit / (kpis.netProfit || 1)) * 100).toFixed(1)}%` 
+          : `${((month.profit / (kpis.netProfit || 1)) * 100).toFixed(1)}%`,
+        isPositive: month.profit >= 0,
+        isWarning: month.drawdown > 3
+      }))
+      .sort((a, b) => {
+        // Ordenar por período (mais recente primeiro)
+        const dateA = new Date(a.period)
+        const dateB = new Date(b.period)
+        return dateB - dateA
+      })
+      .slice(0, 12) // Últimos 12 meses
+
+    return history
+  }, [myfxbookData, kpis.netProfit])
+
+  // Dados do gráfico
+  const chartData = useMemo(() => {
+    if (myfxbookData?.dataDaily && myfxbookData.dataDaily.length > 0) {
+      return myfxbookData.dataDaily.map(item => ({
+        date: new Date(item.date || item.time),
+        equity: parseFloat(item.equity || 0),
+        balance: parseFloat(item.balance || 0)
+      })).sort((a, b) => a.date - b.date)
+    } else if (myfxbookData?.dailyGain && myfxbookData.dailyGain.length > 0) {
+      let cumulative = 0
+      return myfxbookData.dailyGain.map(item => {
+        cumulative += parseFloat(item.gain || item.profit || 0)
+        return {
+          date: new Date(item.date || item.time),
+          equity: cumulative,
+          balance: cumulative
+        }
+      }).sort((a, b) => a.date - b.date)
+    }
+    return []
+  }, [myfxbookData])
+
+  // Exportar CSV
+  const handleExportCSV = () => {
+    if (!myfxbookData) {
+      alert('Nenhum dado disponível para exportar')
+      return
+    }
+
+    let csvContent = 'data:text/csv;charset=utf-8,'
+    
+    // Cabeçalho
+    csvContent += 'Período,Operações,Drawdown,Lucro Líquido,Retorno\n'
+    
+    // Dados mensais
+    monthlyHistory.forEach(month => {
+      csvContent += `"${month.period}",${month.trades} trades,"${month.drawdownFormatted}","${month.profitFormatted}","${month.returnFormatted}"\n`
+    })
+    
+    // Criar link de download
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `relatorio-performance-${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   const periods = [
     { id: 'hoje', label: 'Hoje' },
     { id: '7-dias', label: '7 dias' },
     { id: 'este-mes', label: 'Este mês' },
     { id: 'este-ano', label: 'Este ano' },
-  ]
-
-  const historyData = [
-    { period: 'Setembro 2025', trades: '142 trades', drawdown: '1.2%', profit: '$ 1,240.50', return: '+4.2%', isPositive: true },
-    { period: 'Agosto 2025', trades: '115 trades', drawdown: '0.8%', profit: '$ 980.00', return: '+3.8%', isPositive: true },
-    { period: 'Julho 2025', trades: '128 trades', drawdown: '2.1%', profit: '$ 1,850.20', return: '+6.1%', isPositive: true },
-    { period: 'Junho 2025', trades: '98 trades', drawdown: '1.5%', profit: '$ 850.00', return: '+2.9%', isPositive: true },
-    { period: 'Maio 2025', trades: '85 trades', drawdown: '3.2%', profit: '-$ 120.00', return: '-0.4%', isPositive: false, isWarning: true },
   ]
 
   return (
@@ -85,7 +225,10 @@ function RelatoriosPerformancePage() {
               ))}
             </div>
             {/* Export Button */}
-            <button className="flex items-center gap-2 px-5 h-11 bg-white text-[#111827] border border-[#e5e7eb] rounded-xl text-[13px] font-semibold cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:border-[#00ff88] hover:shadow-[0_0_0_3px_rgba(0,255,136,0.1)] hover:text-[#00afaa]">
+            <button 
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 px-5 h-11 bg-white text-[#111827] border border-[#e5e7eb] rounded-xl text-[13px] font-semibold cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:border-[#00ff88] hover:shadow-[0_0_0_3px_rgba(0,255,136,0.1)] hover:text-[#00afaa]"
+            >
               <Icon icon="lucide:download" className="text-base" />
               <span>CSV</span>
             </button>
@@ -103,7 +246,9 @@ function RelatoriosPerformancePage() {
               </div>
             </div>
             <div>
-              <div className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-[#059669] tracking-tight leading-none mb-1.5">+42,8%</div>
+              <div className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-[#059669] tracking-tight leading-none mb-1.5">
+                {loading ? '...' : `${kpis.totalReturn >= 0 ? '+' : ''}${kpis.totalReturn.toFixed(2)}%`}
+              </div>
               <div className="text-xs sm:text-[13px] text-[#9ba0aa] font-normal">Desde o início</div>
             </div>
           </div>
@@ -117,7 +262,9 @@ function RelatoriosPerformancePage() {
               </div>
             </div>
             <div>
-              <div className="text-[32px] font-bold text-[#059669] tracking-tight leading-none mb-1.5">$ 12,450.00</div>
+              <div className="text-[32px] font-bold text-[#059669] tracking-tight leading-none mb-1.5">
+                {loading ? '...' : `$ ${kpis.netProfit.toFixed(2)}`}
+              </div>
               <div className="text-[13px] text-[#9ba0aa] font-normal">Acumulado no ano</div>
             </div>
           </div>
@@ -131,8 +278,12 @@ function RelatoriosPerformancePage() {
               </div>
             </div>
             <div>
-              <div className="text-[32px] font-bold text-[#111827] tracking-tight leading-none mb-1.5">2.45</div>
-              <div className="text-[13px] text-[#9ba0aa] font-normal">Alta eficiência</div>
+              <div className="text-[32px] font-bold text-[#111827] tracking-tight leading-none mb-1.5">
+                {loading ? '...' : kpis.profitFactor.toFixed(2)}
+              </div>
+              <div className="text-[13px] text-[#9ba0aa] font-normal">
+                {kpis.profitFactor >= 2 ? 'Alta eficiência' : kpis.profitFactor >= 1 ? 'Eficiência moderada' : 'Baixa eficiência'}
+              </div>
             </div>
           </div>
 
@@ -145,8 +296,12 @@ function RelatoriosPerformancePage() {
               </div>
             </div>
             <div>
-              <div className="text-[32px] font-bold text-[#e53935] tracking-tight leading-none mb-1.5">-4.2%</div>
-              <div className="text-[13px] text-[#9ba0aa] font-normal">Risco controlado</div>
+              <div className="text-[32px] font-bold text-[#e53935] tracking-tight leading-none mb-1.5">
+                {loading ? '...' : `-${kpis.maxDrawdown.toFixed(2)}%`}
+              </div>
+              <div className="text-[13px] text-[#9ba0aa] font-normal">
+                {kpis.maxDrawdown < 5 ? 'Risco controlado' : kpis.maxDrawdown < 10 ? 'Risco moderado' : 'Risco elevado'}
+              </div>
             </div>
           </div>
         </div>
@@ -171,68 +326,109 @@ function RelatoriosPerformancePage() {
           </div>
 
           <div className="h-[380px] w-full relative">
-            <svg
-              viewBox="0 0 1000 350"
-              preserveAspectRatio="none"
-              className="w-full h-full overflow-visible"
-            >
-              <defs>
-                <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="rgba(0, 255, 136, 0.12)" />
-                  <stop offset="100%" stopColor="rgba(0, 255, 136, 0)" />
-                </linearGradient>
-              </defs>
-              
-              {/* Grid Lines */}
-              <line x1="0" y1="300" x2="1000" y2="300" stroke="#F3F4F6" strokeWidth="1" />
-              <line x1="0" y1="225" x2="1000" y2="225" stroke="#F3F4F6" strokeWidth="1" />
-              <line x1="0" y1="150" x2="1000" y2="150" stroke="#F3F4F6" strokeWidth="1" />
-              <line x1="0" y1="75" x2="1000" y2="75" stroke="#F3F4F6" strokeWidth="1" />
-              
-              {/* Area Fill */}
-              <path
-                d="M0,300 C150,295 300,245 450,230 C600,215 750,130 850,110 C950,90 1000,60 1000,60 L1000,350 L0,350 Z"
-                fill="url(#chartGradient)"
-                stroke="none"
-              />
-              
-              {/* Main Line */}
-              <path
-                d="M0,300 C150,295 300,245 450,230 C600,215 750,130 850,110 C950,90 1000,60 1000,60"
-                fill="none"
-                stroke="#00FF88"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-              
-              {/* Markers */}
-              <circle cx="0" cy="300" r="5" fill="#00FF88" stroke="white" strokeWidth="2.5" />
-              <circle cx="450" cy="230" r="5" fill="#00FF88" stroke="white" strokeWidth="2.5" />
-              <circle cx="850" cy="110" r="5" fill="#00FF88" stroke="white" strokeWidth="2.5" />
-              <circle cx="1000" cy="60" r="6" fill="#00FF88" stroke="white" strokeWidth="3" style={{ filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))' }} />
-            </svg>
-
-            {/* Tooltip */}
-            <div className="absolute top-5 right-0 bg-white px-3.5 py-2.5 rounded-[10px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] border border-[#f3f4f6] flex flex-col gap-0.5 pointer-events-none">
-              <div className="text-[11px] text-[#6b7280] font-medium uppercase">Dezembro</div>
-              <div className="text-sm text-[#111827] font-bold">$ 14,250.00</div>
-            </div>
+            {chartData.length > 0 ? (
+              <svg
+                viewBox="0 0 1000 350"
+                preserveAspectRatio="none"
+                className="w-full h-full overflow-visible"
+              >
+                <defs>
+                  <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(0, 255, 136, 0.12)" />
+                    <stop offset="100%" stopColor="rgba(0, 255, 136, 0)" />
+                  </linearGradient>
+                </defs>
+                
+                {/* Grid Lines */}
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <line 
+                    key={i}
+                    x1="0" 
+                    y1={300 - (i * 75)} 
+                    x2="1000" 
+                    y2={300 - (i * 75)} 
+                    stroke="#F3F4F6" 
+                    strokeWidth="1" 
+                  />
+                ))}
+                
+                {/* Calcular valores para o gráfico */}
+                {(() => {
+                  const values = chartData.map(d => d.equity || d.balance)
+                  const min = Math.min(...values)
+                  const max = Math.max(...values)
+                  const range = max - min || 1
+                  
+                  const points = chartData.map((d, i) => {
+                    const x = chartData.length > 1 ? (i / (chartData.length - 1)) * 1000 : 500
+                    const y = 300 - ((d.equity || d.balance - min) / range) * 250
+                    return `${x},${y}`
+                  }).join(' ')
+                  
+                  const areaPath = `M0,300 ${points} L1000,300 Z`
+                  
+                  return (
+                    <>
+                      {/* Area Fill */}
+                      <path
+                        d={areaPath}
+                        fill="url(#chartGradient)"
+                        stroke="none"
+                      />
+                      
+                      {/* Main Line */}
+                      <path
+                        d={`M${points.replace(/ /g, ' L')}`}
+                        fill="none"
+                        stroke="#00FF88"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                      />
+                      
+                      {/* Markers */}
+                      {chartData.map((d, i) => {
+                        const x = chartData.length > 1 ? (i / (chartData.length - 1)) * 1000 : 500
+                        const values = chartData.map(d => d.equity || d.balance)
+                        const min = Math.min(...values)
+                        const max = Math.max(...values)
+                        const range = max - min || 1
+                        const y = 300 - ((d.equity || d.balance - min) / range) * 250
+                        const isLast = i === chartData.length - 1
+                        return (
+                          <circle 
+                            key={i}
+                            cx={x} 
+                            cy={y} 
+                            r={isLast ? 6 : 5} 
+                            fill="#00FF88" 
+                            stroke="white" 
+                            strokeWidth={isLast ? 3 : 2.5}
+                            style={isLast ? { filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))' } : {}}
+                          />
+                        )
+                      })}
+                    </>
+                  )
+                })()}
+              </svg>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[#94A3B8] text-sm">
+                {loading ? 'Carregando dados...' : 'Nenhum dado disponível para exibir no gráfico'}
+              </div>
+            )}
 
             {/* X Axis Labels */}
-            <div className="flex justify-between pt-5 text-[#9ca3af] text-xs font-medium">
-              <span>Jan</span>
-              <span>Fev</span>
-              <span>Mar</span>
-              <span>Abr</span>
-              <span>Mai</span>
-              <span>Jun</span>
-              <span>Jul</span>
-              <span>Ago</span>
-              <span>Set</span>
-              <span>Out</span>
-              <span>Nov</span>
-              <span>Dez</span>
-            </div>
+            {chartData.length > 0 && (
+              <div className="flex justify-between pt-5 text-[#9ca3af] text-xs font-medium">
+                {chartData
+                  .filter((_, i) => i % Math.ceil(chartData.length / 12) === 0 || i === chartData.length - 1)
+                  .map((d, i) => (
+                    <span key={i}>
+                      {d.date.toLocaleDateString('pt-BR', { month: 'short' })}
+                    </span>
+                  ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -273,37 +469,45 @@ function RelatoriosPerformancePage() {
           </div>
 
           {/* Table Rows */}
-          {historyData.map((row, index) => (
-            <div
-              key={index}
-              className={`grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_1fr_0.8fr] items-center px-6 py-6 border-b border-[#f9fafb] transition-all hover:bg-[#f3f4f6] hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] ${
-                index % 2 === 0 ? 'bg-[#fafafa]' : ''
-              } ${index === historyData.length - 1 ? 'border-b-0' : ''}`}
-            >
-              <div className="text-sm font-semibold text-[#111827]">{row.period}</div>
-              <div className="text-sm text-[#6b7280]">{row.trades}</div>
-              <div className={`text-sm ${row.isWarning ? 'text-[#f59e0b] font-semibold' : 'text-[#6b7280]'}`}>
-                {row.drawdown}
+          {loading ? (
+            <div className="px-6 py-12 text-center text-[#6b7280]">Carregando dados...</div>
+          ) : monthlyHistory.length > 0 ? (
+            monthlyHistory.map((row, index) => (
+              <div
+                key={index}
+                className={`grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_1fr_0.8fr] items-center px-6 py-6 border-b border-[#f9fafb] transition-all hover:bg-[#f3f4f6] hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] ${
+                  index % 2 === 0 ? 'bg-[#fafafa]' : ''
+                } ${index === monthlyHistory.length - 1 ? 'border-b-0' : ''}`}
+              >
+                <div className="text-sm font-semibold text-[#111827]">{row.period}</div>
+                <div className="text-sm text-[#6b7280]">{row.trades} trades</div>
+                <div className={`text-sm ${row.isWarning ? 'text-[#f59e0b] font-semibold' : 'text-[#6b7280]'}`}>
+                  {row.drawdownFormatted}
+                </div>
+                <div className="text-sm text-[#6b7280]">{row.profitFormatted}</div>
+                <div>
+                  {row.isPositive ? (
+                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold min-w-[64px] bg-[rgba(0,255,136,0.08)] text-[#059669] border border-[rgba(0,255,136,0.15)]">
+                      {row.returnFormatted}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold min-w-[64px] bg-[#fef2f2] text-[#dc2626] border border-[#fecaca]">
+                      {row.returnFormatted}
+                    </span>
+                  )}
+                </div>
+                <div className="flex justify-end">
+                  <button className="w-8 h-8 rounded-lg border border-transparent bg-transparent flex items-center justify-center text-[#6b7280] cursor-pointer transition-all hover:bg-white hover:border-[#e5e7eb] hover:text-[#111827] hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
+                    <Icon icon="lucide:file-text" className="text-base" />
+                  </button>
+                </div>
               </div>
-              <div className="text-sm text-[#6b7280]">{row.profit}</div>
-              <div>
-                {row.isPositive ? (
-                  <span className="inline-flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold min-w-[64px] bg-[rgba(0,255,136,0.08)] text-[#059669] border border-[rgba(0,255,136,0.15)]">
-                    {row.return}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold min-w-[64px] bg-[#fef2f2] text-[#dc2626] border border-[#fecaca]">
-                    {row.return}
-                  </span>
-                )}
-              </div>
-              <div className="flex justify-end">
-                <button className="w-8 h-8 rounded-lg border border-transparent bg-transparent flex items-center justify-center text-[#6b7280] cursor-pointer transition-all hover:bg-white hover:border-[#e5e7eb] hover:text-[#111827] hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-                  <Icon icon="lucide:file-text" className="text-base" />
-                </button>
-              </div>
+            ))
+          ) : (
+            <div className="px-6 py-12 text-center text-[#6b7280]">
+              {myfxbookData ? 'Nenhum dado histórico disponível' : 'Conecte sua conta MyFXBook para ver os relatórios'}
             </div>
-          ))}
+          )}
         </div>
       </div>
     </DashboardLayout>
