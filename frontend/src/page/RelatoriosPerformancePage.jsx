@@ -403,7 +403,7 @@ function RelatoriosPerformancePage() {
             ))
           ) : (
             <div className="px-6 py-12 text-center text-[#6b7280]">
-              {myfxbookData ? 'Nenhum dado histórico disponível' : 'Conecte sua conta MyFXBook para ver os relatórios'}
+              {myfxbookData ? 'Nenhum dado histórico disponível' : 'Conecte sua conta MT4 para ver os relatórios'}
             </div>
           )}
         </div>
