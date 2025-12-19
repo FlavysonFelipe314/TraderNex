@@ -14,6 +14,8 @@ function ContaForexMT4Page() {
   const [lastUpdated, setLastUpdated] = useState('2 min')
   const [mt4Accounts, setMt4Accounts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [myfxbookConnected, setMyfxbookConnected] = useState(false)
+  const [myfxbookData, setMyfxbookData] = useState(null)
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
