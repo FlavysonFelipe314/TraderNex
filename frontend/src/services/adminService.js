@@ -246,4 +246,96 @@ export const testUserMyfxbookIntegration = async (userId) => {
   }
 }
 
+// Gerenciamento de Planos (Admin)
+export const getAllPlans = async () => {
+  try {
+    const response = await api.get('/api/admin/plans')
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao buscar planos:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao buscar planos.',
+      error: error.response?.data
+    }
+  }
+}
+
+export const createPlan = async (planData) => {
+  try {
+    const response = await api.post('/api/admin/plans', planData)
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao criar plano:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao criar plano.',
+      error: error.response?.data
+    }
+  }
+}
+
+export const updatePlan = async (planId, planData) => {
+  try {
+    const response = await api.put(`/api/admin/plans/${planId}`, planData)
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar plano:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao atualizar plano.',
+      error: error.response?.data
+    }
+  }
+}
+
+export const deletePlan = async (planId) => {
+  try {
+    const response = await api.delete(`/api/admin/plans/${planId}`)
+    return {
+      success: response.data.success,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao deletar plano:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao deletar plano.',
+      error: error.response?.data
+    }
+  }
+}
+
+export const updateUserPlan = async (userId, planId) => {
+  try {
+    const response = await api.put(`/api/admin/users/${userId}/plan`, {
+      plan_id: planId
+    })
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar plano do usuário:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao atualizar plano do usuário.',
+      error: error.response?.data
+    }
+  }
+}
+
 

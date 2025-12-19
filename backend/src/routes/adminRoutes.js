@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const plansController = require('../controllers/plansController');
 const authMiddleware = require('../middleware/auth');
 const adminAuthMiddleware = require('../middleware/adminAuth');
 
@@ -285,6 +286,13 @@ router.get('/users/:userId/myfxbook-test', adminController.testUserMyfxbookInteg
  *         description: Acesso negado - apenas admins
  */
 router.get('/myfxbook/account/:accountId/data', adminController.getMyfxbookAccountDataByAccountId);
+
+// Rotas de Planos de Investimento
+router.get('/plans', plansController.getAllPlans);
+router.post('/plans', plansController.createPlan);
+router.put('/plans/:planId', plansController.updatePlan);
+router.delete('/plans/:planId', plansController.deletePlan);
+router.put('/users/:userId/plan', plansController.updateUserPlan);
 
 module.exports = router;
 

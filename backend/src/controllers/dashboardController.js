@@ -84,24 +84,24 @@ exports.getDashboardData = async (req, res) => {
 exports.getPerformanceStats = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { period } = req.query; // day, week, month, year
+    const { period } = req.query; // 7d, 30d, 90d, 1y
 
     let dateFilter = '';
     switch (period) {
-      case 'day':
-        dateFilter = "report_date >= CURRENT_DATE - INTERVAL '1 day'";
-        break;
-      case 'week':
+      case '7d':
         dateFilter = "report_date >= CURRENT_DATE - INTERVAL '7 days'";
         break;
-      case 'month':
+      case '30d':
         dateFilter = "report_date >= CURRENT_DATE - INTERVAL '30 days'";
         break;
-      case 'year':
+      case '90d':
+        dateFilter = "report_date >= CURRENT_DATE - INTERVAL '90 days'";
+        break;
+      case '1y':
         dateFilter = "report_date >= CURRENT_DATE - INTERVAL '365 days'";
         break;
       default:
-        dateFilter = "report_date >= CURRENT_DATE - INTERVAL '7 days'";
+        dateFilter = "report_date >= CURRENT_DATE - INTERVAL '30 days'";
     }
 
     const result = await pool.query(

@@ -26,6 +26,7 @@ function Sidebar() {
 
   const adminNavItems = [
     { id: 'admin', label: 'Painel Admin', icon: 'lucide:shield', path: '/admin' },
+    { id: 'plans', label: 'Planos', icon: 'lucide:package', path: '/admin/plans' },
   ]
 
   const isActive = (path) => {

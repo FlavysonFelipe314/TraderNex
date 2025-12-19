@@ -98,7 +98,7 @@ function ContaForexMT4Page() {
       <div className="max-w-[1080px] flex flex-col gap-4 sm:gap-6 lg:gap-7">
         {/* Top Cards Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Broker Card - Status MyFXBook */}
+          {/* Card 1: Status MT4 Conectado */}
           <div className="bg-white rounded-xl sm:rounded-2xl border border-[#e5e7eb] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.03)] h-auto sm:h-[110px] flex items-center px-4 sm:px-7 py-4 sm:py-0 gap-4 sm:gap-5 hover:-translate-y-0.5 transition-transform">
             <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${
               myfxbookConnected 
@@ -111,7 +111,7 @@ function ContaForexMT4Page() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] sm:text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">Broker Conectado</span>
+              <span className="text-[10px] sm:text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">MT4 Conectado</span>
               <span className={`text-sm sm:text-base font-bold ${
                 myfxbookConnected ? 'text-[#059669]' : 'text-[#dc2626]'
               }`}>
@@ -120,8 +120,21 @@ function ContaForexMT4Page() {
             </div>
           </div>
 
-          {/* Falcon AI Card */}
-          <div className="bg-[#0e0e10] rounded-xl sm:rounded-2xl border border-[#1f2937] shadow-[0_8px_30px_rgba(0,255,136,0.05)] h-auto sm:h-[110px] flex items-center justify-between px-4 sm:px-7 py-4 sm:py-0 hover:-translate-y-0.5 transition-transform sm:col-span-2 lg:col-span-1">
+          {/* Card 2: Nome do Broker */}
+          <div className="bg-white rounded-xl sm:rounded-2xl border border-[#e5e7eb] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.03)] h-auto sm:h-[110px] flex items-center px-4 sm:px-7 py-4 sm:py-0 gap-4 sm:gap-5 hover:-translate-y-0.5 transition-transform">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#f9fafb] rounded-xl flex items-center justify-center text-[#4b5563]">
+              <Icon icon="lucide:server" className="text-lg sm:text-xl" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] sm:text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">Broker</span>
+              <span className="text-sm sm:text-base font-bold text-[#111827]">
+                {mt4Accounts.length > 0 ? mt4Accounts[0].broker || 'N/A' : 'N/A'}
+              </span>
+            </div>
+          </div>
+
+          {/* Card 3: Falcon AI */}
+          <div className="bg-[#0e0e10] rounded-xl sm:rounded-2xl border border-[#1f2937] shadow-[0_8px_30px_rgba(0,255,136,0.05)] h-auto sm:h-[110px] flex items-center justify-between px-4 sm:px-7 py-4 sm:py-0 hover:-translate-y-0.5 transition-transform">
             <div className="flex items-center gap-3 sm:gap-5">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[rgba(255,255,255,0.08)] rounded-xl flex items-center justify-center text-[#00ff88] border border-[rgba(0,255,136,0.2)] shadow-[0_0_15px_rgba(0,255,136,0.15)]">
                 <Icon icon="lucide:zap" className="text-lg sm:text-[22px]" />

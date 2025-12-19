@@ -178,12 +178,6 @@ function DashboardPage() {
                 </button>
               ))}
             </div>
-            <button className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 rounded-full text-xs sm:text-[13px] font-semibold cursor-pointer transition-all duration-300 h-10 sm:h-11 tracking-[-0.01em] whitespace-nowrap bg-[#00FF88] text-[#003319] shadow-[0_0_12px_rgba(0,255,136,0.25)] border border-[rgba(0,255,136,0.2)] hover:-translate-y-[1px] hover:shadow-[0_6px_20px_rgba(0,255,136,0.35)] hover:bg-[#1AFF95] w-full sm:w-auto" data-media-type="banani-button">
-              <div className="w-3.5 h-3.5 flex items-center justify-center">
-                <Icon icon="lucide:refresh-ccw" className="text-sm" />
-              </div>
-              <span>Sincronizar</span>
-            </button>
           </div>
         </div>
 

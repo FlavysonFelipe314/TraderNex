@@ -7,7 +7,7 @@ const pool = require('../config/database');
  */
 exports.getAllUsers = async (req, res) => {
   try {
-    // Buscar todos os usuários não-admin
+    // Buscar todos os usuários não-admin com plano selecionado
     const usersResult = await pool.query(
       `SELECT 
         u.id,
@@ -16,8 +16,12 @@ exports.getAllUsers = async (req, res) => {
         u.last_name,
         u.created_at,
         u.is_active,
-        u.email_verified
+        u.email_verified,
+        cp.selected_plan_id,
+        ip.name as plan_name
       FROM users u
+      LEFT JOIN client_profiles cp ON u.id = cp.user_id
+      LEFT JOIN investment_plans ip ON cp.selected_plan_id = ip.id
       WHERE u.is_admin = FALSE
       ORDER BY u.created_at DESC`
     );
@@ -70,7 +74,9 @@ exports.getAllUsers = async (req, res) => {
           myfxbook: myfxbookResult.rows[0] || null,
           has_mt4: mt4Result.rows.length > 0,
           has_myfxbook: myfxbookResult.rows.length > 0,
-          mt4_count: mt4Result.rows.length
+          mt4_count: mt4Result.rows.length,
+          selected_plan_id: user.selected_plan_id,
+          plan_name: user.plan_name
         };
       })
     );

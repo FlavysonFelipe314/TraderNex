@@ -8,7 +8,12 @@ import {
   setSystemMyfxbookConfig,
   getSystemMyfxbookConfig,
   testMyfxbookHealth,
-  testUserMyfxbookIntegration
+  testUserMyfxbookIntegration,
+  getAllPlans,
+  createPlan,
+  updatePlan,
+  deletePlan,
+  updateUserPlan
 } from '../services/adminService'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
@@ -19,8 +24,22 @@ function AdminPage() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState(null)
-  const [activeModal, setActiveModal] = useState(null) // 'mt4', 'controls', 'system-config'
+  const [activeModal, setActiveModal] = useState(null) // 'mt4', 'controls', 'system-config', 'plans', 'user-plan'
   const [filter, setFilter] = useState('all') // 'all', 'with-mt4', 'without-mt4', 'with-myfxbook', 'without-myfxbook'
+  const [plans, setPlans] = useState([])
+  const [editingPlan, setEditingPlan] = useState(null)
+  const [planForm, setPlanForm] = useState({
+    name: '',
+    description: '',
+    min_investment: '',
+    max_investment: '',
+    expected_return: '',
+    duration_days: '',
+    risk_level: 'Medium',
+    is_active: true
+  })
+  const [userPlanModal, setUserPlanModal] = useState(null) // userId quando aberto
+  const [selectedUserPlan, setSelectedUserPlan] = useState('')
   
   // Estados para edição
   const [editingLogin, setEditingLogin] = useState('')
@@ -44,7 +63,19 @@ function AdminPage() {
   useEffect(() => {
     loadUsers()
     loadSystemConfig()
+    loadPlans()
   }, [])
+
+  const loadPlans = async () => {
+    try {
+      const result = await getAllPlans()
+      if (result.success) {
+        setPlans(result.data || [])
+      }
+    } catch (error) {
+      console.error('Erro ao carregar planos:', error)
+    }
+  }
 
   const loadSystemConfig = async () => {
     try {
@@ -194,6 +225,29 @@ function AdminPage() {
     setSelectedUser(null)
     setActiveModal(null)
     setEditingLogin('')
+    setUserPlanModal(null)
+    setSelectedUserPlan('')
+  }
+
+  const handleSaveUserPlan = async () => {
+    if (!userPlanModal) return
+
+    setSaving(true)
+    try {
+      const result = await updateUserPlan(userPlanModal, selectedUserPlan || null)
+      if (result.success) {
+        await loadUsers()
+        closeModal()
+        alert('Plano do usuário atualizado com sucesso!')
+      } else {
+        alert('Erro ao salvar: ' + (result.message || 'Erro desconhecido'))
+      }
+    } catch (error) {
+      console.error('Erro ao salvar plano do usuário:', error)
+      alert('Erro ao salvar plano do usuário.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSaveMyfxbookLogin = async () => {
@@ -441,7 +495,13 @@ function AdminPage() {
                     </h3>
                     <p className="text-sm text-[#6b7280]">{user.email}</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {user.plan_name && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[#f0fdf4] text-[#166534]">
+                        <Icon icon="lucide:package" className="text-xs mr-1" />
+                        {user.plan_name}
+                      </span>
+                    )}
                     {user.has_mt4 && (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[#dbeafe] text-[#1e40af]">
                         <Icon icon="lucide:database" className="text-xs mr-1" />
@@ -501,6 +561,13 @@ function AdminPage() {
                       Controles
                     </button>
                   )}
+                  <button
+                    onClick={() => openModal(user, 'user-plan')}
+                    className="flex-1 px-3 py-2 bg-[#f0fdf4] hover:bg-[#dcfce7] text-[#166534] rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                  >
+                    <Icon icon="lucide:package" className="text-sm" />
+                    Plano
+                  </button>
                 </div>
               </div>
             ))}
@@ -724,6 +791,52 @@ function AdminPage() {
                   className="w-full px-4 py-2 bg-[#00afaa] text-white rounded-lg text-sm font-medium hover:bg-[#009a96] transition-colors disabled:opacity-50"
                 >
                   {saving ? 'Salvando...' : 'Salvar Controles'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Selecionar Plano do Usuário */}
+        {activeModal === 'user-plan' && userPlanModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+              <div className="sticky top-0 bg-white border-b border-[#e5e7eb] px-6 py-4 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-[#111827]">
+                  Selecionar Plano - {selectedUser?.first_name} {selectedUser?.last_name}
+                </h2>
+                <button
+                  onClick={closeModal}
+                  className="text-[#6b7280] hover:text-[#111827] transition-colors"
+                >
+                  <Icon icon="lucide:x" className="text-2xl" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-[#111827] mb-2 block">
+                    Plano de Investimento
+                  </label>
+                  <select
+                    value={selectedUserPlan}
+                    onChange={(e) => setSelectedUserPlan(e.target.value)}
+                    className="w-full px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
+                    disabled={saving}
+                  >
+                    <option value="">Nenhum plano</option>
+                    {plans.map((plan) => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name} {plan.is_active ? '' : '(Inativo)'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={handleSaveUserPlan}
+                  disabled={saving}
+                  className="w-full px-4 py-2 bg-[#00afaa] text-white rounded-lg text-sm font-medium hover:bg-[#009a96] transition-colors disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Salvar'}
                 </button>
               </div>
             </div>

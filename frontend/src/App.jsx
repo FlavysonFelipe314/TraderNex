@@ -20,6 +20,7 @@ import RelatoriosPerformancePage from "./page/RelatoriosPerformancePage";
 import FaturasPerformancePage from "./page/FaturasPerformancePage";
 import Mt4CredentialsPage from "./page/Mt4CredentialsPage";
 import AdminPage from "./page/AdminPage";
+import AdminPlansPage from "./page/AdminPlansPage";
 
 function App() {
   return (
@@ -121,6 +122,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/plans"
+          element={
+            <ProtectedRoute>
+              <AdminPlansPage />
             </ProtectedRoute>
           }
         />
