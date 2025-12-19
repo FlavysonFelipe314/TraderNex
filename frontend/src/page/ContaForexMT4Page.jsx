@@ -4,7 +4,8 @@ import DashboardLayout from '../components/DashboardLayout'
 import { 
   getMT4Accounts, 
   addMT4Account,
-  updateMT4Settings
+  updateMT4Settings,
+  getMyfxbookData
 } from '../services/dashboardService'
 
 function ContaForexMT4Page() {
@@ -21,15 +22,19 @@ function ContaForexMT4Page() {
     }
   }, [])
 
-  // Carregar contas MT4
+  // Carregar contas MT4 e dados MyFXBook
   useEffect(() => {
     const loadMT4Accounts = async () => {
       setLoading(true)
       try {
-        const result = await getMT4Accounts()
-        console.log('Resultado getMT4Accounts:', result)
-        if (result.success) {
-          const accounts = result.data || []
+        const [mt4Result, myfxbookResult] = await Promise.all([
+          getMT4Accounts(),
+          getMyfxbookData()
+        ])
+        
+        console.log('Resultado getMT4Accounts:', mt4Result)
+        if (mt4Result.success) {
+          const accounts = mt4Result.data || []
           console.log('Contas MT4 carregadas:', accounts)
           setMt4Accounts(accounts)
           
@@ -44,10 +49,28 @@ function ContaForexMT4Page() {
             }
           }
         } else {
-          console.warn('Falha ao carregar contas MT4:', result.message)
+          console.warn('Falha ao carregar contas MT4:', mt4Result.message)
+        }
+
+        // Carregar dados MyFXBook
+        if (myfxbookResult.success && myfxbookResult.data) {
+          const isConnected = myfxbookResult.data.connected
+          setMyfxbookConnected(isConnected)
+          if (isConnected && myfxbookResult.data.account) {
+            setMyfxbookData({
+              equity: myfxbookResult.data.account.equity,
+              profit: myfxbookResult.data.account.profit,
+              currency: myfxbookResult.data.account.currency || 'USD'
+            })
+          } else {
+            setMyfxbookData(null)
+          }
+        } else {
+          setMyfxbookConnected(false)
+          setMyfxbookData(null)
         }
       } catch (error) {
-        console.error('Erro ao carregar contas MT4:', error)
+        console.error('Erro ao carregar dados:', error)
       } finally {
         setLoading(false)
       }
@@ -73,14 +96,25 @@ function ContaForexMT4Page() {
       <div className="max-w-[1080px] flex flex-col gap-4 sm:gap-6 lg:gap-7">
         {/* Top Cards Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Broker Card */}
+          {/* Broker Card - Status MyFXBook */}
           <div className="bg-white rounded-xl sm:rounded-2xl border border-[#e5e7eb] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.03)] h-auto sm:h-[110px] flex items-center px-4 sm:px-7 py-4 sm:py-0 gap-4 sm:gap-5 hover:-translate-y-0.5 transition-transform">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#f9fafb] rounded-xl flex items-center justify-center text-[#4b5563]">
-              <Icon icon="lucide:server" className="text-lg sm:text-xl" />
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${
+              myfxbookConnected 
+                ? 'bg-[#d1fae5] text-[#059669]' 
+                : 'bg-[#fee2e2] text-[#dc2626]'
+            }`}>
+              <Icon 
+                icon={myfxbookConnected ? "lucide:check-circle" : "lucide:x-circle"} 
+                className="text-lg sm:text-xl" 
+              />
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[10px] sm:text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">Broker Conectado</span>
-              <span className="text-sm sm:text-base font-bold text-[#111827]">{mt4Accounts.length > 0 ? mt4Accounts[0].broker || 'N/A' : 'N/A'}</span>
+              <span className={`text-sm sm:text-base font-bold ${
+                myfxbookConnected ? 'text-[#059669]' : 'text-[#dc2626]'
+              }`}>
+                {myfxbookConnected ? 'Conectado' : 'Desconectado'}
+              </span>
             </div>
           </div>
 
@@ -156,32 +190,38 @@ function ContaForexMT4Page() {
                       <Icon icon="lucide:dollar-sign" className="text-sm text-[#9ca3af]" />
                       <span className="text-[#6b7280] font-medium">Moeda Base</span>
                     </div>
-                    <span className="text-[#111827] font-semibold">{mt4Accounts[0].currency || 'USD'}</span>
+                    <span className="text-[#111827] font-semibold">
+                      {myfxbookData?.currency || mt4Accounts[0].currency || 'USD'}
+                    </span>
                   </div>
                   <div className="h-px bg-[#f2f3f5] w-full" />
                   <div className="flex justify-between items-center text-sm">
                     <div className="flex items-center gap-2.5">
-                      <Icon icon="lucide:bar-chart-2" className="text-sm text-[#9ca3af]" />
-                      <span className="text-[#6b7280] font-medium">Saldo</span>
+                      <Icon icon="lucide:trending-up" className="text-sm text-[#9ca3af]" />
+                      <span className="text-[#6b7280] font-medium">Equity</span>
                     </div>
                     <span className="text-[#111827] font-semibold">
-                      {mt4Accounts[0].balance ? `$${parseFloat(mt4Accounts[0].balance).toFixed(2)}` : 'N/A'}
+                      {myfxbookData?.equity 
+                        ? `$${parseFloat(myfxbookData.equity).toFixed(2)}` 
+                        : mt4Accounts[0].equity 
+                          ? `$${parseFloat(mt4Accounts[0].equity).toFixed(2)}` 
+                          : 'N/A'}
                     </span>
                   </div>
-                  {mt4Accounts[0].equity && (
-                    <>
-                      <div className="h-px bg-[#f2f3f5] w-full" />
-                      <div className="flex justify-between items-center text-sm">
-                        <div className="flex items-center gap-2.5">
-                          <Icon icon="lucide:trending-up" className="text-sm text-[#9ca3af]" />
-                          <span className="text-[#6b7280] font-medium">Equity</span>
-                        </div>
-                        <span className="text-[#111827] font-semibold">
-                          ${parseFloat(mt4Accounts[0].equity).toFixed(2)}
-                        </span>
-                      </div>
-                    </>
-                  )}
+                  <div className="h-px bg-[#f2f3f5] w-full" />
+                  <div className="flex justify-between items-center text-sm">
+                    <div className="flex items-center gap-2.5">
+                      <Icon icon="lucide:dollar-sign" className="text-sm text-[#9ca3af]" />
+                      <span className="text-[#6b7280] font-medium">Lucro</span>
+                    </div>
+                    <span className={`font-semibold ${
+                      (myfxbookData?.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
+                    }`}>
+                      {myfxbookData?.profit !== undefined
+                        ? `${(myfxbookData.profit || 0) >= 0 ? '+' : ''}$${parseFloat(myfxbookData.profit).toFixed(2)}`
+                        : 'N/A'}
+                    </span>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 mb-6 sm:mb-8">
