@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
-import { getInvestmentPlans } from '../services/dashboardService'
+import { getInvestmentPlans, selectInvestmentPlan } from '../services/dashboardService'
 
 function InvestirPlanosPage() {
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selectingPlan, setSelectingPlan] = useState(null)
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+  const [selectedPlanName, setSelectedPlanName] = useState('')
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -36,6 +39,31 @@ function InvestirPlanosPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col items-center pb-20">
+        {/* Mensagem de Sucesso */}
+        {showSuccessMessage && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50" style={{
+            animation: 'fadeInDown 0.5s ease-out'
+          }}>
+            <div className="bg-gradient-to-r from-[#00afaa] to-[#009a96] text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[300px] max-w-[90vw]" style={{
+              animation: 'bounceIn 0.6s ease-out'
+            }}>
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <Icon icon="lucide:check-circle" className="text-2xl" />
+              </div>
+              <div className="flex-1">
+                <div className="font-bold text-base">Plano Selecionado!</div>
+                <div className="text-sm opacity-90">Você selecionou o plano {selectedPlanName}</div>
+              </div>
+              <button
+                onClick={() => setShowSuccessMessage(false)}
+                className="text-white/80 hover:text-white transition-colors"
+              >
+                <Icon icon="lucide:x" className="text-lg" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Hero Section */}
         <section className="flex flex-col items-center text-center gap-4 sm:gap-6 py-8 sm:py-12 lg:py-18 px-4 sm:px-6 max-w-[960px] mx-auto">
           <div className="w-12 h-12 sm:w-15 sm:h-15 rounded-[14px] sm:rounded-[18px] bg-[rgba(0,175,170,0.04)] text-[#00afaa] flex items-center justify-center mb-1 border border-[rgba(0,175,170,0.08)]">
@@ -140,8 +168,23 @@ function InvestirPlanosPage() {
                     Capital sempre na sua conta
                   </div>
                 </div>
-                <button className="w-full h-11 sm:h-12 rounded-xl font-semibold text-xs sm:text-sm border-none cursor-pointer flex items-center justify-center gap-2 transition-all mt-4 sm:mt-6 bg-white border border-[#e5e7eb] text-[#374151] shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-[#d1d5db] hover:bg-[#f9fafb] hover:text-[#111827]">
-                  Selecionar {plan.name}
+                <button 
+                  onClick={() => handleSelectPlan(plan)}
+                  disabled={selectingPlan === plan.id}
+                  className={`w-full h-11 sm:h-12 rounded-xl font-semibold text-xs sm:text-sm border-none cursor-pointer flex items-center justify-center gap-2 transition-all mt-4 sm:mt-6 ${
+                    selectingPlan === plan.id
+                      ? 'bg-[#00afaa] text-white opacity-75 cursor-not-allowed'
+                      : 'bg-white border border-[#e5e7eb] text-[#374151] shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-[#d1d5db] hover:bg-[#f9fafb] hover:text-[#111827]'
+                  }`}
+                >
+                  {selectingPlan === plan.id ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Selecionando...
+                    </>
+                  ) : (
+                    `Selecionar ${plan.name}`
+                  )}
                 </button>
               </div>
             ))
@@ -251,8 +294,23 @@ function InvestirPlanosPage() {
                 IA Falcon FX automática
               </div>
             </div>
-            <button className="w-full h-12 rounded-xl font-semibold text-sm border-none cursor-pointer flex items-center justify-center gap-2 transition-all mt-6 bg-white border border-[#e5e7eb] text-[#374151] shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-[#d1d5db] hover:bg-[#f9fafb] hover:text-[#111827]">
-              Selecionar Nex Pro
+            <button 
+              onClick={() => handleSelectPlan({ id: 'mock-nex-pro', name: 'Nex Pro' })}
+              disabled={selectingPlan === 'mock-nex-pro'}
+              className={`w-full h-12 rounded-xl font-semibold text-sm border-none cursor-pointer flex items-center justify-center gap-2 transition-all mt-6 ${
+                selectingPlan === 'mock-nex-pro'
+                  ? 'bg-[#00afaa] text-white opacity-75 cursor-not-allowed'
+                  : 'bg-white border border-[#e5e7eb] text-[#374151] shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:border-[#d1d5db] hover:bg-[#f9fafb] hover:text-[#111827]'
+              }`}
+            >
+              {selectingPlan === 'mock-nex-pro' ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Selecionando...
+                </>
+              ) : (
+                'Selecionar Nex Pro'
+              )}
             </button>
           </div>
 

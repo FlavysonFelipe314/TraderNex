@@ -115,6 +115,25 @@ export const getInvestmentPlans = async () => {
   }
 }
 
+// Selecionar plano de investimento
+export const selectInvestmentPlan = async (planId) => {
+  try {
+    const response = await api.post('/api/dashboard/select-plan', { plan_id: planId })
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao selecionar plano:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao selecionar plano.',
+      error: error.response?.data
+    }
+  }
+}
+
 // Obter investimentos do usuário
 export const getUserInvestments = async () => {
   try {

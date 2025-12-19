@@ -1007,4 +1007,48 @@ exports.updateOperationalControls = async (req, res) => {
   }
 };
 
+/**
+ * Deletar usuário (Admin)
+ * DELETE /api/admin/users/:userId
+ */
+exports.deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Verificar se o usuário existe e não é admin
+    const userCheck = await pool.query(
+      'SELECT id, email, is_admin FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado.'
+      });
+    }
+
+    if (userCheck.rows[0].is_admin) {
+      return res.status(400).json({
+        success: false,
+        message: 'Não é possível deletar um usuário administrador.'
+      });
+    }
+
+    // Deletar usuário (CASCADE vai deletar registros relacionados)
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    res.json({
+      success: true,
+      message: 'Usuário deletado com sucesso!'
+    });
+  } catch (error) {
+    console.error('Erro ao deletar usuário:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao deletar usuário.',
+      error: error.message
+    });
+  }
+};
 

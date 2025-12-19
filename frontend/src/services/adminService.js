@@ -338,4 +338,22 @@ export const updateUserPlan = async (userId, planId) => {
   }
 }
 
+// Deletar usuário (Admin)
+export const deleteUser = async (userId) => {
+  try {
+    const response = await api.delete(`/api/admin/users/${userId}`)
+    return {
+      success: response.data.success,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao deletar usuário:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao deletar usuário.',
+      error: error.response?.data
+    }
+  }
+}
+
 

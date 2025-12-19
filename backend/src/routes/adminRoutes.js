@@ -294,6 +294,28 @@ router.put('/plans/:planId', plansController.updatePlan);
 router.delete('/plans/:planId', plansController.deletePlan);
 router.put('/users/:userId/plan', plansController.updateUserPlan);
 
+/**
+ * @swagger
+ * /api/admin/users/:userId:
+ *   delete:
+ *     summary: Deletar usuário (Admin)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Usuário deletado com sucesso
+ *       403:
+ *         description: Acesso negado - apenas admins
+ */
+router.delete('/users/:userId', adminController.deleteUser);
+
 module.exports = router;
 
 

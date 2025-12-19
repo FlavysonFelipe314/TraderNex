@@ -7,3 +7,4 @@ COMMENT ON COLUMN client_profiles.selected_plan_id IS 'Plano de investimento sel
 
 -- Criar índice para melhor performance
 CREATE INDEX IF NOT EXISTS idx_client_profiles_selected_plan_id ON client_profiles(selected_plan_id);
+

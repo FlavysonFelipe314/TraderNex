@@ -21,6 +21,7 @@ import FaturasPerformancePage from "./page/FaturasPerformancePage";
 import Mt4CredentialsPage from "./page/Mt4CredentialsPage";
 import AdminPage from "./page/AdminPage";
 import AdminPlansPage from "./page/AdminPlansPage";
+import AdminUsersPage from "./page/AdminUsersPage";
 
 function App() {
   return (
@@ -130,6 +131,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminPlansPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute>
+              <AdminUsersPage />
             </ProtectedRoute>
           }
         />

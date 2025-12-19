@@ -27,6 +27,7 @@ function Sidebar() {
   const adminNavItems = [
     { id: 'admin', label: 'Painel Admin', icon: 'lucide:shield', path: '/admin' },
     { id: 'plans', label: 'Planos', icon: 'lucide:package', path: '/admin/plans' },
+    { id: 'users', label: 'Usuários', icon: 'lucide:users', path: '/admin/users' },
   ]
 
   const isActive = (path) => {
@@ -128,53 +129,68 @@ function Sidebar() {
             </>
           )}
 
-          <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
-            Principal
-          </div>
-          {navItems.map((item) => {
-            const active = isActive(item.path)
-            return (
-              <div
-                key={item.id}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
-                  active
-                    ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
-                    : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white hover:pl-4'
-                }`}
-                onClick={() => handleNavigation(item.path)}
-                data-media-type="banani-button"
-              >
-                <div className="w-[18px] h-[18px] flex items-center justify-center">
-                  <Icon icon={item.icon} className="text-lg" />
-                </div>
-                <span className="text-sm font-medium">{item.label}</span>
+          {/* Seção Principal - apenas para não-admins */}
+          {!(user?.is_admin || user?.isAdmin) && (
+            <>
+              <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
+                Principal
               </div>
-            )
-          })}
+              {navItems.map((item) => {
+                const active = isActive(item.path)
+                return (
+                  <div
+                    key={item.id}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                      active
+                        ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                        : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white hover:pl-4'
+                    }`}
+                    onClick={() => handleNavigation(item.path)}
+                    data-media-type="banani-button"
+                  >
+                    <div className="w-[18px] h-[18px] flex items-center justify-center">
+                      <Icon icon={item.icon} className="text-lg" />
+                    </div>
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </div>
+                )
+              })}
+            </>
+          )}
 
+          {/* Seção Sua Conta - apenas Perfil para admins, todos os itens para não-admins */}
           <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
             Sua Conta
           </div>
-          {accountNavItems.map((item) => {
-            const active = isActive(item.path)
-            return (
-              <div
-                key={item.id}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
-                  active
-                    ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
-                    : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white hover:pl-4'
-                }`}
-                onClick={() => handleNavigation(item.path)}
-                data-media-type="banani-button"
-              >
-                <div className="w-[18px] h-[18px] flex items-center justify-center">
-                  <Icon icon={item.icon} className="text-lg" />
+          {accountNavItems
+            .filter(item => {
+              // Para admins, mostrar apenas Perfil
+              if (user?.is_admin || user?.isAdmin) {
+                return item.id === 'profile'
+              }
+              // Para não-admins, mostrar todos
+              return true
+            })
+            .map((item) => {
+              const active = isActive(item.path)
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                    active
+                      ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                      : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white hover:pl-4'
+                  }`}
+                  onClick={() => handleNavigation(item.path)}
+                  data-media-type="banani-button"
+                >
+                  <div className="w-[18px] h-[18px] flex items-center justify-center">
+                    <Icon icon={item.icon} className="text-lg" />
+                  </div>
+                  <span className="text-sm font-medium">{item.label}</span>
                 </div>
-                <span className="text-sm font-medium">{item.label}</span>
-              </div>
-            )
-          })}
+              )
+            })}
         </nav>
 
         {/* Footer - User Card */}
@@ -280,53 +296,67 @@ function Sidebar() {
             </>
           )}
 
-          <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
-            Principal
-          </div>
-          {navItems.map((item) => {
-            const active = isActive(item.path)
-            return (
-              <div
-                key={item.id}
-                className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                  active
-                    ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
-                    : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white'
-                }`}
-                onClick={() => handleNavigation(item.path)}
-                data-media-type="banani-button"
-              >
-                <div className="w-[18px] h-[18px] flex items-center justify-center">
-                  <Icon icon={item.icon} className="text-lg" />
-                </div>
-                <span className="text-sm font-medium">{item.label}</span>
+          {/* Seção Principal - apenas para não-admins */}
+          {!(user?.is_admin || user?.isAdmin) && (
+            <>
+              <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
+                Principal
               </div>
-            )
-          })}
+              {navItems.map((item) => {
+                const active = isActive(item.path)
+                return (
+                  <div
+                    key={item.id}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                      active
+                        ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                        : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white'
+                    }`}
+                    onClick={() => handleNavigation(item.path)}
+                    data-media-type="banani-button"
+                  >
+                    <div className="w-[18px] h-[18px] flex items-center justify-center">
+                      <Icon icon={item.icon} className="text-lg" />
+                    </div>
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </div>
+                )
+              })}
+            </>
+          )}
 
           <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
             Sua Conta
           </div>
-          {accountNavItems.map((item) => {
-            const active = isActive(item.path)
-            return (
-              <div
-                key={item.id}
-                className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                  active
-                    ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
-                    : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white'
-                }`}
-                onClick={() => handleNavigation(item.path)}
-                data-media-type="banani-button"
-              >
-                <div className="w-[18px] h-[18px] flex items-center justify-center">
-                  <Icon icon={item.icon} className="text-lg" />
+          {accountNavItems
+            .filter(item => {
+              // Para admins, mostrar apenas Perfil
+              if (user?.is_admin || user?.isAdmin) {
+                return item.id === 'profile'
+              }
+              // Para não-admins, mostrar todos
+              return true
+            })
+            .map((item) => {
+              const active = isActive(item.path)
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                    active
+                      ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                      : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white'
+                  }`}
+                  onClick={() => handleNavigation(item.path)}
+                  data-media-type="banani-button"
+                >
+                  <div className="w-[18px] h-[18px] flex items-center justify-center">
+                    <Icon icon={item.icon} className="text-lg" />
+                  </div>
+                  <span className="text-sm font-medium">{item.label}</span>
                 </div>
-                <span className="text-sm font-medium">{item.label}</span>
-              </div>
-            )
-          })}
+              )
+            })}
 
         </nav>
 

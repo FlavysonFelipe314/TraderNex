@@ -221,6 +221,7 @@ router.get('/myfxbook-data', dashboardController.getMyfxbookData);
  *               $ref: '#/components/schemas/Error'
  */
 router.get('/investment-plans', dashboardController.getInvestmentPlans);
+router.post('/select-plan', dashboardController.selectInvestmentPlan);
 
 /**
  * @swagger

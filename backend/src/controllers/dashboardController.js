@@ -51,22 +51,25 @@ exports.getDashboardData = async (req, res) => {
       success: true,
       data: {
         profile: {
-          balance: profile.balance != null ? parseFloat(profile.balance) : 0,
-          totalInvested: profile.total_invested != null ? parseFloat(profile.total_invested) : 0,
-          totalProfit: profile.total_profit != null ? parseFloat(profile.total_profit) : 0,
-          profitPercentage: profile.profit_percentage != null ? parseFloat(profile.profit_percentage) : 0,
-          accountType: profile.account_type
+          balance: parseFloat(profile.balance) || 0,
+          total_invested: parseFloat(profile.total_invested) || 0,
+          total_profit: parseFloat(profile.total_profit) || 0,
+          profit_percentage: parseFloat(profile.profit_percentage) || 0,
+          account_type: profile.account_type
         },
-        mt4Accounts: {
-          totalAccounts: parseInt(mt4Result.rows[0].total_accounts),
-          totalBalance: parseFloat(mt4Result.rows[0].total_balance),
-          totalEquity: parseFloat(mt4Result.rows[0].total_equity)
+        mt4: {
+          total_accounts: parseInt(mt4Result.rows[0].total_accounts) || 0,
+          total_balance: parseFloat(mt4Result.rows[0].total_balance) || 0,
+          total_equity: parseFloat(mt4Result.rows[0].total_equity) || 0
         },
-        recentTransactions: transactionsResult.rows,
+        transactions: transactionsResult.rows.map(t => ({
+          ...t,
+          amount: parseFloat(t.amount) || 0
+        })),
         investments: {
-          activeInvestments: parseInt(investmentsResult.rows[0].active_investments),
-          totalInvestedAmount: parseFloat(investmentsResult.rows[0].total_invested_amount),
-          currentTotalValue: parseFloat(investmentsResult.rows[0].current_total_value)
+          active_investments: parseInt(investmentsResult.rows[0].active_investments) || 0,
+          total_invested_amount: parseFloat(investmentsResult.rows[0].total_invested_amount) || 0,
+          current_total_value: parseFloat(investmentsResult.rows[0].current_total_value) || 0
         }
       }
     });
@@ -148,23 +151,149 @@ exports.getMT4Accounts = async (req, res) => {
     const userId = req.user.userId;
 
     const result = await pool.query(
-      `SELECT id, account_number, account_name, broker, server, balance,
-              equity, currency, status, connected_at, last_sync,
-              automation_enabled, risk_profile, myfxbook_integration_login
-       FROM mt4_accounts WHERE user_id = $1
+      `SELECT id, account_number, account_name, broker, server, balance, equity, currency, status, connected_at, last_sync, automation_enabled, risk_profile, created_at
+       FROM mt4_accounts
+       WHERE user_id = $1
        ORDER BY created_at DESC`,
       [userId]
     );
 
+    // Converter valores DECIMAL para números
+    const normalizedData = result.rows.map(row => ({
+      ...row,
+      balance: row.balance != null ? parseFloat(row.balance) : 0,
+      equity: row.equity != null ? parseFloat(row.equity) : 0
+    }));
+
     res.json({
       success: true,
-      data: result.rows
+      data: normalizedData
     });
   } catch (error) {
     console.error('Erro ao buscar contas MT4:', error);
     res.status(500).json({
       success: false,
       message: 'Erro ao buscar contas MT4.',
+      error: error.message
+    });
+  }
+};
+
+// Adicionar conta MT4
+exports.addMT4Account = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { account_number, account_name, broker, server, balance, equity, currency } = req.body;
+
+    if (!account_number || !broker || !server) {
+      return res.status(400).json({
+        success: false,
+        message: 'Número da conta, corretora e servidor são obrigatórios.'
+      });
+    }
+
+    // Verificar se já existe uma conta com o mesmo número para este usuário
+    const existingAccount = await pool.query(
+      'SELECT id FROM mt4_accounts WHERE user_id = $1 AND account_number = $2',
+      [userId, account_number]
+    );
+
+    if (existingAccount.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Já existe uma conta MT4 com este número para seu usuário.'
+      });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO mt4_accounts (user_id, account_number, account_name, broker, server, balance, equity, currency, status, connected_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', NOW())
+       RETURNING *`,
+      [userId, account_number, account_name || null, broker, server, balance || 0, equity || 0, currency || 'USD']
+    );
+
+    res.json({
+      success: true,
+      data: result.rows[0],
+      message: 'Conta MT4 adicionada com sucesso!'
+    });
+  } catch (error) {
+    console.error('Erro ao adicionar conta MT4:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao adicionar conta MT4.',
+      error: error.message
+    });
+  }
+};
+
+// Atualizar configurações operacionais da conta MT4
+exports.updateMT4Settings = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { accountId } = req.params;
+    const { automation_enabled, risk_profile } = req.body;
+
+    // Verificar se a conta pertence ao usuário
+    const accountCheck = await pool.query(
+      'SELECT id FROM mt4_accounts WHERE id = $1 AND user_id = $2',
+      [accountId, userId]
+    );
+
+    if (accountCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Conta MT4 não encontrada.'
+      });
+    }
+
+    const updateFields = [];
+    const updateValues = [];
+    let paramIndex = 1;
+
+    if (automation_enabled !== undefined) {
+      updateFields.push(`automation_enabled = $${paramIndex}`);
+      updateValues.push(automation_enabled);
+      paramIndex++;
+    }
+
+    if (risk_profile !== undefined) {
+      if (!['conservador', 'moderado', 'agressivo'].includes(risk_profile)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Perfil de risco inválido.'
+        });
+      }
+      updateFields.push(`risk_profile = $${paramIndex}`);
+      updateValues.push(risk_profile);
+      paramIndex++;
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nenhum campo para atualizar.'
+      });
+    }
+
+    updateFields.push(`updated_at = NOW()`);
+    updateValues.push(accountId);
+
+    const result = await pool.query(
+      `UPDATE mt4_accounts SET ${updateFields.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      updateValues
+    );
+
+    res.json({
+      success: true,
+      data: result.rows[0],
+      message: 'Configurações atualizadas com sucesso!'
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar configurações MT4:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao atualizar configurações.',
       error: error.message
     });
   }
@@ -232,101 +361,78 @@ exports.getMyfxbookData = async (req, res) => {
     }
 
     // Buscar dados da conta específica
-    console.log(`[MyFXBook Data] Buscando dados para Account ID: ${myfxbookAccountId}`);
-    
-    // Primeiro, buscar as contas para encontrar o ID interno
+    console.log('[getMyfxbookData] Buscando conta com accountId:', myfxbookAccountId);
     const accountsResult = await getMyAccounts(loginResult.session);
     
-    // Encontrar a conta específica nos resultados
-    // O myfxbook_integration_login é o Account Number (accountId) no MyFXBook, não o id interno
-    let accountData = null;
-    let internalAccountId = null;
-    
-    if (accountsResult.success && accountsResult.accounts) {
-      // Tentar encontrar a conta por accountId (Account Number) - pode ser string ou número
-      const accountIdNum = parseInt(myfxbookAccountId);
-      const accountIdStr = String(myfxbookAccountId).trim();
-      
-      accountData = accountsResult.accounts.find(acc => {
-        // O accountId é o Account Number (ex: 7739458, 34182616)
-        // Comparar como número e como string
-        const accAccountId = acc.accountId;
-        if (accAccountId === accountIdNum || 
-            accAccountId === accountIdStr || 
-            String(accAccountId) === accountIdStr ||
-            parseInt(accAccountId) === accountIdNum) {
-          return true;
+    if (!accountsResult.success || !accountsResult.accounts || accountsResult.accounts.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          connected: false,
+          message: 'Nenhuma conta encontrada no MyFXBook.'
         }
-        // Também tentar comparar com id interno (caso o admin tenha informado o id ao invés do accountId)
-        if (acc.id === accountIdNum || String(acc.id) === accountIdStr) {
-          return true;
-        }
-        return false;
       });
-      
-      if (accountData) {
-        // Usar o ID interno (id) para buscar histórico, trades, etc.
-        internalAccountId = accountData.id;
-        console.log(`[MyFXBook Data] Conta encontrada! ID interno: ${internalAccountId}, Account Number: ${accountData.accountId}`);
-      } else {
-        console.warn(`[MyFXBook Data] Conta com accountId ${myfxbookAccountId} não encontrada.`);
-      }
     }
+
+    // Encontrar a conta com o accountId configurado
+    const targetAccount = accountsResult.accounts.find(acc => acc.accountId && acc.accountId.toString() === myfxbookAccountId.toString());
     
-    // Se não encontrou a conta, ainda tentar usar o accountId fornecido
-    if (!internalAccountId) {
-      internalAccountId = myfxbookAccountId;
-      console.warn(`[MyFXBook Data] Usando accountId fornecido como ID interno: ${internalAccountId}`);
+    if (!targetAccount) {
+      console.log('[getMyfxbookData] Conta não encontrada. AccountId procurado:', myfxbookAccountId);
+      console.log('[getMyfxbookData] Contas disponíveis:', accountsResult.accounts.map(acc => ({ accountId: acc.accountId, name: acc.name })));
+      return res.json({
+        success: true,
+        data: {
+          connected: false,
+          message: `Conta MyFXBook com Account Number ${myfxbookAccountId} não encontrada.`,
+          warning: 'O Account Number configurado não corresponde a nenhuma conta no MyFXBook.'
+        }
+      });
     }
-    
-    // Buscar dados usando o ID interno
-    const [openTrades, history] = await Promise.all([
-      getOpenTrades(loginResult.session, internalAccountId),
-      getHistory(loginResult.session, internalAccountId)
+
+    console.log('[getMyfxbookData] Conta encontrada:', { id: targetAccount.id, accountId: targetAccount.accountId, name: targetAccount.name });
+
+    // Usar o ID interno da conta para buscar dados
+    const internalId = targetAccount.id;
+
+    // Buscar dados em paralelo
+    const [openTradesResult, historyResult, dailyGainResult, dataDailyResult] = await Promise.all([
+      getOpenTrades(loginResult.session, internalId).catch(err => ({ success: false, message: err.message })),
+      getHistory(loginResult.session, internalId).catch(err => ({ success: false, message: err.message })),
+      getDailyGain(loginResult.session, internalId).catch(err => ({ success: false, message: err.message })),
+      getDataDaily(loginResult.session, internalId).catch(err => ({ success: false, message: err.message }))
     ]);
-    
-    console.log(`[MyFXBook Data] Resultado getHistory:`, {
-      success: history.success,
-      hasHistory: !!history.history,
-      historyLength: history.history ? history.history.length : 0,
-      message: history.message,
-      error: history.error
+
+    console.log('[getMyfxbookData] Histórico recebido:', {
+      success: historyResult.success,
+      length: historyResult.history ? historyResult.history.length : 0,
+      firstRecord: historyResult.history && historyResult.history.length > 0 ? historyResult.history[0] : null
     });
-
-    // accountData já foi encontrado acima
-
-    // Calcular datas para ganho diário (últimos 30 dias)
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 30);
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const endDateStr = endDate.toISOString().split('T')[0];
-
-    // Usar o ID interno para buscar dados diários também
-    const [dailyGain, dataDaily] = await Promise.all([
-      getDailyGain(loginResult.session, internalAccountId, startDateStr, endDateStr),
-      getDataDaily(loginResult.session, internalAccountId, startDateStr, endDateStr)
-    ]);
-
-    // Se não encontrou a conta, ainda retornar os dados disponíveis
-    if (!accountData && accountsResult.success && accountsResult.accounts.length > 0) {
-      console.warn(`[MyFXBook Data] Conta com accountId ${myfxbookAccountId} não encontrada. Usando primeira conta disponível.`);
-      accountData = accountsResult.accounts[0];
-    }
 
     res.json({
       success: true,
       data: {
-        connected: !!accountData,
-        accountId: myfxbookAccountId,
+        connected: true,
+        accountId: targetAccount.accountId,
         mt4AccountNumber: mt4Account.account_number,
-        account: accountData,
-        openTrades: openTrades.success ? openTrades.trades : [],
-        history: history.success ? history.history : [],
-        dailyGain: dailyGain.success ? dailyGain.dailyGain : [],
-        dataDaily: dataDaily.success ? dataDaily.dataDaily : [],
-        // Incluir mensagem se não encontrou a conta específica
-        warning: !accountData ? `Conta com Account ID ${myfxbookAccountId} não encontrada no MyFXBook. Verifique se o Account ID está correto.` : null
+        account: {
+          id: targetAccount.id,
+          accountId: targetAccount.accountId,
+          name: targetAccount.name,
+          gain: targetAccount.gain,
+          profit: targetAccount.profit,
+          drawdown: targetAccount.drawdown,
+          equity: targetAccount.equity,
+          balance: targetAccount.balance,
+          absGain: targetAccount.absGain,
+          daily: targetAccount.daily,
+          monthly: targetAccount.monthly,
+          currency: targetAccount.currency || 'USD'
+        },
+        openTrades: openTradesResult.success ? (openTradesResult.openTrades || []) : [],
+        history: historyResult.success ? (historyResult.history || []) : [],
+        dailyGain: dailyGainResult.success ? (dailyGainResult.dailyGain || []) : [],
+        dataDaily: dataDailyResult.success ? (dataDailyResult.dataDaily || []) : []
       }
     });
   } catch (error) {
@@ -334,148 +440,6 @@ exports.getMyfxbookData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao buscar dados MyFXBook.',
-      error: error.message
-    });
-  }
-};
-
-// Adicionar conta MT4
-exports.addMT4Account = async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    // Aceitar tanto accountNumber quanto login
-    const { accountNumber, login, accountName, broker, server, balance, currency, password } = req.body;
-    
-    const finalAccountNumber = accountNumber || login;
-    
-    if (!finalAccountNumber || !broker || !server) {
-      return res.status(400).json({
-        success: false,
-        message: 'Número da conta, corretora e servidor são obrigatórios.'
-      });
-    }
-
-    // Verificar se já existe uma conta com esse número para o usuário
-    const existingAccount = await pool.query(
-      `SELECT id FROM mt4_accounts WHERE user_id = $1 AND account_number = $2`,
-      [userId, finalAccountNumber]
-    );
-
-    let result;
-    if (existingAccount.rows.length > 0) {
-      // Atualizar conta existente
-      result = await pool.query(
-        `UPDATE mt4_accounts 
-         SET account_name = $3, broker = $4, server = $5, balance = $6, equity = $6, currency = $7, 
-             connected_at = NOW(), updated_at = NOW()
-         WHERE user_id = $1 AND account_number = $2
-         RETURNING *`,
-        [userId, finalAccountNumber, accountName || `MT4-${finalAccountNumber}`, broker, server, balance || 0, currency || 'USD']
-      );
-    } else {
-      // Criar nova conta
-      result = await pool.query(
-        `INSERT INTO mt4_accounts (user_id, account_number, account_name, broker, server, balance, equity, currency, connected_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $6, $7, NOW())
-         RETURNING *`,
-        [userId, finalAccountNumber, accountName || `MT4-${finalAccountNumber}`, broker, server, balance || 0, currency || 'USD']
-      );
-    }
-
-    res.status(201).json({
-      success: true,
-      message: 'Conta MT4 adicionada com sucesso!',
-      data: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Erro ao adicionar conta MT4:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao adicionar conta MT4.',
-      error: error.message
-    });
-  }
-};
-
-// Atualizar configurações operacionais da conta MT4
-exports.updateMT4Settings = async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    const { accountId } = req.params;
-    const { automationEnabled, riskProfile } = req.body;
-
-    if (!accountId) {
-      return res.status(400).json({
-        success: false,
-        message: 'ID da conta é obrigatório.'
-      });
-    }
-
-    // Verificar se a conta pertence ao usuário
-    const accountCheck = await pool.query(
-      'SELECT id FROM mt4_accounts WHERE id = $1 AND user_id = $2',
-      [accountId, userId]
-    );
-
-    if (accountCheck.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Conta MT4 não encontrada.'
-      });
-    }
-
-    // Construir query de atualização dinamicamente
-    const updateFields = [];
-    const updateValues = [];
-    let paramIndex = 1;
-
-    if (automationEnabled !== undefined) {
-      updateFields.push(`automation_enabled = $${paramIndex}`);
-      updateValues.push(automationEnabled);
-      paramIndex++;
-    }
-
-    if (riskProfile !== undefined) {
-      if (!['conservador', 'moderado', 'agressivo'].includes(riskProfile)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Perfil de risco inválido. Use: conservador, moderado ou agressivo.'
-        });
-      }
-      updateFields.push(`risk_profile = $${paramIndex}`);
-      updateValues.push(riskProfile);
-      paramIndex++;
-    }
-
-    if (updateFields.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Nenhum campo para atualizar foi fornecido.'
-      });
-    }
-
-    updateFields.push(`updated_at = NOW()`);
-    updateValues.push(accountId);
-    paramIndex++;
-
-    const result = await pool.query(
-      `UPDATE mt4_accounts 
-       SET ${updateFields.join(', ')} 
-       WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}
-       RETURNING *`,
-      [...updateValues, userId]
-    );
-
-    res.json({
-      success: true,
-      message: 'Configurações atualizadas com sucesso!',
-      data: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Erro ao atualizar configurações MT4:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao atualizar configurações.',
       error: error.message
     });
   }
@@ -505,15 +469,81 @@ exports.getInvestmentPlans = async (req, res) => {
   }
 };
 
+// Selecionar plano de investimento
+exports.selectInvestmentPlan = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { plan_id } = req.body;
+
+    if (!plan_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID do plano é obrigatório.'
+      });
+    }
+
+    // Verificar se o plano existe e está ativo
+    const planCheck = await pool.query(
+      'SELECT id, name FROM investment_plans WHERE id = $1 AND is_active = TRUE',
+      [plan_id]
+    );
+
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Plano não encontrado ou inativo.'
+      });
+    }
+
+    // Verificar se o perfil existe, se não, criar
+    const profileCheck = await pool.query(
+      'SELECT id FROM client_profiles WHERE user_id = $1',
+      [userId]
+    );
+
+    if (profileCheck.rows.length === 0) {
+      // Criar perfil se não existir
+      await pool.query(
+        `INSERT INTO client_profiles (user_id, selected_plan_id)
+         VALUES ($1, $2)`,
+        [userId, plan_id]
+      );
+    } else {
+      // Atualizar perfil existente
+      await pool.query(
+        `UPDATE client_profiles
+         SET selected_plan_id = $1, updated_at = NOW()
+         WHERE user_id = $2`,
+        [plan_id, userId]
+      );
+    }
+
+    res.json({
+      success: true,
+      data: {
+        plan_id: plan_id,
+        plan_name: planCheck.rows[0].name
+      },
+      message: `Plano ${planCheck.rows[0].name} selecionado com sucesso!`
+    });
+  } catch (error) {
+    console.error('Erro ao selecionar plano:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao selecionar plano.',
+      error: error.message
+    });
+  }
+};
+
 // Obter investimentos do usuário
 exports.getUserInvestments = async (req, res) => {
   try {
     const userId = req.user.userId;
 
     const result = await pool.query(
-      `SELECT ui.id, ui.amount, ui.status, ui.start_date, ui.end_date,
-              ui.current_value, ui.profit,
-              ip.name as plan_name, ip.expected_return, ip.risk_level
+      `SELECT ui.id, ui.amount, ui.current_value, ui.status, ui.created_at,
+              ip.name as plan_name, ip.expected_return
        FROM user_investments ui
        JOIN investment_plans ip ON ui.plan_id = ip.id
        WHERE ui.user_id = $1
@@ -523,148 +553,17 @@ exports.getUserInvestments = async (req, res) => {
 
     res.json({
       success: true,
-      data: result.rows
+      data: result.rows.map(row => ({
+        ...row,
+        amount: parseFloat(row.amount) || 0,
+        current_value: parseFloat(row.current_value) || 0
+      }))
     });
   } catch (error) {
     console.error('Erro ao buscar investimentos:', error);
     res.status(500).json({
       success: false,
       message: 'Erro ao buscar investimentos.',
-      error: error.message
-    });
-  }
-};
-
-// Obter transações
-exports.getTransactions = async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    const { type, status, limit = 50 } = req.query;
-
-    let query = 'SELECT * FROM transactions WHERE user_id = $1';
-    const params = [userId];
-    let paramIndex = 2;
-
-    if (type) {
-      query += ` AND type = $${paramIndex}`;
-      params.push(type);
-      paramIndex++;
-    }
-
-    if (status) {
-      query += ` AND status = $${paramIndex}`;
-      params.push(status);
-      paramIndex++;
-    }
-
-    query += ` ORDER BY created_at DESC LIMIT $${paramIndex}`;
-    params.push(parseInt(limit));
-
-    const result = await pool.query(query, params);
-
-    res.json({
-      success: true,
-      data: result.rows
-    });
-  } catch (error) {
-    console.error('Erro ao buscar transações:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao buscar transações.',
-      error: error.message
-    });
-  }
-};
-
-// Obter faturas
-exports.getInvoices = async (req, res) => {
-  try {
-    const userId = req.user.userId;
-
-    const result = await pool.query(
-      `SELECT id, invoice_number, amount, status, due_date, paid_date,
-              description, created_at
-       FROM invoices WHERE user_id = $1
-       ORDER BY created_at DESC`,
-      [userId]
-    );
-
-    // Converter valores DECIMAL para números
-    const normalizedInvoices = result.rows.map(invoice => ({
-      ...invoice,
-      amount: invoice.amount != null ? parseFloat(invoice.amount) : 0
-    }));
-
-    res.json({
-      success: true,
-      data: normalizedInvoices
-    });
-  } catch (error) {
-    console.error('Erro ao buscar faturas:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao buscar faturas.',
-      error: error.message
-    });
-  }
-};
-
-// Obter referências
-exports.getReferrals = async (req, res) => {
-  try {
-    const userId = req.user.userId;
-
-    // Buscar código de referência
-    const codeResult = await pool.query(
-      'SELECT referral_code FROM client_profiles WHERE user_id = $1',
-      [userId]
-    );
-
-    // Buscar referidos
-    const referralsResult = await pool.query(
-      `SELECT r.id, r.commission, r.commission_paid, r.status, r.created_at,
-              u.first_name, u.last_name, u.email
-       FROM referrals r
-       JOIN users u ON r.referred_id = u.id
-       WHERE r.referrer_id = $1
-       ORDER BY r.created_at DESC`,
-      [userId]
-    );
-
-    // Estatísticas
-    const statsResult = await pool.query(
-      `SELECT COUNT(*) as total_referrals,
-              COALESCE(SUM(commission), 0) as total_commission,
-              COALESCE(SUM(CASE WHEN commission_paid = TRUE THEN commission ELSE 0 END), 0) as paid_commission
-       FROM referrals WHERE referrer_id = $1`,
-      [userId]
-    );
-
-    // Converter valores DECIMAL para números
-    const normalizedReferrals = referralsResult.rows.map(ref => ({
-      ...ref,
-      commission: ref.commission != null ? parseFloat(ref.commission) : 0
-    }));
-
-    const normalizedStats = statsResult.rows[0] ? {
-      ...statsResult.rows[0],
-      total_commission: statsResult.rows[0].total_commission != null ? parseFloat(statsResult.rows[0].total_commission) : 0,
-      paid_commission: statsResult.rows[0].paid_commission != null ? parseFloat(statsResult.rows[0].paid_commission) : 0
-    } : null;
-
-    res.json({
-      success: true,
-      data: {
-        referralCode: codeResult.rows[0]?.referral_code,
-        referrals: normalizedReferrals,
-        stats: normalizedStats
-      }
-    });
-  } catch (error) {
-    console.error('Erro ao buscar referências:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao buscar referências.',
       error: error.message
     });
   }
