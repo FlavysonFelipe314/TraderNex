@@ -14,18 +14,7 @@ function PerfilClientePage() {
     country: 'Brasil',
     currentPassword: '',
     newPassword: '',
-    confirmPassword: '',
-    street: '',
-    number: '',
-    neighborhood: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    complement: '',
-    language: 'Português (Brasil)',
-    emailNotifications: true,
-    performanceAlerts: true,
-    newsOffers: false
+    confirmPassword: ''
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -148,14 +137,7 @@ function PerfilClientePage() {
         firstName,
         lastName,
         phone: formData.phone,
-        country: formData.country,
-        street: formData.street,
-        number: formData.number,
-        neighborhood: formData.neighborhood,
-        city: formData.city,
-        state: formData.state,
-        zipCode: formData.zipCode,
-        complement: formData.complement
+        country: formData.country
       }
 
       // Atualizar perfil
@@ -270,10 +252,10 @@ function PerfilClientePage() {
           </button>
         }
       >
-        <div className="max-w-[1600px]">
-          <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] xl:grid-rows-2 gap-4 sm:gap-6 lg:gap-8">
+        <div className="max-w-[1200px]">
+          <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 sm:gap-6 lg:gap-8">
             {/* 1. Dados Pessoais */}
-            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] border border-[#e5e7eb] flex flex-col gap-4 sm:gap-6 lg:gap-8 xl:col-start-1 xl:col-end-2 xl:row-start-1 xl:row-end-2">
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] border border-[#e5e7eb] flex flex-col gap-4 sm:gap-6 lg:gap-8">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 sm:pb-6 border-b border-[#f3f4f6] gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-[rgba(0,175,170,0.08)] flex items-center justify-center text-[#00AFAA]">
@@ -384,7 +366,7 @@ function PerfilClientePage() {
             </div>
 
             {/* 2. Segurança */}
-            <div className="bg-white rounded-2xl p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] border border-[#e5e7eb] flex flex-col gap-8 xl:col-start-2 xl:col-end-3 xl:row-start-1 xl:row-end-2">
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] border border-[#e5e7eb] flex flex-col gap-4 sm:gap-6 lg:gap-8">
               <div className="flex justify-between items-center pb-6 border-b border-[#f3f4f6]">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-[rgba(0,175,170,0.08)] flex items-center justify-center text-[#00AFAA]">
@@ -439,267 +421,18 @@ function PerfilClientePage() {
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* 3. Endereço */}
-            <div className="bg-white rounded-2xl p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] border border-[#e5e7eb] flex flex-col gap-8 xl:col-start-1 xl:col-end-2 xl:row-start-2 xl:row-end-3">
-              <div className="flex justify-between items-center pb-6 border-b border-[#f3f4f6]">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-[rgba(0,175,170,0.08)] flex items-center justify-center text-[#00AFAA]">
-                    <Icon icon="lucide:map-pin" className="text-lg" />
-                  </div>
-                  <h3 className="text-lg font-bold text-[#111827] m-0 tracking-[-0.01em]">
-                    Endereço
-                  </h3>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-6">
-                {/* Row 1: Rua (70%) | Num (30%) */}
-                <div className="grid grid-cols-[7fr_3fr] gap-6">
+              {/* Código de Indicação */}
+              {user?.referralCode && (
+                <div className="pt-6 border-t border-[#f3f4f6]">
                   <div className="flex flex-col gap-2">
-                    <label className="text-[13px] font-medium text-[#6b7280]">Rua / Logradouro</label>
-                    <div className="relative flex items-center bg-[#f9fafb] border border-[#e5e7eb] rounded-[10px] h-12 transition-all hover:border-[#d1d5db] hover:bg-white focus-within:bg-white focus-within:border-[#00AFAA] focus-within:shadow-[0_0_0_3px_rgba(0,175,170,0.1)]">
-                      <input
-                        type="text"
-                        name="street"
-                        value={formData.street}
-                        onChange={handleInputChange}
-                        className="w-full h-full px-4 bg-transparent border-none outline-none text-sm text-[#111827]"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[13px] font-medium text-[#6b7280]">Número</label>
-                    <div className="relative flex items-center bg-[#f9fafb] border border-[#e5e7eb] rounded-[10px] h-12 transition-all hover:border-[#d1d5db] hover:bg-white focus-within:bg-white focus-within:border-[#00AFAA] focus-within:shadow-[0_0_0_3px_rgba(0,175,170,0.1)]">
-                      <input
-                        type="text"
-                        name="number"
-                        value={formData.number}
-                        onChange={handleInputChange}
-                        className="w-full h-full px-4 bg-transparent border-none outline-none text-sm text-[#111827]"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Row 2: Bairro (50%) | Cidade (50%) */}
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[13px] font-medium text-[#6b7280]">Bairro</label>
-                    <div className="relative flex items-center bg-[#f9fafb] border border-[#e5e7eb] rounded-[10px] h-12 transition-all hover:border-[#d1d5db] hover:bg-white focus-within:bg-white focus-within:border-[#00AFAA] focus-within:shadow-[0_0_0_3px_rgba(0,175,170,0.1)]">
-                      <input
-                        type="text"
-                        name="neighborhood"
-                        value={formData.neighborhood}
-                        onChange={handleInputChange}
-                        className="w-full h-full px-4 bg-transparent border-none outline-none text-sm text-[#111827]"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[13px] font-medium text-[#6b7280]">Cidade</label>
-                    <div className="relative flex items-center bg-[#f9fafb] border border-[#e5e7eb] rounded-[10px] h-12 transition-all hover:border-[#d1d5db] hover:bg-white focus-within:bg-white focus-within:border-[#00AFAA] focus-within:shadow-[0_0_0_3px_rgba(0,175,170,0.1)]">
-                      <input
-                        type="text"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleInputChange}
-                        className="w-full h-full px-4 bg-transparent border-none outline-none text-sm text-[#111827]"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Row 3: Estado (20%) | CEP (30%) | Compl (50%) */}
-                <div className="grid grid-cols-[2fr_3fr_5fr] gap-6">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[13px] font-medium text-[#6b7280]">Estado (UF)</label>
-                    <div className="relative flex items-center bg-[#f9fafb] border border-[#e5e7eb] rounded-[10px] h-12 transition-all hover:border-[#d1d5db] hover:bg-white focus-within:bg-white focus-within:border-[#00AFAA] focus-within:shadow-[0_0_0_3px_rgba(0,175,170,0.1)]">
-                      <input
-                        type="text"
-                        name="state"
-                        value={formData.state}
-                        onChange={handleInputChange}
-                        className="w-full h-full px-4 bg-transparent border-none outline-none text-sm text-[#111827]"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[13px] font-medium text-[#6b7280]">CEP</label>
-                    <div className="relative flex items-center bg-[#f9fafb] border border-[#e5e7eb] rounded-[10px] h-12 transition-all hover:border-[#d1d5db] hover:bg-white focus-within:bg-white focus-within:border-[#00AFAA] focus-within:shadow-[0_0_0_3px_rgba(0,175,170,0.1)]">
-                      <input
-                        type="text"
-                        name="zipCode"
-                        value={formData.zipCode}
-                        onChange={handleInputChange}
-                        className="w-full h-full px-4 bg-transparent border-none outline-none text-sm text-[#111827]"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[13px] font-medium text-[#6b7280]">Complemento</label>
-                    <div className="relative flex items-center bg-[#f9fafb] border border-[#e5e7eb] rounded-[10px] h-12 transition-all hover:border-[#d1d5db] hover:bg-white focus-within:bg-white focus-within:border-[#00AFAA] focus-within:shadow-[0_0_0_3px_rgba(0,175,170,0.1)]">
-                      <input
-                        type="text"
-                        name="complement"
-                        value={formData.complement}
-                        onChange={handleInputChange}
-                        className="w-full h-full px-4 bg-transparent border-none outline-none text-sm text-[#111827]"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 4. Estatísticas do Perfil */}
-            <div className="bg-white rounded-2xl p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] border border-[#e5e7eb] flex flex-col gap-8 xl:col-start-2 xl:col-end-3 xl:row-start-1 xl:row-end-2">
-              <div className="flex justify-between items-center pb-6 border-b border-[#f3f4f6]">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-[rgba(0,175,170,0.08)] flex items-center justify-center text-[#00AFAA]">
-                    <Icon icon="lucide:bar-chart-3" className="text-lg" />
-                  </div>
-                  <h3 className="text-lg font-bold text-[#111827] m-0 tracking-[-0.01em]">
-                    Estatísticas
-                  </h3>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col gap-2">
-                  <div className="text-[13px] font-medium text-[#6b7280]">Saldo Atual</div>
-                  <div className="text-2xl font-bold text-[#111827]">
-                    $ {user?.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <div className="text-[13px] font-medium text-[#6b7280]">Total Investido</div>
-                  <div className="text-2xl font-bold text-[#111827]">
-                    $ {user?.totalInvested?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <div className="text-[13px] font-medium text-[#6b7280]">Lucro Total</div>
-                  <div className="text-2xl font-bold text-[#059669]">
-                    + $ {user?.totalProfit?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
-                  </div>
-                </div>
-
-                {user?.profitPercentage !== undefined && user.profitPercentage != null && !isNaN(user.profitPercentage) && user.profitPercentage > 0 && (
-                  <div className="flex flex-col gap-2">
-                    <div className="text-[13px] font-medium text-[#6b7280]">Performance</div>
-                    <div className="text-2xl font-bold text-[#059669]">
-                      + {Number(user.profitPercentage).toFixed(2)}%
-                    </div>
-                  </div>
-                )}
-
-                {user?.referralCode && (
-                  <div className="flex flex-col gap-2 pt-4 border-t border-[#f3f4f6]">
-                    <div className="text-[13px] font-medium text-[#6b7280]">Código de Indicação</div>
-                    <div className="text-lg font-mono font-bold text-[#00AFAA] bg-[rgba(0,175,170,0.08)] px-3 py-2 rounded-lg">
+                    <label className="text-[13px] font-medium text-[#6b7280]">Código de Indicação</label>
+                    <div className="text-lg font-mono font-bold text-[#00AFAA] bg-[rgba(0,175,170,0.08)] px-4 py-3 rounded-lg border border-[rgba(0,175,170,0.2)]">
                       {user.referralCode}
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* 5. Preferências */}
-            <div className="bg-white rounded-2xl p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] border border-[#e5e7eb] flex flex-col gap-8 xl:col-start-2 xl:col-end-3 xl:row-start-2 xl:row-end-3">
-              <div className="flex justify-between items-center pb-6 border-b border-[#f3f4f6]">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-[rgba(0,175,170,0.08)] flex items-center justify-center text-[#00AFAA]">
-                    <Icon icon="lucide:settings-2" className="text-lg" />
-                  </div>
-                  <h3 className="text-lg font-bold text-[#111827] m-0 tracking-[-0.01em]">
-                    Preferências
-                  </h3>
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col gap-2">
-                  <label className="text-[13px] font-medium text-[#6b7280]">Idioma da Plataforma</label>
-                  <div className="relative flex items-center bg-[#f9fafb] border border-[#e5e7eb] rounded-[10px] h-12 transition-all hover:border-[#d1d5db] hover:bg-white focus-within:bg-white focus-within:border-[#00AFAA] focus-within:shadow-[0_0_0_3px_rgba(0,175,170,0.1)]">
-                    <input
-                      type="text"
-                      name="language"
-                      value={formData.language}
-                      onChange={handleInputChange}
-                      className="w-full h-full px-4 bg-transparent border-none outline-none text-sm text-[#111827]"
-                    />
-                    <div className="pr-4 flex items-center justify-center text-[#9ca3af]">
-                      <Icon icon="lucide:chevron-down" className="text-sm" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <div 
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg transition-all hover:bg-[#f9fafb] cursor-pointer"
-                    onClick={() => setFormData({...formData, emailNotifications: !formData.emailNotifications})}
-                    data-media-type="banani-button"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-[#f3f4f6] text-[#6b7280] flex items-center justify-center">
-                      <Icon icon="lucide:mail" className="text-base" />
-                    </div>
-                    <span className="text-sm text-[#111827] flex-1">Notificações por E-mail</span>
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                      formData.emailNotifications 
-                        ? 'bg-[#00AFAA] border-[#00AFAA]' 
-                        : 'border-[#d1d5db]'
-                    }`}>
-                      {formData.emailNotifications && (
-                        <Icon icon="lucide:check" className="text-white text-xs" />
-                      )}
-                    </div>
-                  </div>
-
-                  <div 
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg transition-all hover:bg-[#f9fafb] cursor-pointer"
-                    onClick={() => setFormData({...formData, performanceAlerts: !formData.performanceAlerts})}
-                    data-media-type="banani-button"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-[#f3f4f6] text-[#6b7280] flex items-center justify-center">
-                      <Icon icon="lucide:trending-up" className="text-base" />
-                    </div>
-                    <span className="text-sm text-[#111827] flex-1">Alertas de Performance</span>
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                      formData.performanceAlerts 
-                        ? 'bg-[#00AFAA] border-[#00AFAA]' 
-                        : 'border-[#d1d5db]'
-                    }`}>
-                      {formData.performanceAlerts && (
-                        <Icon icon="lucide:check" className="text-white text-xs" />
-                      )}
-                    </div>
-                  </div>
-
-                  <div 
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg transition-all hover:bg-[#f9fafb] cursor-pointer"
-                    onClick={() => setFormData({...formData, newsOffers: !formData.newsOffers})}
-                    data-media-type="banani-button"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-[#f3f4f6] text-[#6b7280] flex items-center justify-center">
-                      <Icon icon="lucide:bell" className="text-base" />
-                    </div>
-                    <span className="text-sm text-[#111827] flex-1">Novidades e Ofertas</span>
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                      formData.newsOffers 
-                        ? 'bg-[#00AFAA] border-[#00AFAA]' 
-                        : 'border-[#d1d5db]'
-                    }`}>
-                      {formData.newsOffers && (
-                        <Icon icon="lucide:check" className="text-white text-xs" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
