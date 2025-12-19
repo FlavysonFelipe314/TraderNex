@@ -191,13 +191,19 @@ function Sidebar() {
             })
             .map((item) => {
               const active = isActive(item.path)
+              // Para admins, usar estilo dourado quando ativo, senão usar estilo padrão
+              const isAdmin = user?.is_admin || user?.isAdmin
               return (
                 <div
                   key={item.id}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
                     active
-                      ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
-                      : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white hover:pl-4'
+                      ? isAdmin
+                        ? 'bg-gradient-to-r from-[rgba(255,193,7,0.1)] to-[rgba(255,193,7,0.02)] text-[#ffc107] border border-[rgba(255,193,7,0.15)]'
+                        : 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                      : isAdmin
+                        ? 'text-[#ffc107] border border-transparent hover:bg-[rgba(255,193,7,0.05)] hover:text-[#ffd54f] hover:pl-4'
+                        : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white hover:pl-4'
                   }`}
                   onClick={() => handleNavigation(item.path)}
                   data-media-type="banani-button"
@@ -357,13 +363,19 @@ function Sidebar() {
             })
             .map((item) => {
               const active = isActive(item.path)
+              // Para admins, usar estilo dourado quando ativo, senão usar estilo padrão
+              const isAdmin = user?.is_admin || user?.isAdmin
               return (
                 <div
                   key={item.id}
                   className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
                     active
-                      ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
-                      : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white'
+                      ? isAdmin
+                        ? 'bg-gradient-to-r from-[rgba(255,193,7,0.1)] to-[rgba(255,193,7,0.02)] text-[#ffc107] border border-[rgba(255,193,7,0.15)]'
+                        : 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                      : isAdmin
+                        ? 'text-[#ffc107] border border-transparent hover:bg-[rgba(255,193,7,0.05)] hover:text-[#ffd54f]'
+                        : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white'
                   }`}
                   onClick={() => handleNavigation(item.path)}
                   data-media-type="banani-button"

@@ -723,18 +723,34 @@ function DashboardPage() {
               ) : (
                 // Mostrar apenas dados MT4 quando não houver MyFXBook
                 <>
-                  <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 bg-[rgba(240,253,244,0.6)] border border-[rgba(34,197,94,0.15)] rounded-xl sm:rounded-[14px]">
-                    <span className="flex items-center gap-3 font-bold text-[#15803D] text-[13px]">
-                      <div 
-                        className="w-2 h-2 bg-[#22C55E] rounded-full shadow-[0_0_0_4px_rgba(34,197,94,0.15)]" 
-                        style={pulseStyle}
-                      />
-                      Conectada e Operando
-                    </span>
-                    <div className="w-[18px] h-[18px] flex items-center justify-center">
-                      <Icon icon="lucide:wifi" className="text-[18px] text-[#22c55e]" />
+                  {/* Status de Conexão */}
+                  {mt4Accounts.length > 0 ? (
+                    <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 bg-[rgba(240,253,244,0.6)] border border-[rgba(34,197,94,0.15)] rounded-xl sm:rounded-[14px]">
+                      <span className="flex items-center gap-3 font-bold text-[#15803D] text-[13px]">
+                        <div 
+                          className="w-2 h-2 bg-[#22C55E] rounded-full shadow-[0_0_0_4px_rgba(34,197,94,0.15)]" 
+                          style={pulseStyle}
+                        />
+                        Conectada e Operando
+                      </span>
+                      <div className="w-[18px] h-[18px] flex items-center justify-center">
+                        <Icon icon="lucide:wifi" className="text-[18px] text-[#22c55e]" />
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 bg-[rgba(254,242,242,0.6)] border border-[rgba(239,68,68,0.15)] rounded-xl sm:rounded-[14px]">
+                      <span className="flex items-center gap-3 font-bold text-[#DC2626] text-[13px]">
+                        <div 
+                          className="w-2 h-2 bg-[#EF4444] rounded-full shadow-[0_0_0_4px_rgba(239,68,68,0.15)]" 
+                        />
+                        Desconectado
+                      </span>
+                      <div className="w-[18px] h-[18px] flex items-center justify-center">
+                        <Icon icon="lucide:wifi-off" className="text-[18px] text-[#ef4444]" />
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="flex flex-col gap-0">
                     {mt4Accounts.length > 0 ? (
                       mt4Accounts.slice(0, 1).map((account) => (
@@ -754,20 +770,15 @@ function DashboardPage() {
                         </div>
                       ))
                     ) : (
-                      <>
-                        <div className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
-                          <span className="text-[#64748B] font-medium">Login MT4</span>
-                          <span className="font-semibold text-[#0F172A] text-right break-all ml-2">-</span>
-                        </div>
-                        <div className="flex justify-between py-3 sm:py-4 lg:py-5 border-b border-[#F1F5F9] text-xs sm:text-[13px] items-center">
-                          <span className="text-[#64748B] font-medium">Corretora</span>
-                          <span className="font-semibold text-[#0F172A] text-right break-all ml-2">-</span>
-                        </div>
-                        <div className="flex justify-between py-3 sm:py-4 lg:py-5 text-xs sm:text-[13px] items-center">
-                          <span className="text-[#64748B] font-medium">Servidor</span>
-                          <span className="font-semibold text-[#0F172A] text-right break-all ml-2">-</span>
-                        </div>
-                      </>
+                      <div className="py-6 text-center">
+                        <div className="text-sm text-[#6b7280] mb-2">Nenhuma conta MT4 configurada</div>
+                        <button
+                          onClick={() => window.location.href = '/conta-forex-mt4'}
+                          className="text-xs text-[#00afaa] hover:text-[#00ff88] font-medium underline"
+                        >
+                          Configurar conta MT4
+                        </button>
+                      </div>
                     )}
                   </div>
                 </>
