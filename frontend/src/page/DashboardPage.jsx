@@ -11,7 +11,6 @@ function DashboardPage() {
   const { user } = useAuth()
   const [dashboardData, setDashboardData] = useState(null)
   const [mt4Accounts, setMt4Accounts] = useState([])
-  const [period, setPeriod] = useState('30d')
   const [performanceData, setPerformanceData] = useState([])
   const [loading, setLoading] = useState(true)
   const [myfxbookConnected, setMyfxbookConnected] = useState(false)
@@ -48,8 +47,8 @@ function DashboardPage() {
           setDashboardData(dashboardResult.data)
         }
         
-        // Carregar dados de performance
-        const performanceResult = await getPerformanceStats(period)
+        // Carregar dados de performance (período fixo de 30 dias)
+        const performanceResult = await getPerformanceStats('30d')
         if (performanceResult.success) {
            setPerformanceData(performanceResult.data)
         }
@@ -160,23 +159,6 @@ function DashboardPage() {
             </div>
             <div className="text-sm sm:text-[15px] text-[#64748B] font-normal">
               Bem-vindo de volta, {user?.firstName || user?.first_name || 'Usuário'}. Aqui está o resumo da sua carteira.
-            </div>
-          </div>
-          <div className="flex items-center gap-3 sm:gap-4 lg:flex-row flex-col w-full lg:w-auto">
-            <div className="flex bg-white rounded-full p-1 border border-[#E2E8F0] shadow-sm">
-              {['7d', '30d', '90d', '1y'].map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
-                    period === p
-                      ? 'bg-[#0F172A] text-white shadow-md'
-                      : 'text-[#64748B] hover:text-[#0F172A]'
-                  }`}
-                >
-                  {p === '1y' ? '1 Ano' : `${p.replace('d', '')} Dias`}
-                </button>
-              ))}
             </div>
           </div>
         </div>
@@ -446,7 +428,7 @@ function DashboardPage() {
                   Evolução do Patrimônio
                 </div>
                 <div className="text-[13px] text-[#64748B] mt-1">
-                  Crescimento do saldo nos últimos {period === '1y' ? '12 meses' : `${period.replace('d', '')} dias`}
+                  Crescimento do saldo nos últimos 30 dias
                 </div>
               </div>
             </div>

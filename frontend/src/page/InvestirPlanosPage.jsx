@@ -36,6 +36,28 @@ function InvestirPlanosPage() {
     loadPlans()
   }, [])
 
+  const handleSelectPlan = async (plan) => {
+    setSelectingPlan(plan.id)
+    try {
+      const result = await selectInvestmentPlan(plan.id)
+      if (result.success) {
+        setSelectedPlanName(plan.name)
+        setShowSuccessMessage(true)
+        // Ocultar mensagem após 5 segundos
+        setTimeout(() => {
+          setShowSuccessMessage(false)
+        }, 5000)
+      } else {
+        alert('Erro ao selecionar plano: ' + (result.message || 'Erro desconhecido'))
+      }
+    } catch (error) {
+      console.error('Erro ao selecionar plano:', error)
+      alert('Erro ao selecionar plano.')
+    } finally {
+      setSelectingPlan(null)
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="flex flex-col items-center pb-20">
