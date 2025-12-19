@@ -8,6 +8,12 @@ function Sidebar() {
   const location = useLocation()
   const { user, logout } = useAuth()
   const { isSidebarOpen, toggleSidebar } = useSidebar()
+  
+  // Debug: verificar status de admin
+  const isAdmin = user?.is_admin || user?.isAdmin
+  if (isAdmin && location.pathname === '/perfil-cliente') {
+    console.log('[Sidebar] Admin acessando perfil - isAdmin:', isAdmin, 'user:', user)
+  }
 
   const navItems = [
     { id: 'overview', label: 'Visão Geral', icon: 'lucide:layout-dashboard', path: '/dashboard' },
@@ -119,7 +125,7 @@ function Sidebar() {
         {/* Navigation */}
         <nav className="flex flex-col gap-1 mb-10">
           {/* Admin Section - sempre mostrar se for admin, independente da rota */}
-          {(user?.is_admin || user?.isAdmin) && (
+          {isAdmin && (
             <>
               <div className="text-[10px] font-semibold text-[rgba(255,193,7,0.4)] uppercase tracking-[0.1em] mx-3 mb-3">
                 Administração
@@ -148,7 +154,7 @@ function Sidebar() {
           )}
 
           {/* Seção Principal - apenas para não-admins */}
-          {!(user?.is_admin || user?.isAdmin) && (
+          {!isAdmin && (
             <>
               <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
                 Principal
@@ -183,7 +189,7 @@ function Sidebar() {
           {accountNavItems
             .filter(item => {
               // Para admins, mostrar apenas Perfil
-              if (user?.is_admin || user?.isAdmin) {
+              if (isAdmin) {
                 return item.id === 'profile'
               }
               // Para não-admins, mostrar todos
@@ -192,7 +198,6 @@ function Sidebar() {
             .map((item) => {
               const active = isActive(item.path)
               // Para admins, usar estilo dourado quando ativo, senão usar estilo padrão
-              const isAdmin = user?.is_admin || user?.isAdmin
               return (
                 <div
                   key={item.id}
@@ -292,7 +297,7 @@ function Sidebar() {
         {/* Navigation */}
         <nav className="flex flex-col gap-1 mb-8">
           {/* Admin Section - sempre mostrar se for admin, independente da rota */}
-          {(user?.is_admin || user?.isAdmin) && (
+          {isAdmin && (
             <>
               <div className="text-[10px] font-semibold text-[rgba(255,193,7,0.4)] uppercase tracking-[0.1em] mx-3 mb-3">
                 Administração
@@ -321,7 +326,7 @@ function Sidebar() {
           )}
 
           {/* Seção Principal - apenas para não-admins */}
-          {!(user?.is_admin || user?.isAdmin) && (
+          {!isAdmin && (
             <>
               <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
                 Principal
@@ -355,7 +360,7 @@ function Sidebar() {
           {accountNavItems
             .filter(item => {
               // Para admins, mostrar apenas Perfil
-              if (user?.is_admin || user?.isAdmin) {
+              if (isAdmin) {
                 return item.id === 'profile'
               }
               // Para não-admins, mostrar todos
@@ -364,7 +369,6 @@ function Sidebar() {
             .map((item) => {
               const active = isActive(item.path)
               // Para admins, usar estilo dourado quando ativo, senão usar estilo padrão
-              const isAdmin = user?.is_admin || user?.isAdmin
               return (
                 <div
                   key={item.id}
