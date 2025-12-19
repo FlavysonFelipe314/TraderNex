@@ -11,22 +11,33 @@ const createTransporter = () => {
   // Se SMTP_HOST estiver configurado, usar SMTP real
   if (process.env.SMTP_HOST) {
     console.log('[emailService] Criando transporter SMTP...');
+    
+    // Configurações de timeout mais agressivas para evitar esperas longas
+    const connectionTimeout = parseInt(process.env.SMTP_CONNECTION_TIMEOUT || '8000', 10); // 8 segundos padrão
+    const greetingTimeout = parseInt(process.env.SMTP_GREETING_TIMEOUT || '8000', 10);
+    const socketTimeout = parseInt(process.env.SMTP_SOCKET_TIMEOUT || '8000', 10);
+    
+    console.log(`[emailService] Timeouts configurados: connection=${connectionTimeout}ms, greeting=${greetingTimeout}ms, socket=${socketTimeout}ms`);
+    
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: process.env.SMTP_SECURE === 'true', // true para 465, false para outras portas
+      requireTLS: process.env.SMTP_REQUIRE_TLS !== 'false', // Requer TLS por padrão
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD
       },
       // Configurações de timeout para evitar timeouts longos
-      connectionTimeout: 10000, // 10 segundos para estabelecer conexão
-      greetingTimeout: 10000, // 10 segundos para greeting
-      socketTimeout: 10000, // 10 segundos para operações de socket
+      connectionTimeout: connectionTimeout,
+      greetingTimeout: greetingTimeout,
+      socketTimeout: socketTimeout,
       // Retry configuration
-      pool: true,
-      maxConnections: 1,
-      maxMessages: 3
+      pool: false, // Desabilitar pool para evitar conexões persistentes que podem causar timeout
+      // Opções adicionais para melhorar conexão
+      tls: {
+        rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED !== 'false' // Rejeitar certificados inválidos por padrão
+      }
     });
     console.log('[emailService] Transporter SMTP criado com sucesso');
     return transporter;
@@ -214,10 +225,10 @@ exports.sendVerificationEmail = async (email, name, token) => {
       html: getVerificationEmailTemplate(name, verificationLink)
     };
 
-    // Usar Promise.race para timeout de 15 segundos
+    // Usar Promise.race para timeout de 12 segundos (reduzido de 15s)
     const sendPromise = transporter.sendMail(mailOptions);
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout ao enviar email (15s)')), 15000)
+      setTimeout(() => reject(new Error('Timeout ao enviar email (12s)')), 12000)
     );
 
     const info = await Promise.race([sendPromise, timeoutPromise]);
@@ -225,11 +236,17 @@ exports.sendVerificationEmail = async (email, name, token) => {
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Erro ao enviar email de verificação:', error.message);
-    if (error.code === 'ETIMEDOUT' || error.message.includes('Timeout')) {
-      console.error('   ⚠️  Timeout na conexão SMTP. Verifique:');
-      console.error('      - Se o servidor SMTP está acessível');
-      console.error('      - Se as credenciais estão corretas');
-      console.error('      - Se há firewall bloqueando a conexão');
+    if (error.code === 'ETIMEDOUT' || error.message.includes('Timeout') || error.command === 'CONN') {
+      console.error('   ⚠️  Timeout na conexão SMTP. Possíveis causas:');
+      console.error('      - Servidor SMTP não está acessível do container');
+      console.error('      - Firewall bloqueando a porta SMTP (587 ou 465)');
+      console.error('      - Credenciais incorretas');
+      console.error('      - Servidor SMTP sobrecarregado');
+      console.error(`   💡 Dica: Verifique se ${process.env.SMTP_HOST} está acessível`);
+      console.error('   💡 Dica: Tente usar SMTP_PORT=465 com SMTP_SECURE=true');
+    } else if (error.code === 'ECONNREFUSED') {
+      console.error('   ⚠️  Conexão recusada pelo servidor SMTP');
+      console.error('      - Verifique se o host e porta estão corretos');
     }
     throw error;
   }
@@ -266,10 +283,10 @@ exports.sendPasswordResetEmail = async (email, name, token) => {
       html: getPasswordResetEmailTemplate(name, resetLink)
     };
 
-    // Usar Promise.race para timeout de 15 segundos
+    // Usar Promise.race para timeout de 12 segundos (reduzido de 15s)
     const sendPromise = transporter.sendMail(mailOptions);
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout ao enviar email (15s)')), 15000)
+      setTimeout(() => reject(new Error('Timeout ao enviar email (12s)')), 12000)
     );
 
     const info = await Promise.race([sendPromise, timeoutPromise]);
@@ -277,11 +294,17 @@ exports.sendPasswordResetEmail = async (email, name, token) => {
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Erro ao enviar email de recuperação:', error.message);
-    if (error.code === 'ETIMEDOUT' || error.message.includes('Timeout')) {
-      console.error('   ⚠️  Timeout na conexão SMTP. Verifique:');
-      console.error('      - Se o servidor SMTP está acessível');
-      console.error('      - Se as credenciais estão corretas');
-      console.error('      - Se há firewall bloqueando a conexão');
+    if (error.code === 'ETIMEDOUT' || error.message.includes('Timeout') || error.command === 'CONN') {
+      console.error('   ⚠️  Timeout na conexão SMTP. Possíveis causas:');
+      console.error('      - Servidor SMTP não está acessível do container');
+      console.error('      - Firewall bloqueando a porta SMTP (587 ou 465)');
+      console.error('      - Credenciais incorretas');
+      console.error('      - Servidor SMTP sobrecarregado');
+      console.error(`   💡 Dica: Verifique se ${process.env.SMTP_HOST} está acessível`);
+      console.error('   💡 Dica: Tente usar SMTP_PORT=465 com SMTP_SECURE=true');
+    } else if (error.code === 'ECONNREFUSED') {
+      console.error('   ⚠️  Conexão recusada pelo servidor SMTP');
+      console.error('      - Verifique se o host e porta estão corretos');
     }
     throw error;
   }
