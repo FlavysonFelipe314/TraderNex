@@ -109,7 +109,7 @@ function SuporteClientePage() {
           </div>
 
           {/* Ticket Card */}
-          <div className="bg-white rounded-2xl p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] border border-[#e5e7eb] hover:-translate-y-1 transition-transform">
+          {/* <div className="bg-white rounded-2xl p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] border border-[#e5e7eb] hover:-translate-y-1 transition-transform">
             <div className="w-14 h-14 rounded-2xl bg-[#f3f4f6] flex items-center justify-center mb-6 text-[#111827]">
               <Icon icon="lucide:ticket" className="text-[28px]" />
             </div>
@@ -124,7 +124,7 @@ function SuporteClientePage() {
             <button className="w-full h-12 rounded-[10px] text-sm font-semibold flex items-center justify-center cursor-pointer transition-all bg-white border border-[#e5e7eb] text-[#111827] hover:border-[#00afaa] hover:text-[#00afaa] hover:bg-[rgba(0,175,170,0.03)]">
               Novo Ticket
             </button>
-          </div>
+          </div> */}
 
           {/* Knowledge Base Card */}
           <div className="bg-white rounded-2xl p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] border border-[#e5e7eb] hover:-translate-y-1 transition-transform">
@@ -191,7 +191,7 @@ function SuporteClientePage() {
           </div>
 
           {/* Emergency Box */}
-          <div className="bg-[#fef2f2] border border-[#fecaca] rounded-2xl p-6">
+          {/* <div className="bg-[#fef2f2] border border-[#fecaca] rounded-2xl p-6">
             <div className="flex items-center gap-2.5 text-base font-bold text-[#991b1b] mb-2">
               <Icon icon="lucide:alert-triangle" className="text-xl" />
               Ajuda urgente
@@ -202,7 +202,7 @@ function SuporteClientePage() {
             <button className="w-full h-10 bg-white border border-[#fecaca] rounded-lg text-[#dc2626] text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-2 transition-all hover:bg-[#fef2f2] hover:border-[#ef4444]">
               Suporte de Emergência
             </button>
-          </div>
+          </div> */}
         </div>
 
         {/* Footer */}

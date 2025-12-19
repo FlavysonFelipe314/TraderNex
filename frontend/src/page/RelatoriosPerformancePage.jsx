@@ -142,13 +142,17 @@ function RelatoriosPerformancePage() {
 
   // Dados do gráfico
   const chartData = useMemo(() => {
+    // Prioridade 1: Dados do MyFXBook (dataDaily)
     if (myfxbookData?.dataDaily && myfxbookData.dataDaily.length > 0) {
       return myfxbookData.dataDaily.map(item => ({
         date: new Date(item.date || item.time),
         equity: parseFloat(item.equity || 0),
         balance: parseFloat(item.balance || 0)
       })).sort((a, b) => a.date - b.date)
-    } else if (myfxbookData?.dailyGain && myfxbookData.dailyGain.length > 0) {
+    }
+    
+    // Prioridade 2: Dados do MyFXBook (dailyGain)
+    if (myfxbookData?.dailyGain && myfxbookData.dailyGain.length > 0) {
       let cumulative = 0
       return myfxbookData.dailyGain.map(item => {
         cumulative += parseFloat(item.gain || item.profit || 0)
@@ -159,8 +163,27 @@ function RelatoriosPerformancePage() {
         }
       }).sort((a, b) => a.date - b.date)
     }
+    
+    // Prioridade 3: Dados de performance do backend (fallback)
+    if (performanceData && Array.isArray(performanceData) && performanceData.length > 0) {
+      let cumulativeBalance = 0
+      let cumulativeEquity = 0
+      
+      return performanceData.map(item => {
+        const netProfit = parseFloat(item.net_profit || item.value || 0)
+        cumulativeBalance += netProfit
+        cumulativeEquity += netProfit
+        
+        return {
+          date: new Date(item.report_date || item.date),
+          equity: cumulativeEquity,
+          balance: cumulativeBalance
+        }
+      }).sort((a, b) => a.date - b.date)
+    }
+    
     return []
-  }, [myfxbookData])
+  }, [myfxbookData, performanceData])
 
   // Exportar CSV
   const handleExportCSV = () => {

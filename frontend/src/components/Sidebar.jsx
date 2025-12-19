@@ -118,7 +118,7 @@ function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex flex-col gap-1 mb-10">
-          {/* Admin Section - apenas se for admin */}
+          {/* Admin Section - sempre mostrar se for admin, independente da rota */}
           {(user?.is_admin || user?.isAdmin) && (
             <>
               <div className="text-[10px] font-semibold text-[rgba(255,193,7,0.4)] uppercase tracking-[0.1em] mx-3 mb-3">
@@ -291,7 +291,7 @@ function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex flex-col gap-1 mb-8">
-          {/* Admin Section - apenas se for admin */}
+          {/* Admin Section - sempre mostrar se for admin, independente da rota */}
           {(user?.is_admin || user?.isAdmin) && (
             <>
               <div className="text-[10px] font-semibold text-[rgba(255,193,7,0.4)] uppercase tracking-[0.1em] mx-3 mb-3">
