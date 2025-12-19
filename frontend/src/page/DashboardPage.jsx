@@ -438,137 +438,163 @@ function DashboardPage() {
                 Saldo MT4 consolidado
               </div>
               
-              {performanceData.length > 0 ? (
-                <svg
-                  className="w-full h-full overflow-visible"
-                  viewBox="0 0 600 250"
-                  preserveAspectRatio="none"
-                >
-                  <defs>
-                    <linearGradient id="gradientFill" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" style={{ stopColor: '#00ff88', stopOpacity: 1 }} />
-                      <stop offset="100%" style={{ stopColor: '#00ff88', stopOpacity: 0 }} />
-                    </linearGradient>
-                    <linearGradient id="strokeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" style={{ stopColor: '#00ff88', stopOpacity: 1 }} />
-                      <stop offset="100%" style={{ stopColor: '#00afaa', stopOpacity: 1 }} />
-                    </linearGradient>
-                  </defs>
-                  {/* Grid Lines */}
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <line 
-                      key={i} 
-                      x1="0" 
-                      y1={250 - (i * 250 / 4)} 
-                      x2="600" 
-                      y2={250 - (i * 250 / 4)} 
-                      stroke="#F1F5F9" 
-                      strokeWidth="1" 
-                      strokeOpacity="0.4" 
+              {(() => {
+                // Priorizar dados do MyFXBook se disponível
+                let chartData = []
+                let dataSource = 'performance'
+                
+                if (myfxbookConnected && myfxbookAccountData?.dataDaily && myfxbookAccountData.dataDaily.length > 0) {
+                  // Usar dados diários do MyFXBook
+                  chartData = myfxbookAccountData.dataDaily.map((item, idx) => ({
+                    date: item.date || item.time,
+                    value: parseFloat(item.equity || item.balance || 0),
+                    index: idx
+                  })).filter(d => d.value > 0)
+                  dataSource = 'myfxbook'
+                } else if (myfxbookConnected && myfxbookAccountData?.dailyGain && myfxbookAccountData.dailyGain.length > 0) {
+                  // Usar ganhos diários do MyFXBook
+                  chartData = myfxbookAccountData.dailyGain.map((item, idx) => ({
+                    date: item.date || item.time,
+                    value: parseFloat(item.gain || item.profit || 0),
+                    index: idx
+                  })).filter(d => d.value !== null && !isNaN(d.value))
+                  dataSource = 'myfxbook'
+                } else if (performanceData.length > 0) {
+                  // Usar dados de performance como fallback
+                  chartData = performanceData
+                    .map(d => {
+                      const value = d.net_profit != null && !isNaN(d.net_profit) 
+                        ? Number(d.net_profit) 
+                        : d.value != null && !isNaN(d.value) 
+                          ? Number(d.value) 
+                          : null;
+                      return value !== null ? { ...d, value, date: d.report_date || d.date } : null;
+                    })
+                    .filter(d => d !== null)
+                  dataSource = 'performance'
+                }
+
+                if (chartData.length === 0) {
+                  return (
+                    <div className="w-full h-full flex items-center justify-center text-[#94A3B8] text-sm">
+                      {loading ? 'Carregando dados...' : 'Nenhum dado disponível para exibir no gráfico'}
+                    </div>
+                  )
+                }
+
+                const values = chartData.map(d => d.value)
+                const min = Math.min(...values)
+                const max = Math.max(...values)
+                const range = max - min || 1
+
+                const points = chartData.map((d, i) => {
+                  const x = chartData.length > 1 
+                    ? (i / (chartData.length - 1)) * 600 
+                    : 300
+                  const y = 250 - ((d.value - min) / range) * 200 - 25
+                  const validX = isNaN(x) ? 300 : Math.max(0, Math.min(600, x))
+                  const validY = isNaN(y) ? 250 : Math.max(0, Math.min(250, y))
+                  return `${validX},${validY}`
+                }).join(' ')
+
+                const areaPath = `M0,250 ${points} L600,250 Z`
+
+                return (
+                  <svg
+                    className="w-full h-full overflow-visible"
+                    viewBox="0 0 600 250"
+                    preserveAspectRatio="none"
+                  >
+                    <defs>
+                      <linearGradient id="gradientFill" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style={{ stopColor: '#00ff88', stopOpacity: 1 }} />
+                        <stop offset="100%" style={{ stopColor: '#00ff88', stopOpacity: 0 }} />
+                      </linearGradient>
+                      <linearGradient id="strokeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style={{ stopColor: '#00ff88', stopOpacity: 1 }} />
+                        <stop offset="100%" style={{ stopColor: '#00afaa', stopOpacity: 1 }} />
+                      </linearGradient>
+                    </defs>
+                    
+                    {/* Grid Lines */}
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <line 
+                        key={i} 
+                        x1="0" 
+                        y1={250 - (i * 250 / 4)} 
+                        x2="600" 
+                        y2={250 - (i * 250 / 4)} 
+                        stroke="#F1F5F9" 
+                        strokeWidth="1" 
+                        strokeOpacity="0.4" 
+                      />
+                    ))}
+                    
+                    {/* Area Fill */}
+                    <path
+                      d={areaPath}
+                      fill="url(#gradientFill)"
+                      opacity="0.15"
                     />
-                  ))}
-                  
-                  {/* Chart Path */}
-                  {(() => {
-                    // Filtrar e converter valores válidos
-                    const validData = performanceData
-                      .map(d => {
-                        const value = d.net_profit != null && !isNaN(d.net_profit) 
-                          ? Number(d.net_profit) 
-                          : d.value != null && !isNaN(d.value) 
-                            ? Number(d.value) 
-                            : null;
-                        return value !== null ? { ...d, value } : null;
-                      })
-                      .filter(d => d !== null);
                     
-                    if (validData.length === 0) {
-                      return null;
-                    }
+                    {/* Line */}
+                    <path
+                      d={`M${points.replace(/ /g, ' L')}`}
+                      fill="none"
+                      stroke="url(#strokeGradient)"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={{ filter: 'drop-shadow(0 4px 12px rgba(0, 255, 136, 0.3))' }}
+                    />
                     
-                    const values = validData.map(d => d.value);
-                    const min = Math.min(...values);
-                    const max = Math.max(...values);
-                    const range = max - min || 1;
-                    
-                    const points = validData.map((d, i) => {
-                      const x = validData.length > 1 
-                        ? (i / (validData.length - 1)) * 600 
-                        : 300;
-                      const y = 250 - ((d.value - min) / range) * 200 - 25;
-                      // Garantir que x e y são números válidos
-                      const validX = isNaN(x) ? 300 : Math.max(0, Math.min(600, x));
-                      const validY = isNaN(y) ? 250 : Math.max(0, Math.min(250, y));
-                      return `${validX},${validY}`;
-                    }).join(' ');
-
-                    const firstX = 0;
-                    const lastX = 600;
-                    const areaPath = `M${firstX},250 ${points} L${lastX},250 Z`.replace(/,/g, ' ');
-
-                    return (
-                      <>
-                        <path
-                          d={areaPath}
-                          fill="url(#gradientFill)"
-                          opacity="0.1"
+                    {/* Data Points */}
+                    {chartData.map((d, i) => {
+                      const x = chartData.length > 1 ? (i / (chartData.length - 1)) * 600 : 300
+                      const y = 250 - ((d.value - min) / range) * 200 - 25
+                      const validX = isNaN(x) ? 300 : Math.max(0, Math.min(600, x))
+                      const validY = isNaN(y) ? 250 : Math.max(0, Math.min(250, y))
+                      return (
+                        <circle
+                          key={`point-${i}`}
+                          cx={validX}
+                          cy={validY}
+                          r="4"
+                          fill="#00ff88"
+                          stroke="white"
+                          strokeWidth="2"
+                          style={{ filter: 'drop-shadow(0 2px 4px rgba(0, 255, 136, 0.4))' }}
                         />
-                        <path
-                          d={`M${points.replace(/ /g, ' L')}`}
-                          fill="none"
-                          stroke="url(#strokeGradient)"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          style={{ filter: 'drop-shadow(0 8px 16px rgba(0, 255, 136, 0.2))' }}
-                        />
-                      </>
-                    );
-                  })()}
+                      )
+                    })}
 
-                  {/* X Axis Labels */}
-                  {(() => {
-                    const validData = performanceData
-                      .map(d => {
-                        const value = d.net_profit != null && !isNaN(d.net_profit) 
-                          ? Number(d.net_profit) 
-                          : d.value != null && !isNaN(d.value) 
-                            ? Number(d.value) 
-                            : null;
-                        return value !== null ? { ...d, value } : null;
-                      })
-                      .filter(d => d !== null);
-                    
-                    if (validData.length === 0) return null;
-                    
-                    return validData
-                      .filter((_, i) => i % Math.ceil(validData.length / 5) === 0)
+                    {/* X Axis Labels */}
+                    {chartData
+                      .filter((_, i) => i % Math.ceil(chartData.length / 5) === 0 || i === chartData.length - 1)
                       .map((d, i) => {
-                        const index = validData.indexOf(d);
-                        const x = validData.length > 1 
-                          ? (index / (validData.length - 1)) * 600 
-                          : 300;
-                        const validX = isNaN(x) ? 300 : Math.max(10, Math.min(550, x));
+                        const index = chartData.indexOf(d)
+                        const x = chartData.length > 1 
+                          ? (index / (chartData.length - 1)) * 600 
+                          : 300
+                        const validX = isNaN(x) ? 300 : Math.max(10, Math.min(550, x))
+                        const dateStr = d.date 
+                          ? new Date(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+                          : `Dia ${i + 1}`
                         return (
                           <text 
-                            key={`label-${i}-${d.report_date || d.date || i}`} 
+                            key={`label-${i}-${d.date || i}`} 
                             x={validX} 
                             y="245" 
                             className="text-[11px] fill-[#94A3B8] font-medium"
+                            textAnchor="middle"
                           >
-                            {d.report_date || d.date 
-                              ? new Date(d.report_date || d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-                              : `Ponto ${i + 1}`}
+                            {dateStr}
                           </text>
-                        );
-                      });
-                  })()}
-                </svg>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-[#94A3B8] text-sm">
-                  {loading ? 'Carregando dados...' : 'Nenhum dado disponível para o período selecionado'}
-                </div>
-              )}
+                        )
+                      })}
+                  </svg>
+                )
+              })()}
             </div>
           </div>
 

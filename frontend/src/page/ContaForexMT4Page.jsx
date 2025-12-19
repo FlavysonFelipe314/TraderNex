@@ -114,18 +114,18 @@ function ContaForexMT4Page() {
               <span className="text-[10px] sm:text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">MT4 Conectado</span>
               <span className={`text-sm sm:text-base font-bold ${
                 myfxbookConnected ? 'text-[#059669]' : 'text-[#dc2626]'
-              }`}>
-                {myfxbookConnected ? 'Conectado' : 'Desconectado'}
-              </span>
+                }`}>
+                  {myfxbookConnected ? 'Conectado' : 'Desconectado'}
+                </span>
             </div>
           </div>
 
           {/* Card 2: Nome do Broker */}
-          <div className="bg-white rounded-xl sm:rounded-2xl border border-[#e5e7eb] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.03)] h-auto sm:h-[110px] flex items-center px-4 sm:px-7 py-4 sm:py-0 gap-4 sm:gap-5 hover:-translate-y-0.5 transition-transform">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#f9fafb] rounded-xl flex items-center justify-center text-[#4b5563]">
-              <Icon icon="lucide:server" className="text-lg sm:text-xl" />
-            </div>
-            <div className="flex flex-col gap-1">
+            <div className="bg-white rounded-xl sm:rounded-2xl border border-[#e5e7eb] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.03)] h-auto sm:h-[110px] flex items-center px-4 sm:px-7 py-4 sm:py-0 gap-4 sm:gap-5 hover:-translate-y-0.5 transition-transform">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#f9fafb] rounded-xl flex items-center justify-center text-[#4b5563]">
+                <Icon icon="lucide:server" className="text-lg sm:text-xl" />
+              </div>
+              <div className="flex flex-col gap-1">
               <span className="text-[10px] sm:text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">Broker</span>
               <span className="text-sm sm:text-base font-bold text-[#111827]">
                 {mt4Accounts.length > 0 ? mt4Accounts[0].broker || 'N/A' : 'N/A'}
@@ -223,20 +223,20 @@ function ContaForexMT4Page() {
                           : 'N/A'}
                     </span>
                   </div>
-                  <div className="h-px bg-[#f2f3f5] w-full" />
-                  <div className="flex justify-between items-center text-sm">
-                    <div className="flex items-center gap-2.5">
+                      <div className="h-px bg-[#f2f3f5] w-full" />
+                      <div className="flex justify-between items-center text-sm">
+                        <div className="flex items-center gap-2.5">
                       <Icon icon="lucide:dollar-sign" className="text-sm text-[#9ca3af]" />
                       <span className="text-[#6b7280] font-medium">Lucro</span>
-                    </div>
+                        </div>
                     <span className={`font-semibold ${
                       (myfxbookData?.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
                     }`}>
                       {myfxbookData?.profit !== undefined
                         ? `${(myfxbookData.profit || 0) >= 0 ? '+' : ''}$${parseFloat(myfxbookData.profit).toFixed(2)}`
                         : 'N/A'}
-                    </span>
-                  </div>
+                        </span>
+                      </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 mb-6 sm:mb-8">

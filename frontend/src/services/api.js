@@ -43,6 +43,12 @@ api.interceptors.response.use(
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       window.location.href = '/login'
+    } else if (error.response?.status === 403) {
+      // Acesso negado (não é admin tentando acessar rota de admin)
+      // Não limpar token, apenas redirecionar para dashboard
+      if (window.location.pathname.startsWith('/admin')) {
+        window.location.href = '/dashboard'
+      }
     }
     return Promise.reject(error)
   }

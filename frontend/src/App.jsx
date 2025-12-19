@@ -3,6 +3,8 @@ import "./css/App.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SidebarProvider } from "./contexts/SidebarContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminProtectedRoute from "./components/AdminProtectedRoute";
+import DashboardRedirect from "./components/DashboardRedirect";
 import LoginPage from "./page/LoginPage";
 import RegisterPage from "./page/RegisterPage";
 import AccountCreatedPage from "./page/AccountCreatedPage";
@@ -42,7 +44,9 @@ function App() {
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <DashboardPage />
+              <DashboardRedirect>
+                <DashboardPage />
+              </DashboardRedirect>
             </ProtectedRoute>
           }
         />
@@ -121,25 +125,25 @@ function App() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute>
+            <AdminProtectedRoute>
               <AdminPage />
-            </ProtectedRoute>
+            </AdminProtectedRoute>
           }
         />
         <Route
           path="/admin/plans"
           element={
-            <ProtectedRoute>
+            <AdminProtectedRoute>
               <AdminPlansPage />
-            </ProtectedRoute>
+            </AdminProtectedRoute>
           }
         />
         <Route
           path="/admin/users"
           element={
-            <ProtectedRoute>
+            <AdminProtectedRoute>
               <AdminUsersPage />
-            </ProtectedRoute>
+            </AdminProtectedRoute>
           }
         />
 

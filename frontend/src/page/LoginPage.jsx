@@ -34,8 +34,12 @@ function LoginPage() {
       const result = await login(formData.email, formData.password)
       
       if (result.success) {
-        // Login bem-sucedido, redirecionar para dashboard
-        navigate('/dashboard')
+        // Login bem-sucedido, redirecionar baseado no tipo de usuário
+        if (result.user?.is_admin || result.user?.isAdmin) {
+          navigate('/admin')
+        } else {
+          navigate('/dashboard')
+        }
       } else {
         // Mostrar erro
         setError(result.message || 'Erro ao fazer login. Tente novamente.')

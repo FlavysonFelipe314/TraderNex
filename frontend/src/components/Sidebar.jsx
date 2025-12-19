@@ -31,6 +31,23 @@ function Sidebar() {
   ]
 
   const isActive = (path) => {
+    // Para rotas de admin, usar lógica mais específica para evitar duplicação
+    if (path.startsWith('/admin')) {
+      // Se o pathname é exatamente igual ao path, está ativo
+      if (location.pathname === path) {
+        return true
+      }
+      // Para /admin, não deve estar ativo se estiver em sub-rotas como /admin/plans
+      if (path === '/admin' && location.pathname !== '/admin') {
+        return false
+      }
+      // Para sub-rotas como /admin/plans, verificar se o pathname começa com o path
+      if (path !== '/admin' && location.pathname.startsWith(path)) {
+        return true
+      }
+      return false
+    }
+    // Para outras rotas, verificar correspondência exata ou início
     return location.pathname === path || location.pathname.startsWith(path + '/')
   }
 
