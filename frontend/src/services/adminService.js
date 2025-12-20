@@ -593,4 +593,46 @@ export const markInvoiceAsPaidAdmin = async (invoiceId, paidDate) => {
   }
 }
 
+// Obter sugestão de fatura para um usuário (Admin)
+export const getInvoiceSuggestion = async (userId, periodStart, periodEnd) => {
+  try {
+    const params = new URLSearchParams()
+    if (periodStart) params.append('periodStart', periodStart)
+    if (periodEnd) params.append('periodEnd', periodEnd)
+    
+    const response = await api.get(`/api/admin/invoices/suggest/${userId}?${params.toString()}`)
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao buscar sugestão de fatura:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao buscar sugestão de fatura.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Criar fatura manualmente (Admin)
+export const createInvoiceManual = async (invoiceData) => {
+  try {
+    const response = await api.post('/api/admin/invoices/create-manual', invoiceData)
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao criar fatura manual:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao criar fatura manual.',
+      error: error.response?.data
+    }
+  }
+}
+
 

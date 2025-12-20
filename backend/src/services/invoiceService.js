@@ -399,5 +399,7 @@ module.exports = {
   createPerformanceInvoice,
   generateWeeklyInvoices,
   markInvoiceAsPaid,
-  getPendingInvoices
+  getPendingInvoices,
+  // Exportar para uso no adminInvoicesController
+  pool // Exportar pool se necessário para queries customizadas
 };

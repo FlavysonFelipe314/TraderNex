@@ -38,11 +38,29 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Só fazer logout se for realmente um erro de token inválido/expirado
+    // Não fazer logout em outros casos de 401 (ex: credenciais incorretas, etc)
     if (error.response?.status === 401) {
-      // Token inválido ou expirado
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
+      const errorMessage = error.response?.data?.message || ''
+      const isTokenError = 
+        errorMessage.includes('Token') || 
+        errorMessage.includes('token') ||
+        errorMessage.includes('Token inválido') ||
+        errorMessage.includes('Token não fornecido') ||
+        errorMessage.includes('expirado') ||
+        errorMessage.includes('expirada') ||
+        error.config?.headers?.Authorization // Se tinha token na requisição, provavelmente expirou
+      
+      // Só deslogar se for erro de token realmente
+      if (isTokenError && error.config?.headers?.Authorization) {
+        // Verificar se já estamos na página de login para evitar loop
+        if (!window.location.pathname.includes('/login')) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          window.location.href = '/login'
+        }
+      }
+      // Caso contrário, apenas rejeitar a promise sem fazer logout
     } else if (error.response?.status === 403) {
       // Acesso negado (não é admin tentando acessar rota de admin)
       // Não limpar token, apenas redirecionar para dashboard

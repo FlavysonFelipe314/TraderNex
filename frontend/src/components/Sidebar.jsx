@@ -56,6 +56,12 @@ function Sidebar() {
       }
       return false
     }
+    // Para admin em /perfil-cliente, não marcar itens do menu admin como ativos
+    // mas manter o menu admin visível
+    if (isAdmin && location.pathname === '/perfil-cliente') {
+      return path === '/perfil-cliente'
+    }
+    
     // Para outras rotas, verificar correspondência exata ou início
     return location.pathname === path || location.pathname.startsWith(path + '/')
   }

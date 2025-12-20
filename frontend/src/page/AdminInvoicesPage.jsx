@@ -4,7 +4,10 @@ import DashboardLayout from '../components/DashboardLayout'
 import {
   getAllInvoices,
   getInvoiceStats,
-  markInvoiceAsPaidAdmin
+  markInvoiceAsPaidAdmin,
+  getInvoiceSuggestion,
+  createInvoiceManual,
+  getAllUsers
 } from '../services/adminService'
 import { formatCurrencyBR } from '../utils/format'
 
@@ -14,6 +17,18 @@ function AdminInvoicesPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all') // 'all', 'pending', 'paid', 'overdue'
   const [actionLoading, setActionLoading] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [users, setUsers] = useState([])
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [suggestion, setSuggestion] = useState(null)
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false)
+  const [formData, setFormData] = useState({
+    profit: '',
+    amount: '',
+    periodStart: '',
+    periodEnd: '',
+    description: ''
+  })
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -24,7 +39,14 @@ function AdminInvoicesPage() {
 
   useEffect(() => {
     loadData()
+    loadUsers()
   }, [filter])
+
+  useEffect(() => {
+    if (showCreateModal && selectedUserId) {
+      loadSuggestion()
+    }
+  }, [selectedUserId, showCreateModal])
 
   const loadData = async () => {
     setLoading(true)
@@ -48,6 +70,82 @@ function AdminInvoicesPage() {
       console.error('Erro ao carregar dados:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadUsers = async () => {
+    try {
+      const result = await getAllUsers()
+      if (result.success && result.data) {
+        setUsers(result.data)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar usuários:', error)
+    }
+  }
+
+  const loadSuggestion = async () => {
+    if (!selectedUserId) return
+    
+    setLoadingSuggestion(true)
+    try {
+      const result = await getInvoiceSuggestion(selectedUserId, formData.periodStart || undefined, formData.periodEnd || undefined)
+      if (result.success && result.data) {
+        setSuggestion(result.data)
+        setFormData(prev => ({
+          ...prev,
+          profit: result.data.weeklyProfit.toString(),
+          amount: result.data.suggestedFee.toFixed(2),
+          periodStart: result.data.periodStart.split('T')[0],
+          periodEnd: result.data.periodEnd.split('T')[0],
+          description: `Performance Fee Semanal - ${result.data.planName} - Período: ${new Date(result.data.periodStart).toLocaleDateString('pt-BR')} a ${new Date(result.data.periodEnd).toLocaleDateString('pt-BR')}`
+        }))
+      }
+    } catch (error) {
+      console.error('Erro ao buscar sugestão:', error)
+    } finally {
+      setLoadingSuggestion(false)
+    }
+  }
+
+  const handleCreateInvoice = async () => {
+    if (!selectedUserId || !formData.profit || !formData.amount) {
+      alert('Preencha todos os campos obrigatórios')
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      const result = await createInvoiceManual({
+        userId: selectedUserId,
+        profit: parseFloat(formData.profit),
+        amount: parseFloat(formData.amount),
+        periodStart: formData.periodStart || undefined,
+        periodEnd: formData.periodEnd || undefined,
+        description: formData.description || undefined
+      })
+      
+      if (result.success) {
+        alert('Fatura criada com sucesso!')
+        setShowCreateModal(false)
+        setSelectedUserId('')
+        setSuggestion(null)
+        setFormData({
+          profit: '',
+          amount: '',
+          periodStart: '',
+          periodEnd: '',
+          description: ''
+        })
+        await loadData()
+      } else {
+        alert('Erro ao criar fatura: ' + result.message)
+      }
+    } catch (error) {
+      console.error('Erro ao criar fatura:', error)
+      alert('Erro ao criar fatura.')
+    } finally {
+      setActionLoading(false)
     }
   }
 
@@ -138,8 +236,9 @@ function AdminInvoicesPage() {
           </div>
         )}
 
-        {/* Filtros */}
-        <div className="mb-6 flex flex-wrap gap-2">
+        {/* Botão Criar Fatura Manual */}
+        <div className="mb-6 flex justify-between items-center flex-wrap gap-4">
+          <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -180,7 +279,227 @@ function AdminInvoicesPage() {
           >
             Pagas ({stats?.paidInvoices || 0})
           </button>
+          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 bg-[#00afaa] text-white rounded-lg text-sm font-medium hover:bg-[#009691] transition-colors flex items-center gap-2"
+          >
+            <Icon icon="lucide:plus" className="text-lg" />
+            Criar Fatura Manual
+          </button>
         </div>
+
+        {/* Modal Criar Fatura Manual */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-[#e5e7eb]">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-[#111827]">Criar Fatura Manual</h2>
+                  <button
+                    onClick={() => {
+                      setShowCreateModal(false)
+                      setSelectedUserId('')
+                      setSuggestion(null)
+                      setFormData({
+                        profit: '',
+                        amount: '',
+                        periodStart: '',
+                        periodEnd: '',
+                        description: ''
+                      })
+                    }}
+                    className="text-[#6b7280] hover:text-[#111827] transition-colors"
+                  >
+                    <Icon icon="lucide:x" className="text-2xl" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6 space-y-4">
+                {/* Selecionar Usuário */}
+                <div>
+                  <label className="block text-sm font-medium text-[#111827] mb-2">
+                    Selecionar Cliente *
+                  </label>
+                  <select
+                    value={selectedUserId}
+                    onChange={(e) => setSelectedUserId(e.target.value)}
+                    className="w-full px-4 py-2 border border-[#e5e7eb] rounded-lg focus:ring-2 focus:ring-[#00afaa] focus:border-[#00afaa]"
+                  >
+                    <option value="">Selecione um cliente</option>
+                    {users.map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.first_name} {user.last_name} ({user.email}) - {user.plan_name || 'Sem plano'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {loadingSuggestion && (
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#00afaa] mx-auto"></div>
+                    <p className="text-sm text-[#6b7280] mt-2">Buscando sugestão de valor...</p>
+                  </div>
+                )}
+
+                {suggestion && (
+                  <div className="bg-[#f0fdf4] border border-[#86efac] rounded-lg p-4">
+                    <p className="text-sm font-medium text-[#166534] mb-2">💡 Sugestão Baseada no Plano:</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-[#6b7280]">Plano:</span>
+                        <span className="ml-2 font-semibold text-[#111827]">{suggestion.planName}</span>
+                      </div>
+                      <div>
+                        <span className="text-[#6b7280]">Taxa:</span>
+                        <span className="ml-2 font-semibold text-[#111827]">{suggestion.feePercentage}%</span>
+                      </div>
+                      <div>
+                        <span className="text-[#6b7280]">Lucro Semanal:</span>
+                        <span className="ml-2 font-semibold text-[#111827]">{formatCurrencyBR(suggestion.weeklyProfit)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[#6b7280]">Valor Sugerido:</span>
+                        <span className="ml-2 font-semibold text-[#00afaa]">{formatCurrencyBR(suggestion.suggestedFee)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Período */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#111827] mb-2">
+                      Data Início (Segunda)
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.periodStart}
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, periodStart: e.target.value }))
+                        if (selectedUserId) {
+                          setTimeout(() => loadSuggestion(), 500)
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-[#e5e7eb] rounded-lg focus:ring-2 focus:ring-[#00afaa] focus:border-[#00afaa]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#111827] mb-2">
+                      Data Fim (Sexta)
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.periodEnd}
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, periodEnd: e.target.value }))
+                        if (selectedUserId) {
+                          setTimeout(() => loadSuggestion(), 500)
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-[#e5e7eb] rounded-lg focus:ring-2 focus:ring-[#00afaa] focus:border-[#00afaa]"
+                    />
+                  </div>
+                </div>
+
+                {/* Lucro */}
+                <div>
+                  <label className="block text-sm font-medium text-[#111827] mb-2">
+                    Lucro Semanal *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.profit}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, profit: e.target.value }))
+                      if (suggestion) {
+                        const newProfit = parseFloat(e.target.value) || 0
+                        const newAmount = (newProfit * suggestion.feePercentage) / 100
+                        setFormData(prev => ({ ...prev, amount: newAmount.toFixed(2) }))
+                      }
+                    }}
+                    className="w-full px-4 py-2 border border-[#e5e7eb] rounded-lg focus:ring-2 focus:ring-[#00afaa] focus:border-[#00afaa]"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                {/* Valor da Fatura */}
+                <div>
+                  <label className="block text-sm font-medium text-[#111827] mb-2">
+                    Valor da Fatura (Performance Fee) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                    className="w-full px-4 py-2 border border-[#e5e7eb] rounded-lg focus:ring-2 focus:ring-[#00afaa] focus:border-[#00afaa]"
+                    placeholder="0.00"
+                  />
+                  {suggestion && (
+                    <p className="text-xs text-[#6b7280] mt-1">
+                      Valor sugerido: {formatCurrencyBR(suggestion.suggestedFee)}
+                    </p>
+                  )}
+                </div>
+
+                {/* Descrição */}
+                <div>
+                  <label className="block text-sm font-medium text-[#111827] mb-2">
+                    Descrição
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full px-4 py-2 border border-[#e5e7eb] rounded-lg focus:ring-2 focus:ring-[#00afaa] focus:border-[#00afaa]"
+                    rows="3"
+                    placeholder="Descrição da fatura..."
+                  />
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-[#e5e7eb] flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false)
+                    setSelectedUserId('')
+                    setSuggestion(null)
+                    setFormData({
+                      profit: '',
+                      amount: '',
+                      periodStart: '',
+                      periodEnd: '',
+                      description: ''
+                    })
+                  }}
+                  className="px-4 py-2 text-[#6b7280] hover:text-[#111827] transition-colors"
+                  disabled={actionLoading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateInvoice}
+                  disabled={actionLoading || !selectedUserId || !formData.profit || !formData.amount}
+                  className="px-4 py-2 bg-[#00afaa] text-white rounded-lg font-medium hover:bg-[#009691] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {actionLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                      Criando...
+                    </>
+                  ) : (
+                    <>
+                      <Icon icon="lucide:check" className="text-lg" />
+                      Criar Fatura
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tabela de Faturas */}
         {loading ? (

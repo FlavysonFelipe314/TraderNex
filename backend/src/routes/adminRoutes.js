@@ -333,6 +333,8 @@ router.post('/referrals/process-weekly', adminReferralsController.processWeeklyC
 // Rotas de Faturas (Admin)
 router.get('/invoices', adminInvoicesController.getAllInvoices);
 router.get('/invoices/stats', adminInvoicesController.getInvoiceStats);
+router.get('/invoices/suggest/:userId', adminInvoicesController.getInvoiceSuggestion);
+router.post('/invoices/create-manual', adminInvoicesController.createInvoiceManual);
 router.post('/invoices/:invoiceId/mark-paid', adminInvoicesController.markInvoiceAsPaid);
 
 module.exports = router;
