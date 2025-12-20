@@ -5,6 +5,9 @@ import { getPerformanceStats, getMyfxbookData } from '../services/dashboardServi
 
 function RelatoriosPerformancePage() {
   const [selectedPeriod, setSelectedPeriod] = useState('este-mes')
+  const [customDateRange, setCustomDateRange] = useState(false)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [performanceData, setPerformanceData] = useState(null)
   const [myfxbookData, setMyfxbookData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -16,13 +19,49 @@ function RelatoriosPerformancePage() {
     }
   }, [])
 
+  // Calcular datas baseadas no período selecionado
+  const getDateRange = useMemo(() => {
+    const end = new Date()
+    const start = new Date()
+    
+    if (customDateRange && startDate && endDate) {
+      return { startDate, endDate }
+    }
+
+    switch (selectedPeriod) {
+      case 'hoje':
+        start.setHours(0, 0, 0, 0)
+        break
+      case '7-dias':
+        start.setDate(start.getDate() - 7)
+        break
+      case 'este-mes':
+        start.setDate(1)
+        start.setHours(0, 0, 0, 0)
+        break
+      case 'este-ano':
+        start.setMonth(0, 1)
+        start.setHours(0, 0, 0, 0)
+        break
+      default:
+        start.setFullYear(start.getFullYear() - 1)
+    }
+
+    return {
+      startDate: start.toISOString().split('T')[0],
+      endDate: end.toISOString().split('T')[0]
+    }
+  }, [selectedPeriod, customDateRange, startDate, endDate])
+
   // Carregar dados de performance e MyFXBook
   useEffect(() => {
     const loadPerformanceData = async () => {
       setLoading(true)
       try {
-        // Carregar dados do MyFXBook
-        const myfxbookResult = await getMyfxbookData()
+        const { startDate: start, endDate: end } = getDateRange
+        
+        // Carregar dados do MyFXBook com filtros de data
+        const myfxbookResult = await getMyfxbookData(start, end)
         if (myfxbookResult.success && myfxbookResult.data?.connected) {
           setMyfxbookData(myfxbookResult.data)
         }
@@ -47,7 +86,7 @@ function RelatoriosPerformancePage() {
     }
 
     loadPerformanceData()
-  }, [selectedPeriod])
+  }, [selectedPeriod, customDateRange, startDate, endDate, getDateRange])
 
   // Calcular KPIs baseados em dados do MyFXBook
   const kpis = useMemo(() => {
@@ -56,16 +95,32 @@ function RelatoriosPerformancePage() {
         totalReturn: 0,
         netProfit: 0,
         profitFactor: 0,
-        maxDrawdown: 0
+        maxDrawdown: 0,
+        periodGain: 0,
+        openTrades: 0,
+        openOrders: 0,
+        totalTrades: 0,
+        pips: 0,
+        lots: 0
       }
     }
 
     const account = myfxbookData.account
+    const periodGain = myfxbookData.gain !== null && myfxbookData.gain !== undefined 
+      ? parseFloat(myfxbookData.gain) 
+      : null
+
     return {
       totalReturn: parseFloat(account.absGain || account.gain || 0),
       netProfit: parseFloat(account.profit || 0),
       profitFactor: parseFloat(account.profitFactor || 0),
-      maxDrawdown: Math.abs(parseFloat(account.drawdown || 0))
+      maxDrawdown: Math.abs(parseFloat(account.drawdown || 0)),
+      periodGain: periodGain,
+      openTrades: myfxbookData.openTrades?.length || 0,
+      openOrders: myfxbookData.openOrders?.length || 0,
+      totalTrades: myfxbookData.history?.length || 0,
+      pips: parseFloat(account.pips || 0),
+      lots: parseFloat(account.lots || 0)
     }
   }, [myfxbookData])
 
@@ -230,31 +285,95 @@ function RelatoriosPerformancePage() {
               Análise detalhada da evolução e resultados institucionais da sua conta.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center w-full sm:w-auto">
+          <div className="flex flex-col gap-4 w-full">
             {/* Filter Pills */}
-            <div className="flex bg-white rounded-xl p-1 border border-[#ebebeb] shadow-[0_2px_4px_rgba(0,0,0,0.02)] overflow-x-auto">
-              {periods.map((period) => (
-                <button
-                  key={period.id}
-                  className={`px-4 sm:px-6 py-2 text-xs sm:text-[13px] font-medium rounded-lg transition-all whitespace-nowrap ${
-                    selectedPeriod === period.id
-                      ? 'bg-white text-[#00afaa] font-bold shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#f0f0f0]'
-                      : 'text-[#6b7280] hover:text-[#111827] hover:bg-[#f9fafb]'
-                  }`}
-                  onClick={() => setSelectedPeriod(period.id)}
-                >
-                  {period.label}
-                </button>
-              ))}
+            <div className="flex flex-wrap gap-3 items-center">
+              <div className="flex bg-white rounded-xl p-1 border border-[#ebebeb] shadow-[0_2px_4px_rgba(0,0,0,0.02)] overflow-x-auto">
+                {periods.map((period) => (
+                  <button
+                    key={period.id}
+                    className={`px-4 sm:px-6 py-2 text-xs sm:text-[13px] font-medium rounded-lg transition-all whitespace-nowrap ${
+                      selectedPeriod === period.id && !customDateRange
+                        ? 'bg-white text-[#00afaa] font-bold shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#f0f0f0]'
+                        : 'text-[#6b7280] hover:text-[#111827] hover:bg-[#f9fafb]'
+                    }`}
+                    onClick={() => {
+                      setSelectedPeriod(period.id)
+                      setCustomDateRange(false)
+                    }}
+                  >
+                    {period.label}
+                  </button>
+                ))}
+              </div>
+              
+              {/* Custom Date Range Toggle */}
+              <button
+                className={`px-4 py-2 text-xs sm:text-[13px] font-medium rounded-lg transition-all whitespace-nowrap border ${
+                  customDateRange
+                    ? 'bg-white text-[#00afaa] font-bold shadow-[0_2px_8px_rgba(0,0,0,0.06)] border-[#00afaa]'
+                    : 'bg-white text-[#6b7280] border-[#ebebeb] hover:text-[#111827] hover:bg-[#f9fafb]'
+                }`}
+                onClick={() => {
+                  setCustomDateRange(!customDateRange)
+                  if (!customDateRange) {
+                    const end = new Date()
+                    const start = new Date()
+                    start.setFullYear(start.getFullYear() - 1)
+                    setEndDate(end.toISOString().split('T')[0])
+                    setStartDate(start.toISOString().split('T')[0])
+                  }
+                }}
+              >
+                <Icon icon="lucide:calendar-range" className="inline mr-1.5" />
+                Período Personalizado
+              </button>
+              
+              {/* Export Button */}
+              <button 
+                onClick={handleExportCSV}
+                className="flex items-center gap-2 px-5 h-11 bg-white text-[#111827] border border-[#e5e7eb] rounded-xl text-[13px] font-semibold cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:border-[#00ff88] hover:shadow-[0_0_0_3px_rgba(0,255,136,0.1)] hover:text-[#00afaa]"
+              >
+                <Icon icon="lucide:download" className="text-base" />
+                <span>CSV</span>
+              </button>
             </div>
-            {/* Export Button */}
-            <button 
-              onClick={handleExportCSV}
-              className="flex items-center gap-2 px-5 h-11 bg-white text-[#111827] border border-[#e5e7eb] rounded-xl text-[13px] font-semibold cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:border-[#00ff88] hover:shadow-[0_0_0_3px_rgba(0,255,136,0.1)] hover:text-[#00afaa]"
-            >
-              <Icon icon="lucide:download" className="text-base" />
-              <span>CSV</span>
-            </button>
+
+            {/* Custom Date Range Inputs */}
+            {customDateRange && (
+              <div className="flex flex-wrap gap-3 items-center bg-white p-4 rounded-xl border border-[#ebebeb] shadow-[0_2px_4px_rgba(0,0,0,0.02)]">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs sm:text-[13px] font-medium text-[#6b7280] whitespace-nowrap">
+                    De:
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    max={endDate || new Date().toISOString().split('T')[0]}
+                    className="px-3 py-2 text-xs sm:text-[13px] border border-[#e5e7eb] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afaa] focus:border-transparent"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs sm:text-[13px] font-medium text-[#6b7280] whitespace-nowrap">
+                    Até:
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="px-3 py-2 text-xs sm:text-[13px] border border-[#e5e7eb] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00afaa] focus:border-transparent"
+                  />
+                </div>
+                {startDate && endDate && (
+                  <div className="text-xs text-[#6b7280] ml-auto">
+                    Período selecionado: {new Date(startDate).toLocaleDateString('pt-BR')} - {new Date(endDate).toLocaleDateString('pt-BR')}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -276,6 +395,24 @@ function RelatoriosPerformancePage() {
             </div>
           </div>
 
+          {/* Ganho do Período */}
+          {kpis.periodGain !== null && (
+            <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between min-h-[120px] sm:h-[140px]">
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">GANHO PERÍODO</span>
+                <div className="w-8 h-8 rounded-[10px] bg-[rgba(0,175,170,0.1)] flex items-center justify-center text-[#00afaa]">
+                  <Icon icon="lucide:calendar" className="text-base" />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-[#00afaa] tracking-tight leading-none mb-1.5">
+                  {loading ? '...' : `${kpis.periodGain >= 0 ? '+' : ''}${kpis.periodGain.toFixed(2)}%`}
+                </div>
+                <div className="text-xs sm:text-[13px] text-[#9ba0aa] font-normal">Período selecionado</div>
+              </div>
+            </div>
+          )}
+
           {/* Lucro Líquido */}
           <div className="bg-white p-6 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between h-[140px]">
             <div className="flex justify-between items-start mb-3">
@@ -288,7 +425,7 @@ function RelatoriosPerformancePage() {
               <div className="text-[32px] font-bold text-[#059669] tracking-tight leading-none mb-1.5">
                 {loading ? '...' : `$ ${kpis.netProfit.toFixed(2)}`}
               </div>
-              <div className="text-[13px] text-[#9ba0aa] font-normal">Acumulado no ano</div>
+              <div className="text-[13px] text-[#9ba0aa] font-normal">Acumulado total</div>
             </div>
           </div>
 
@@ -327,8 +464,108 @@ function RelatoriosPerformancePage() {
               </div>
             </div>
           </div>
+
+          {/* Trades Abertos */}
+          <div className="bg-white p-6 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between h-[140px]">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">TRADES ABERTOS</span>
+              <div className="w-8 h-8 rounded-[10px] bg-[rgba(59,130,246,0.1)] flex items-center justify-center text-[#3b82f6]">
+                <Icon icon="lucide:activity" className="text-base" />
+              </div>
+            </div>
+            <div>
+              <div className="text-[32px] font-bold text-[#3b82f6] tracking-tight leading-none mb-1.5">
+                {loading ? '...' : kpis.openTrades}
+              </div>
+              <div className="text-[13px] text-[#9ba0aa] font-normal">
+                {kpis.openOrders > 0 && `${kpis.openOrders} ordens pendentes`}
+                {kpis.openOrders === 0 && 'Nenhuma ordem pendente'}
+              </div>
+            </div>
+          </div>
+
+          {/* Total de Trades */}
+          <div className="bg-white p-6 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between h-[140px]">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">TOTAL TRADES</span>
+              <div className="w-8 h-8 rounded-[10px] bg-[#f3f4f6] flex items-center justify-center text-[#6b7280]">
+                <Icon icon="lucide:list" className="text-base" />
+              </div>
+            </div>
+            <div>
+              <div className="text-[32px] font-bold text-[#111827] tracking-tight leading-none mb-1.5">
+                {loading ? '...' : kpis.totalTrades}
+              </div>
+              <div className="text-[13px] text-[#9ba0aa] font-normal">Histórico completo</div>
+            </div>
+          </div>
+
+          {/* Pips */}
+          {kpis.pips > 0 && (
+            <div className="bg-white p-6 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between h-[140px]">
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">PIPS</span>
+                <div className="w-8 h-8 rounded-[10px] bg-[rgba(139,92,246,0.1)] flex items-center justify-center text-[#8b5cf6]">
+                  <Icon icon="lucide:target" className="text-base" />
+                </div>
+              </div>
+              <div>
+                <div className="text-[32px] font-bold text-[#8b5cf6] tracking-tight leading-none mb-1.5">
+                  {loading ? '...' : kpis.pips.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                </div>
+                <div className="text-[13px] text-[#9ba0aa] font-normal">Total acumulado</div>
+              </div>
+            </div>
+          )}
         </div>
 
+
+        {/* Open Orders Section */}
+        {myfxbookData?.openOrders && myfxbookData.openOrders.length > 0 && (
+          <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em]">Ordens Abertas</h3>
+              <span className="text-xs font-semibold text-[#00afaa] bg-[rgba(0,175,170,0.08)] px-3 py-1 rounded-full">
+                {myfxbookData.openOrders.length} {myfxbookData.openOrders.length === 1 ? 'ordem' : 'ordens'}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#f3f4f6]">
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase tracking-wider">Par</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase tracking-wider">Tipo</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase tracking-wider">Volume</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase tracking-wider">Preço</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase tracking-wider">Stop Loss</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase tracking-wider">Take Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myfxbookData.openOrders.map((order, index) => (
+                    <tr key={index} className="border-b border-[#f9fafb] hover:bg-[#f3f4f6] transition-colors">
+                      <td className="py-4 px-4 text-sm font-semibold text-[#111827]">{order.symbol || '-'}</td>
+                      <td className="py-4 px-4 text-sm">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${
+                          order.side === 'buy' || order.type === 'buy'
+                            ? 'bg-[rgba(0,255,136,0.1)] text-[#059669]'
+                            : 'bg-[rgba(239,68,68,0.1)] text-[#dc2626]'
+                        }`}>
+                          {order.side === 'buy' || order.type === 'buy' ? 'Compra' : 'Venda'}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-right text-[#6b7280]">{order.lots || order.volume || '-'}</td>
+                      <td className="py-4 px-4 text-sm text-right text-[#6b7280]">{order.openPrice || order.price || '-'}</td>
+                      <td className="py-4 px-4 text-sm text-right text-[#6b7280]">{order.stopLoss || '-'}</td>
+                      <td className="py-4 px-4 text-sm text-right text-[#6b7280]">{order.takeProfit || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* History Table */}
         <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
