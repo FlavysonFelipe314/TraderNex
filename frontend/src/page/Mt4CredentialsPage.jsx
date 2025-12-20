@@ -29,7 +29,9 @@ const BROKERS_CONFIG = {
     'RoboForex-ProCent-8'
   ],
   'Vantage Markets': [
+    // VantageInternational
     'VantageInternational-Demo',
+    'VantageInternational-Demo 2',
     'VantageInternational-Live 1',
     'VantageInternational-Live 2',
     'VantageInternational-Live 3',
@@ -42,28 +44,47 @@ const BROKERS_CONFIG = {
     'VantageInternational-Live 10',
     'VantageInternational-Live 11',
     'VantageInternational-Live 12',
-    'VantageInternational-Live 13',
     'VantageInternational-Live 14',
-    'VantageInternational-Live 15',
     'VantageInternational-Live 16',
-    'VantageInternational-Live 17',
     'VantageInternational-Live 18',
-    'VantageInternational-Live 19',
     'VantageInternational-Live 20',
-    'VantageInternational-Live 21',
     'VantageInternational-Live 22',
+    // VantageFX
     'VantageFX-Demo',
+    'VantageFx-Demo 2',
+    'VantageFX-Live',
     'VantageFX-Live 1',
-    'VantageFX-Live 2',
     'VantageFX-Live 3',
     'VantageFX-Live 4',
     'VantageFX-Live 5',
-    'VantageFX-Live 6',
-    'VantageFX-Live 7',
-    'VantageFX-Live 8',
-    'VantageFX-Live 9',
-    'VantageFX-Live 10',
-    'VantageFX-Live 11'
+    // VantageFXInternational
+    'VantageFXInternational-Demo',
+    'VantageFXInternational-Live 1',
+    'VantageFXInternational-Live 2',
+    'VantageFXInternational-Live 3',
+    'VantageFXInternational-Live 4',
+    'VantageFXInternational-Live 5',
+    'VantageFXInternational-Live 6',
+    'VantageFXInternational-Live 7',
+    // VantageFX-UK
+    'VantageFX-UK-Demo',
+    'VantageFX-UK-Real',
+    'VantageFX-UK-Live UK',
+    // VantageAU
+    'VantageAU-Demo',
+    'VantageAU-Live',
+    'VantageAU-Live 1',
+    'VantageAU-Live 2',
+    // VantagePrime
+    'VantagePrime-Demo',
+    'VantagePrime-Live',
+    // VantagePrimeLimited
+    'VantagePrimeLimited-Demo',
+    'VantagePrimeLimited-Live 1',
+    'VantagePrimeLimited-Live 2',
+    // VantageGlobalPrime
+    'VantageGlobalPrime-Demo',
+    'VantageGlobalPrimeLLP-Live'
   ]
 }
 

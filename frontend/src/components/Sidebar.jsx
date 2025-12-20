@@ -279,7 +279,7 @@ function Sidebar() {
         {/* Footer - User Card */}
         <div className="mt-auto">
           <div 
-            className="flex items-center gap-2 p-2.5 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] rounded-xl transition-all duration-300 hover:bg-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.1)] overflow-hidden"
+            className="flex items-center gap-2 p-2.5 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] rounded-xl transition-all duration-300 hover:bg-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.1)]"
           >
             <div 
               className="flex items-center gap-2.5 flex-1 cursor-pointer min-w-0"
@@ -466,7 +466,7 @@ function Sidebar() {
         {/* Footer - User Card */}
         <div className="mt-auto">
           <div 
-            className="flex items-center gap-2 p-2.5 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] rounded-xl transition-all duration-300 hover:bg-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.1)] overflow-hidden"
+            className="flex items-center gap-2 p-2.5 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] rounded-xl transition-all duration-300 hover:bg-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.1)]"
           >
             <div 
               className="flex items-center gap-2.5 flex-1 cursor-pointer min-w-0"

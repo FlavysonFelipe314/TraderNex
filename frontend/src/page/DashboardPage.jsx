@@ -169,7 +169,7 @@ function DashboardPage() {
         </div>
 
         {/* KPI Grid - Dados MyFXBook */}
-        {myfxbookConnected && selectedMyfxbookAccount ? (
+        {!loading && myfxbookConnected && selectedMyfxbookAccount ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 sm:gap-6">
             <div className="group bg-white rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-4 sm:gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
               <div className="flex items-center justify-between">
@@ -182,7 +182,9 @@ function DashboardPage() {
               </div>
               <div>
                 <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
-                  {selectedMyfxbookAccount.balance ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(selectedMyfxbookAccount.balance)) : 'N/A'}
+                  {selectedMyfxbookAccount.balance != null && selectedMyfxbookAccount.balance !== undefined && !isNaN(parseFloat(selectedMyfxbookAccount.balance)) 
+                    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(selectedMyfxbookAccount.balance)) 
+                    : 'N/A'}
                 </div>
                 <div className="text-xs text-[#94A3B8] mt-1">Saldo atual</div>
               </div>
@@ -201,7 +203,9 @@ function DashboardPage() {
                 <div className={`text-[28px] font-bold tracking-[-0.03em] leading-none ${
                   (selectedMyfxbookAccount.gain || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
                 }`}>
-                  {selectedMyfxbookAccount.gain ? formatPercentBR(selectedMyfxbookAccount.gain) : 'N/A'}
+                  {selectedMyfxbookAccount.gain != null && selectedMyfxbookAccount.gain !== undefined && !isNaN(parseFloat(selectedMyfxbookAccount.gain))
+                    ? formatPercentBR(selectedMyfxbookAccount.gain) 
+                    : 'N/A'}
                 </div>
               </div>
             </div>
@@ -219,7 +223,9 @@ function DashboardPage() {
                 <div className={`text-xl sm:text-2xl lg:text-[28px] font-bold tracking-[-0.03em] leading-none ${
                   (selectedMyfxbookAccount.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
                 }`}>
-                  {selectedMyfxbookAccount.profit ? formatCurrencyBR(selectedMyfxbookAccount.profit) : 'N/A'}
+                  {selectedMyfxbookAccount.profit != null && selectedMyfxbookAccount.profit !== undefined && !isNaN(parseFloat(selectedMyfxbookAccount.profit))
+                    ? formatCurrencyBR(selectedMyfxbookAccount.profit) 
+                    : 'N/A'}
                 </div>
               </div>
             </div>
@@ -235,7 +241,9 @@ function DashboardPage() {
               </div>
               <div>
                 <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#dc2626] tracking-[-0.03em] leading-none">
-                  {selectedMyfxbookAccount.drawdown ? `-${formatNumberBR(Math.abs(selectedMyfxbookAccount.drawdown))}%` : 'N/A'}
+                  {selectedMyfxbookAccount.drawdown != null && selectedMyfxbookAccount.drawdown !== undefined && !isNaN(parseFloat(selectedMyfxbookAccount.drawdown))
+                    ? `-${formatNumberBR(Math.abs(selectedMyfxbookAccount.drawdown))}%` 
+                    : 'N/A'}
                 </div>
               </div>
             </div>
@@ -251,10 +259,16 @@ function DashboardPage() {
               </div>
               <div>
                 <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
-                  {selectedMyfxbookAccount.equity ? formatCurrencyBR(selectedMyfxbookAccount.equity) : 'N/A'}
+                  {selectedMyfxbookAccount.equity != null && selectedMyfxbookAccount.equity !== undefined && !isNaN(parseFloat(selectedMyfxbookAccount.equity))
+                    ? formatCurrencyBR(selectedMyfxbookAccount.equity) 
+                    : 'N/A'}
                 </div>
               </div>
             </div>
+          </div>
+        ) : loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-sm text-[#64748B]">Carregando dados...</div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
