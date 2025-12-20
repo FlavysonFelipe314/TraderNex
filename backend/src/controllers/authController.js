@@ -446,7 +446,7 @@ exports.getProfile = async (req, res) => {
 
     const result = await pool.query(
       `SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.country,
-              u.email_verified, u.created_at,
+              u.email_verified, u.created_at, u.is_admin,
               cp.account_type, cp.balance, cp.total_invested, cp.total_profit,
               cp.profit_percentage, cp.referral_code,
               cp.street, cp.number, cp.neighborhood, cp.city, cp.state, cp.zip_code, cp.complement

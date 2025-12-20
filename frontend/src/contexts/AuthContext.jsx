@@ -194,6 +194,11 @@ export function AuthProvider({ children }) {
         const userData = response.data.data
         console.log('[getProfile] Dados do usuário recebidos:', userData)
         // Normalizar campos do backend para o formato do frontend
+        // IMPORTANTE: Preservar is_admin do user atual se não vier do backend
+        const currentIsAdmin = user?.is_admin === true || user?.isAdmin === true
+        const backendIsAdmin = userData.is_admin === true || userData.isAdmin === true
+        const finalIsAdmin = backendIsAdmin || currentIsAdmin || false
+        
         const normalizedUser = {
           id: userData.id,
           email: userData.email,
@@ -218,11 +223,12 @@ export function AuthProvider({ children }) {
           zipCode: userData.zip_code,
           zip_code: userData.zip_code,
           complement: userData.complement,
-          // Preservar is_admin corretamente - verificar se é true explicitamente
-          is_admin: userData.is_admin === true || userData.isAdmin === true || false,
-          isAdmin: userData.is_admin === true || userData.isAdmin === true || false
+          // Preservar is_admin - priorizar valor do backend, mas manter do contexto atual se necessário
+          is_admin: finalIsAdmin,
+          isAdmin: finalIsAdmin
         }
         console.log('[getProfile] Usuário normalizado:', normalizedUser)
+        console.log('[getProfile] is_admin preservado - backend:', backendIsAdmin, 'atual:', currentIsAdmin, 'final:', finalIsAdmin)
         setUser(normalizedUser)
         localStorage.setItem('user', JSON.stringify(normalizedUser))
         return { success: true, user: normalizedUser }
@@ -254,6 +260,11 @@ export function AuthProvider({ children }) {
       if (response.data.success && response.data.data) {
         const userData = response.data.data
         // Normalizar campos do backend para o formato do frontend
+        // IMPORTANTE: Preservar is_admin do user atual se não vier do backend
+        const currentIsAdmin = user?.is_admin === true || user?.isAdmin === true
+        const backendIsAdmin = userData.is_admin === true || userData.isAdmin === true
+        const finalIsAdmin = backendIsAdmin || currentIsAdmin || false
+        
         const normalizedUser = {
           id: userData.id,
           email: userData.email,
@@ -278,9 +289,9 @@ export function AuthProvider({ children }) {
           zipCode: userData.zip_code,
           zip_code: userData.zip_code,
           complement: userData.complement,
-          // Preservar is_admin corretamente - verificar se é true explicitamente
-          is_admin: userData.is_admin === true || userData.isAdmin === true || false,
-          isAdmin: userData.is_admin === true || userData.isAdmin === true || false
+          // Preservar is_admin - priorizar valor do backend, mas manter do contexto atual se necessário
+          is_admin: finalIsAdmin,
+          isAdmin: finalIsAdmin
         }
         setUser(normalizedUser)
         localStorage.setItem('user', JSON.stringify(normalizedUser))
