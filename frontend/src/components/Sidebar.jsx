@@ -9,10 +9,27 @@ function Sidebar() {
   const { user, logout } = useAuth()
   const { isSidebarOpen, toggleSidebar } = useSidebar()
   
-  // Debug: verificar status de admin
-  const isAdmin = user?.is_admin || user?.isAdmin
-  if (isAdmin && location.pathname === '/perfil-cliente') {
-    console.log('[Sidebar] Admin acessando perfil - isAdmin:', isAdmin, 'user:', user)
+  // Verificar status de admin - garantir que sempre verifique corretamente
+  // Verificar múltiplas formas de identificar admin para garantir robustez
+  const isAdmin = Boolean(
+    user?.is_admin === true || 
+    user?.isAdmin === true || 
+    user?.role === 'admin' ||
+    user?.role === 'Admin' ||
+    (typeof user?.is_admin !== 'undefined' && user?.is_admin !== false && user?.is_admin !== null) ||
+    (typeof user?.isAdmin !== 'undefined' && user?.isAdmin !== false && user?.isAdmin !== null)
+  )
+  
+  // Debug: verificar status de admin em todas as rotas (apenas em desenvolvimento)
+  if (process.env.NODE_ENV === 'development' && user) {
+    console.log('[Sidebar] Verificação de admin:', {
+      isAdmin,
+      is_admin: user?.is_admin,
+      isAdmin_field: user?.isAdmin,
+      role: user?.role,
+      pathname: location.pathname,
+      user_id: user?.id
+    })
   }
 
   const navItems = [
@@ -132,8 +149,8 @@ function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex flex-col gap-1 mb-10">
-          {/* Admin Section - sempre mostrar se for admin, independente da rota */}
-          {isAdmin && (
+          {/* Admin Section - SEMPRE mostrar se for admin, independente da rota atual */}
+          {isAdmin ? (
             <>
               <div className="text-[10px] font-semibold text-[rgba(255,193,7,0.4)] uppercase tracking-[0.1em] mx-3 mb-3">
                 Administração
@@ -159,10 +176,9 @@ function Sidebar() {
                 )
               })}
             </>
-          )}
-
-          {/* Seção Principal - apenas para não-admins */}
-          {!isAdmin && (
+          ) : (
+            /* Seção Principal - apenas para não-admins */
+            <>
             <>
               <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
                 Principal
@@ -304,8 +320,8 @@ function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex flex-col gap-1 mb-8">
-          {/* Admin Section - sempre mostrar se for admin, independente da rota */}
-          {isAdmin && (
+          {/* Admin Section - SEMPRE mostrar se for admin, independente da rota atual */}
+          {isAdmin ? (
             <>
               <div className="text-[10px] font-semibold text-[rgba(255,193,7,0.4)] uppercase tracking-[0.1em] mx-3 mb-3">
                 Administração
@@ -331,10 +347,9 @@ function Sidebar() {
                 )
               })}
             </>
-          )}
-
-          {/* Seção Principal - apenas para não-admins */}
-          {!isAdmin && (
+          ) : (
+            /* Seção Principal - apenas para não-admins */
+            <>
             <>
               <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
                 Principal

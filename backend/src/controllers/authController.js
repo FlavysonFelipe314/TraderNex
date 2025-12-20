@@ -468,16 +468,22 @@ exports.getProfile = async (req, res) => {
 
     const profile = result.rows[0];
     
-    // Converter valores DECIMAL para números
+    // Converter valores DECIMAL para números e garantir que is_admin seja preservado
+    // is_admin pode ser boolean true/false ou null/undefined
+    const isAdminValue = profile.is_admin === true || profile.is_admin === 'true' || profile.is_admin === 1 || profile.is_admin === '1'
+    
     const normalizedProfile = {
       ...profile,
       balance: profile.balance != null ? parseFloat(profile.balance) : 0,
       total_invested: profile.total_invested != null ? parseFloat(profile.total_invested) : 0,
       total_profit: profile.total_profit != null ? parseFloat(profile.total_profit) : 0,
       profit_percentage: profile.profit_percentage != null ? parseFloat(profile.profit_percentage) : 0,
-      is_admin: profile.is_admin || false,
-      isAdmin: profile.is_admin || false
+      // Garantir que is_admin seja preservado corretamente
+      is_admin: isAdminValue,
+      isAdmin: isAdminValue
     };
+    
+    console.log(`[getProfile] is_admin do banco: ${profile.is_admin}, tipo: ${typeof profile.is_admin}, normalizado: ${normalizedProfile.is_admin}`);
 
     console.log(`[getProfile] Perfil normalizado enviado com sucesso para userId: ${userId}`);
     res.json({
