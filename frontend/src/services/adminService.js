@@ -399,4 +399,114 @@ export const markCryptoInterestedAsNotified = async (id) => {
   }
 }
 
+// ========== Gerenciamento de Comissões e Pagamentos (Admin) ==========
+
+// Obter todas as comissões de indicações (Admin)
+export const getAllReferralCommissions = async (filters = {}) => {
+  try {
+    const params = new URLSearchParams()
+    if (filters.status) params.append('status', filters.status)
+    if (filters.commission_paid !== undefined) params.append('commission_paid', filters.commission_paid)
+    if (filters.referrer_id) params.append('referrer_id', filters.referrer_id)
+    
+    const response = await api.get(`/api/admin/referrals/commissions?${params.toString()}`)
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao buscar comissões:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao buscar comissões.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Aprovar pagamento de comissão (Admin)
+export const approveCommissionPayment = async (referralId) => {
+  try {
+    const response = await api.post(`/api/admin/referrals/${referralId}/approve-payment`)
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao aprovar pagamento:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao aprovar pagamento.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Rejeitar pagamento de comissão (Admin)
+export const rejectCommissionPayment = async (referralId, reason) => {
+  try {
+    const response = await api.post(`/api/admin/referrals/${referralId}/reject-payment`, { reason })
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao rejeitar pagamento:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao rejeitar pagamento.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Obter estatísticas de comissões (Admin)
+export const getReferralCommissionStats = async () => {
+  try {
+    const response = await api.get('/api/admin/referrals/stats')
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas de comissões:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao buscar estatísticas.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Processar lucro manualmente (Admin)
+export const processProfitManually = async (userId, profit, investmentAmount, type = 'investment') => {
+  try {
+    const endpoint = type === 'mt4' 
+      ? '/api/admin/process-mt4-profit'
+      : '/api/admin/process-investment-profit'
+    
+    const response = await api.post(endpoint, {
+      userId,
+      profit,
+      investmentAmount
+    })
+    return {
+      success: response.data.success,
+      data: response.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao processar lucro manualmente:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao processar lucro.',
+      error: error.response?.data
+    }
+  }
+}
+
 

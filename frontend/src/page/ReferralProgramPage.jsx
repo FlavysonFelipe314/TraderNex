@@ -45,30 +45,44 @@ function ReferralProgramPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Dados mock como fallback
-  const mockReferrals = [
-    { name: 'Carlos Mendes', date: '18 Nov, 2025', plan: 'Nex Pro', status: 'active', profit: '$ 1,200.00', fee: '$ 480.00', commission: '+ $ 48.00' },
-    { name: 'Ana Beatriz', date: '15 Nov, 2025', plan: 'Nex Start', status: 'pending', profit: '$ 0.00', fee: '$ 0.00', commission: '-' },
-    { name: 'Roberto F.', date: '10 Nov, 2025', plan: 'Nex Prime', status: 'active', profit: '$ 3,500.00', fee: '$ 1,050.00', commission: '+ $ 105.00' },
-    { name: 'Julia Santos', date: '05 Nov, 2025', plan: 'Nex Pro', status: 'inactive', profit: '-', fee: '-', commission: '-' },
-  ]
+  // Calcular estatísticas
+  const stats = referralData ? {
+    totalReferrals: referralData.totalReferrals || 0,
+    activeReferrals: referralData.activeReferrals || 0,
+    totalEarnings: referralData.totalEarnings || 0,
+    availableForWithdrawal: referralData.availableForWithdrawal || 0,
+    // Calcular acumulado no mês (comissões do mês atual)
+    monthlyEarnings: referralData.referrals?.filter(ref => {
+      const lastDate = ref.lastCommissionDate ? new Date(ref.lastCommissionDate) : new Date(ref.createdAt)
+      const now = new Date()
+      return lastDate.getMonth() === now.getMonth() && lastDate.getFullYear() === now.getFullYear()
+    }).reduce((sum, ref) => sum + (parseFloat(ref.commission) || 0), 0) || 0
+  } : null
 
-  // Usar dados reais ou mock
+  // Formatar dados de indicações
   const displayReferrals = referralData?.referrals?.map(ref => {
-    const commission = ref.commission != null && !isNaN(ref.commission) ? Number(ref.commission) : 0;
-    const fee = commission * 0.1;
-    const userCommission = commission * 0.1;
+    const profitAmount = parseFloat(ref.profitAmount) || 0
+    const brokerProfit = parseFloat(ref.brokerProfit) || 0
+    const commission = parseFloat(ref.commission) || 0
+    const brokerFeePercentage = parseFloat(ref.brokerFeePercentage) || 0
+    
+    // Determinar plano baseado no valor do investimento
+    const investmentAmount = parseFloat(ref.investmentAmount) || 0
+    let plan = 'Nex Start'
+    if (investmentAmount >= 10000) plan = 'Nex Prime'
+    else if (investmentAmount >= 5000) plan = 'Nex Pro'
     
     return {
-      name: `${ref.first_name || ''} ${ref.last_name || ''}`.trim() || ref.email || 'Usuário',
-      date: new Date(ref.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
-      plan: 'Nex Pro', // TODO: buscar do perfil do usuário referido
+      name: ref.referredName || 'Usuário',
+      date: ref.createdAt ? new Date(ref.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A',
+      plan: plan,
       status: ref.status || 'active',
-      profit: commission > 0 ? `$ ${commission.toFixed(2)}` : '-',
-      fee: commission > 0 ? `$ ${fee.toFixed(2)}` : '-',
-      commission: commission > 0 ? `+ $ ${userCommission.toFixed(2)}` : '-'
-    };
-  }) || mockReferrals
+      profit: profitAmount > 0 ? `$ ${profitAmount.toFixed(2)}` : '-',
+      fee: brokerProfit > 0 ? `$ ${brokerProfit.toFixed(2)}` : '-',
+      commission: commission > 0 ? `+ $ ${commission.toFixed(2)}` : '-',
+      lastCommissionDate: ref.lastCommissionDate
+    }
+  }) || []
 
   return (
     <DashboardLayout>
@@ -156,7 +170,9 @@ function ReferralProgramPage() {
               <span className="text-[13px] font-semibold text-[#6b7280]">Disponível para Saque</span>
               <Icon icon="lucide:unlock" className="text-lg text-[#9ca3af] opacity-70" />
             </div>
-            <div className="text-2xl font-bold text-[#111827] tracking-tight">$ 1,240.50</div>
+            <div className="text-2xl font-bold text-[#111827] tracking-tight">
+              {loading ? '...' : `$ ${(stats?.availableForWithdrawal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            </div>
             <div className="text-xs text-[#6b7280] flex items-center gap-1">
               <span className="text-[#00ff88] font-semibold">Liberado</span>
               <span>• Solicitar saque</span>
@@ -168,7 +184,9 @@ function ReferralProgramPage() {
               <span className="text-[13px] font-semibold text-[#6b7280]">Comissão Total</span>
               <Icon icon="lucide:piggy-bank" className="text-lg text-[#9ca3af] opacity-70" />
             </div>
-            <div className="text-2xl font-bold text-[#111827] tracking-tight">$ 5,842.00</div>
+            <div className="text-2xl font-bold text-[#111827] tracking-tight">
+              {loading ? '...' : `$ ${(stats?.totalEarnings || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            </div>
             <div className="text-xs text-[#6b7280] flex items-center gap-1">
               <span className="text-[#059669] font-semibold bg-[#ecfdf5] px-1.5 py-0.5 rounded">Lifetime</span>
               <span>desde o início</span>
@@ -180,20 +198,23 @@ function ReferralProgramPage() {
               <span className="text-[13px] font-semibold text-[#6b7280]">Acumulado no Mês</span>
               <Icon icon="lucide:calendar-days" className="text-lg text-[#9ca3af] opacity-70" />
             </div>
-            <div className="text-2xl font-bold text-[#111827] tracking-tight">$ 482.00</div>
+            <div className="text-2xl font-bold text-[#111827] tracking-tight">
+              {loading ? '...' : `$ ${(stats?.monthlyEarnings || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            </div>
             <div className="text-xs text-[#6b7280] flex items-center gap-1">
-              <span className="text-[#059669] font-semibold bg-[#ecfdf5] px-1.5 py-0.5 rounded">+12%</span>
-              <span>vs. mês anterior</span>
+              <span className="text-[#059669] font-semibold bg-[#ecfdf5] px-1.5 py-0.5 rounded">Este mês</span>
             </div>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] border border-[#e5e7eb] flex flex-col gap-2">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[13px] font-semibold text-[#6b7280]">Estimativa Próx. Semana</span>
+              <span className="text-[13px] font-semibold text-[#6b7280]">Total de Indicados</span>
               <Icon icon="lucide:trending-up" className="text-lg text-[#9ca3af] opacity-70" />
             </div>
-            <div className="text-2xl font-bold text-[#111827] tracking-tight">$ 150.00</div>
-            <div className="text-xs text-[#6b7280]">Baseado em contas ativas</div>
+            <div className="text-2xl font-bold text-[#111827] tracking-tight">
+              {loading ? '...' : (stats?.totalReferrals || 0)}
+            </div>
+            <div className="text-xs text-[#6b7280]">{stats?.activeReferrals || 0} ativos</div>
           </div>
         </div>
 
@@ -210,19 +231,23 @@ function ReferralProgramPage() {
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <div className="text-[13px] font-semibold text-[#6b7280] mb-1">Total de Indicados</div>
-                <div className="text-xl font-bold text-[#111827] tracking-tight">42</div>
+                <div className="text-xl font-bold text-[#111827] tracking-tight">{loading ? '...' : (stats?.totalReferrals || 0)}</div>
               </div>
               <div>
                 <div className="text-[13px] font-semibold text-[#6b7280] mb-1">Ativos (Operando)</div>
-                <div className="text-xl font-bold text-[#00afaa] tracking-tight">18</div>
+                <div className="text-xl font-bold text-[#00afaa] tracking-tight">{loading ? '...' : (stats?.activeReferrals || 0)}</div>
               </div>
               <div>
-                <div className="text-[13px] font-semibold text-[#6b7280] mb-1">Contas MT4</div>
-                <div className="text-xl font-bold text-[#111827] tracking-tight">25</div>
+                <div className="text-[13px] font-semibold text-[#6b7280] mb-1">Comissão Total</div>
+                <div className="text-xl font-bold text-[#111827] tracking-tight">
+                  {loading ? '...' : `$ ${(stats?.totalEarnings || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </div>
               </div>
               <div>
-                <div className="text-[13px] font-semibold text-[#6b7280] mb-1">Conversão</div>
-                <div className="text-xl font-bold text-[#111827] tracking-tight">59%</div>
+                <div className="text-[13px] font-semibold text-[#6b7280] mb-1">Disponível</div>
+                <div className="text-xl font-bold text-[#00afaa] tracking-tight">
+                  {loading ? '...' : `$ ${(stats?.availableForWithdrawal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </div>
               </div>
             </div>
           </div>
@@ -294,33 +319,50 @@ function ReferralProgramPage() {
               </tr>
             </thead>
             <tbody>
-              {displayReferrals.map((ref, index) => (
-                <tr key={index} className="hover:bg-[#f9fafb] transition-colors">
-                  <td className="px-6 py-4 text-sm font-semibold text-[#111827] border-b border-[#f3f4f6]">{ref.name}</td>
-                  <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.date}</td>
-                  <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.plan}</td>
-                  <td className="px-6 py-4 text-sm border-b border-[#f3f4f6]">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      ref.status === 'active' ? 'bg-[#dcfce7] text-[#166534]' :
-                      ref.status === 'pending' ? 'bg-[#fef3c7] text-[#b45309]' :
-                      'bg-[#f3f4f6] text-[#6b7280]'
-                    }`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                      {ref.status === 'active' ? 'Conectado' : ref.status === 'pending' ? 'Pendente' : 'Inativo'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.profit}</td>
-                  <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.fee}</td>
-                  <td className={`px-6 py-4 text-sm border-b border-[#f3f4f6] ${ref.commission.includes('+') ? 'text-[#059669] font-bold' : 'text-[#6b7280]'}`}>
-                    {ref.commission}
-                  </td>
-                  <td className="px-6 py-4 border-b border-[#f3f4f6]">
-                    <button className="w-8 h-8 rounded-lg border border-[#e5e7eb] bg-white text-[#6b7280] flex items-center justify-center cursor-pointer transition-all hover:border-[#00afaa] hover:text-[#00afaa]">
-                      <Icon icon="lucide:more-horizontal" className="text-sm" />
-                    </button>
+              {loading ? (
+                <tr>
+                  <td colSpan="8" className="px-6 py-8 text-center text-[#6b7280]">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-[#00afaa]"></div>
+                      <span>Carregando indicações...</span>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              ) : displayReferrals.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="px-6 py-8 text-center text-[#6b7280]">
+                    Nenhuma indicação encontrada
+                  </td>
+                </tr>
+              ) : (
+                displayReferrals.map((ref, index) => (
+                  <tr key={index} className="hover:bg-[#f9fafb] transition-colors">
+                    <td className="px-6 py-4 text-sm font-semibold text-[#111827] border-b border-[#f3f4f6]">{ref.name}</td>
+                    <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.date}</td>
+                    <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.plan}</td>
+                    <td className="px-6 py-4 text-sm border-b border-[#f3f4f6]">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        ref.status === 'active' ? 'bg-[#dcfce7] text-[#166534]' :
+                        ref.status === 'pending' ? 'bg-[#fef3c7] text-[#b45309]' :
+                        'bg-[#f3f4f6] text-[#6b7280]'
+                      }`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                        {ref.status === 'active' ? 'Conectado' : ref.status === 'pending' ? 'Pendente' : 'Inativo'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.profit}</td>
+                    <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.fee}</td>
+                    <td className={`px-6 py-4 text-sm border-b border-[#f3f4f6] ${ref.commission.includes('+') ? 'text-[#059669] font-bold' : 'text-[#6b7280]'}`}>
+                      {ref.commission}
+                    </td>
+                    <td className="px-6 py-4 border-b border-[#f3f4f6]">
+                      <button className="w-8 h-8 rounded-lg border border-[#e5e7eb] bg-white text-[#6b7280] flex items-center justify-center cursor-pointer transition-all hover:border-[#00afaa] hover:text-[#00afaa]">
+                        <Icon icon="lucide:more-horizontal" className="text-sm" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const adminReferralsController = require('../controllers/adminReferralsController');
 const plansController = require('../controllers/plansController');
 const cryptoController = require('../controllers/cryptoController');
 const authMiddleware = require('../middleware/auth');
@@ -320,6 +321,12 @@ router.delete('/users/:userId', adminController.deleteUser);
 // Rotas de Interessados em Cripto
 router.get('/crypto/interested', cryptoController.getAllInterested);
 router.put('/crypto/interested/:id/notify', cryptoController.markAsNotified);
+
+// Rotas de Comissões e Pagamentos
+router.get('/referrals/commissions', adminReferralsController.getAllReferralCommissions);
+router.get('/referrals/stats', adminReferralsController.getReferralCommissionStats);
+router.post('/referrals/:referralId/approve-payment', adminReferralsController.approveCommissionPayment);
+router.post('/referrals/:referralId/reject-payment', adminReferralsController.rejectCommissionPayment);
 
 module.exports = router;
 

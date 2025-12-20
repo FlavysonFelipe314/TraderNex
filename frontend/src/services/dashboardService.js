@@ -272,6 +272,121 @@ export const getReferrals = async () => {
   }
 }
 
+// Processar lucro de investimento
+export const processInvestmentProfit = async (investmentId, newProfit, previousProfit = 0) => {
+  try {
+    const response = await api.post('/api/dashboard/process-investment-profit', {
+      investmentId,
+      newProfit,
+      previousProfit
+    })
+    return {
+      success: response.data.success,
+      data: response.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao processar lucro do investimento:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao processar lucro do investimento.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Processar lucro de conta MT4
+export const processMT4Profit = async (mt4AccountId, profit, investmentAmount) => {
+  try {
+    const response = await api.post('/api/dashboard/process-mt4-profit', {
+      mt4AccountId,
+      profit,
+      investmentAmount
+    })
+    return {
+      success: response.data.success,
+      data: response.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao processar lucro da conta MT4:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao processar lucro da conta MT4.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Criar fatura de performance
+export const createPerformanceInvoice = async (profit, investmentAmount, periodStart, periodEnd, description) => {
+  try {
+    const response = await api.post('/api/dashboard/invoices/create', {
+      profit,
+      investmentAmount,
+      periodStart,
+      periodEnd,
+      description
+    })
+    return {
+      success: response.data.success,
+      data: response.data.invoice,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao criar fatura de performance:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao criar fatura de performance.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Gerar faturas semanais
+export const generateWeeklyInvoices = async (weekStart, weekEnd) => {
+  try {
+    const response = await api.post('/api/dashboard/invoices/generate-weekly', {
+      weekStart,
+      weekEnd
+    })
+    return {
+      success: response.data.success,
+      data: response.data.invoices,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao gerar faturas semanais:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao gerar faturas semanais.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Marcar fatura como paga
+export const markInvoiceAsPaid = async (invoiceId, paidDate) => {
+  try {
+    const response = await api.post('/api/dashboard/invoices/mark-paid', {
+      invoiceId,
+      paidDate
+    })
+    return {
+      success: response.data.success,
+      data: response.data.invoice,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao marcar fatura como paga:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao marcar fatura como paga.',
+      error: error.response?.data
+    }
+  }
+}
+
 // Conectar conta Myfxbook
 export const connectMyfxbook = async (email, password) => {
   try {

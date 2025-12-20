@@ -25,6 +25,7 @@ import AdminPage from "./page/AdminPage";
 import AdminPlansPage from "./page/AdminPlansPage";
 import AdminUsersPage from "./page/AdminUsersPage";
 import AdminCryptoInterestedPage from "./page/AdminCryptoInterestedPage";
+import AdminReferralsPage from "./page/AdminReferralsPage";
 
 function App() {
   return (
@@ -152,6 +153,14 @@ function App() {
           element={
             <AdminProtectedRoute>
               <AdminCryptoInterestedPage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/referrals"
+          element={
+            <AdminProtectedRoute>
+              <AdminReferralsPage />
             </AdminProtectedRoute>
           }
         />
