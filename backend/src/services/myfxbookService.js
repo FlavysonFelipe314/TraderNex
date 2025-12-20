@@ -385,9 +385,21 @@ async function getDataDaily(session, accountId, startDate, endDate) {
       };
     }
 
+    // A API pode retornar array aninhado, então vamos desaninhar se necessário
+    let dataDaily = response.data.dataDaily || [];
+    if (dataDaily.length > 0 && Array.isArray(dataDaily[0])) {
+      dataDaily = dataDaily.flat();
+    }
+
+    console.log('[Myfxbook] getDataDaily - Dados recebidos:', {
+      total: dataDaily.length,
+      firstItem: dataDaily[0],
+      hasProfit: dataDaily[0]?.profit !== undefined
+    });
+
     return {
       success: true,
-      dataDaily: response.data.dataDaily || [],
+      dataDaily: dataDaily,
       message: 'Dados diários obtidos com sucesso'
     };
   } catch (error) {

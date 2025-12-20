@@ -190,9 +190,38 @@ function RelatoriosPerformancePage() {
     return history
   }, [myfxbookData, kpis.netProfit])
 
+  // Função auxiliar para converter data do formato MyFXBook (MM/DD/YYYY) para Date
+  // Movida para fora do useMemo para ser reutilizável
+  const parseMyFXBookDate = (dateStr) => {
+    if (!dateStr) return new Date(NaN)
+    if (dateStr instanceof Date) return dateStr
+    
+    // Formato MM/DD/YYYY (formato da API MyFXBook)
+    const mmddyyyy = String(dateStr).match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+    if (mmddyyyy) {
+      const [, month, day, year] = mmddyyyy
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    }
+    
+    // Tentar formato ISO ou outros
+    const isoDate = new Date(dateStr)
+    if (!isNaN(isoDate.getTime())) return isoDate
+    
+    return new Date(NaN)
+  }
+
   // Calcular estatísticas de profit
   const profitStats = useMemo(() => {
-    if (!myfxbookData?.dataDaily || myfxbookData.dataDaily.length === 0) {
+    // Verificar se dataDaily existe e tem dados
+    let dataDailyArray = myfxbookData?.dataDaily || []
+    
+    // A API pode retornar array aninhado, então vamos desaninhar se necessário
+    if (dataDailyArray.length > 0 && Array.isArray(dataDailyArray[0])) {
+      dataDailyArray = dataDailyArray.flat()
+    }
+    
+    if (!dataDailyArray || dataDailyArray.length === 0) {
+      console.log('[ProfitStats] Nenhum dado dataDaily disponível')
       return {
         totalProfit: 0,
         averageDailyProfit: 0,
@@ -204,10 +233,24 @@ function RelatoriosPerformancePage() {
       }
     }
 
-    const profits = myfxbookData.dataDaily.map(item => ({
-      date: new Date(item.date || item.time),
-      profit: parseFloat(item.profit || 0)
-    }))
+    console.log('[ProfitStats] Processando dataDaily:', dataDailyArray.length, 'registros')
+    console.log('[ProfitStats] Primeiro item:', dataDailyArray[0])
+
+    const profits = dataDailyArray
+      .map(item => {
+        const dateStr = item.date || item.time || item.openTime || item.closeTime
+        const parsedDate = parseMyFXBookDate(dateStr)
+        const profit = parseFloat(item.profit || 0)
+        
+        return {
+          date: parsedDate,
+          profit: profit,
+          balance: parseFloat(item.balance || 0),
+          equity: parseFloat(item.equity || 0),
+          rawData: item // Manter dados originais para debug
+        }
+      })
+      .filter(item => !isNaN(item.date.getTime())) // Filtrar datas inválidas
 
     const totalProfit = profits.reduce((sum, item) => sum + item.profit, 0)
     const averageDailyProfit = totalProfit / profits.length
@@ -229,23 +272,34 @@ function RelatoriosPerformancePage() {
 
   // Dados do gráfico
   const chartData = useMemo(() => {
+    // Desaninhar dataDaily se necessário
+    let dataDailyArray = myfxbookData?.dataDaily || []
+    if (dataDailyArray.length > 0 && Array.isArray(dataDailyArray[0])) {
+      dataDailyArray = dataDailyArray.flat()
+    }
+    
     // Prioridade 1: Dados do MyFXBook (dataDaily)
-    if (myfxbookData?.dataDaily && myfxbookData.dataDaily.length > 0) {
-      return myfxbookData.dataDaily.map(item => ({
-        date: new Date(item.date || item.time),
+    if (dataDailyArray && dataDailyArray.length > 0) {
+      return dataDailyArray.map(item => ({
+        date: parseMyFXBookDate(item.date || item.time),
         equity: parseFloat(item.equity || 0),
         balance: parseFloat(item.balance || 0),
-        profit: parseFloat(item.profit || 0) // Adicionar profit ao gráfico
-      })).sort((a, b) => a.date - b.date)
+        profit: parseFloat(item.profit || 0)
+      })).filter(item => !isNaN(item.date.getTime())).sort((a, b) => a.date - b.date)
     }
     
     // Prioridade 2: Dados do MyFXBook (dailyGain)
     if (myfxbookData?.dailyGain && myfxbookData.dailyGain.length > 0) {
       let cumulative = 0
-      return myfxbookData.dailyGain.map(item => {
+      // Desaninhar se necessário
+      let dailyGainArray = myfxbookData.dailyGain
+      if (dailyGainArray.length > 0 && Array.isArray(dailyGainArray[0])) {
+        dailyGainArray = dailyGainArray.flat()
+      }
+      return dailyGainArray.map(item => {
         cumulative += parseFloat(item.gain || item.profit || 0)
         return {
-          date: new Date(item.date || item.time),
+          date: parseMyFXBookDate(item.date || item.time),
           equity: cumulative,
           balance: cumulative
         }
@@ -267,7 +321,7 @@ function RelatoriosPerformancePage() {
           equity: cumulativeEquity,
           balance: cumulativeBalance
         }
-      }).sort((a, b) => a.date - b.date)
+      }).filter(item => !isNaN(item.date.getTime())).sort((a, b) => a.date - b.date)
     }
     
     return []
@@ -602,7 +656,14 @@ function RelatoriosPerformancePage() {
         )}
 
         {/* Relatório de Profit Diário - MyFXBook */}
-        {myfxbookData?.dataDaily && myfxbookData.dataDaily.length > 0 && (
+        {(() => {
+          // Verificar se dataDaily existe e tem dados (desaninhar se necessário)
+          let dataDailyArray = myfxbookData?.dataDaily || []
+          if (dataDailyArray.length > 0 && Array.isArray(dataDailyArray[0])) {
+            dataDailyArray = dataDailyArray.flat()
+          }
+          return dataDailyArray.length > 0
+        })() && (
           <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
             <div className="flex justify-between items-center mb-6">
               <div>
@@ -730,20 +791,27 @@ function RelatoriosPerformancePage() {
                 </thead>
                 <tbody>
                   {profitStats.profitByDay.slice(0, 30).map((day, index) => {
-                    const dailyData = myfxbookData.dataDaily.find(d => {
-                      const dataDate = new Date(d.date || d.time)
-                      return dataDate.toDateString() === day.date.toDateString()
+                    // Buscar dados correspondentes (desaninhar se necessário)
+                    let dataDailyArray = myfxbookData.dataDaily || []
+                    if (dataDailyArray.length > 0 && Array.isArray(dataDailyArray[0])) {
+                      dataDailyArray = dataDailyArray.flat()
+                    }
+                    
+                    const dailyData = dataDailyArray.find(d => {
+                      const dateStr = d.date || d.time || d.openTime || d.closeTime
+                      const dataDate = parseMyFXBookDate(dateStr)
+                      return dataDate && !isNaN(dataDate.getTime()) && dataDate.toDateString() === day.date.toDateString()
                     })
                     const isProfit = day.profit >= 0
                     return (
                       <tr key={index} className="border-b border-[#f9fafb] hover:bg-[#f3f4f6] transition-colors">
                         <td className="py-3 px-4 text-sm font-medium text-[#111827]">
-                          {day.date.toLocaleDateString('pt-BR', { 
+                          {!isNaN(day.date.getTime()) ? day.date.toLocaleDateString('pt-BR', { 
                             day: '2-digit', 
                             month: 'short', 
                             year: 'numeric',
                             weekday: 'short'
-                          })}
+                          }) : 'Data inválida'}
                         </td>
                         <td className={`py-3 px-4 text-sm text-right font-semibold ${
                           isProfit ? 'text-[#059669]' : 'text-[#dc2626]'
@@ -751,10 +819,10 @@ function RelatoriosPerformancePage() {
                           {isProfit ? '+' : ''}{formatCurrencyBR(day.profit)}
                         </td>
                         <td className="py-3 px-4 text-sm text-right text-[#6b7280]">
-                          {dailyData ? formatCurrencyBR(parseFloat(dailyData.balance || 0)) : '-'}
+                          {day.balance ? formatCurrencyBR(day.balance) : (dailyData ? formatCurrencyBR(parseFloat(dailyData.balance || 0)) : '-')}
                         </td>
                         <td className="py-3 px-4 text-sm text-right text-[#6b7280]">
-                          {dailyData ? formatCurrencyBR(parseFloat(dailyData.equity || 0)) : '-'}
+                          {day.equity ? formatCurrencyBR(day.equity) : (dailyData ? formatCurrencyBR(parseFloat(dailyData.equity || 0)) : '-')}
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
