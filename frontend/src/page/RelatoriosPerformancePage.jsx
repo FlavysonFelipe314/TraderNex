@@ -190,6 +190,43 @@ function RelatoriosPerformancePage() {
     return history
   }, [myfxbookData, kpis.netProfit])
 
+  // Calcular estatísticas de profit
+  const profitStats = useMemo(() => {
+    if (!myfxbookData?.dataDaily || myfxbookData.dataDaily.length === 0) {
+      return {
+        totalProfit: 0,
+        averageDailyProfit: 0,
+        bestDay: null,
+        worstDay: null,
+        profitDays: 0,
+        lossDays: 0,
+        profitByDay: []
+      }
+    }
+
+    const profits = myfxbookData.dataDaily.map(item => ({
+      date: new Date(item.date || item.time),
+      profit: parseFloat(item.profit || 0)
+    }))
+
+    const totalProfit = profits.reduce((sum, item) => sum + item.profit, 0)
+    const averageDailyProfit = totalProfit / profits.length
+    const bestDay = profits.reduce((best, current) => current.profit > (best?.profit || -Infinity) ? current : best, null)
+    const worstDay = profits.reduce((worst, current) => current.profit < (worst?.profit || Infinity) ? current : worst, null)
+    const profitDays = profits.filter(p => p.profit > 0).length
+    const lossDays = profits.filter(p => p.profit < 0).length
+
+    return {
+      totalProfit,
+      averageDailyProfit,
+      bestDay,
+      worstDay,
+      profitDays,
+      lossDays,
+      profitByDay: profits.sort((a, b) => b.date - a.date) // Mais recente primeiro
+    }
+  }, [myfxbookData])
+
   // Dados do gráfico
   const chartData = useMemo(() => {
     // Prioridade 1: Dados do MyFXBook (dataDaily)
@@ -197,7 +234,8 @@ function RelatoriosPerformancePage() {
       return myfxbookData.dataDaily.map(item => ({
         date: new Date(item.date || item.time),
         equity: parseFloat(item.equity || 0),
-        balance: parseFloat(item.balance || 0)
+        balance: parseFloat(item.balance || 0),
+        profit: parseFloat(item.profit || 0) // Adicionar profit ao gráfico
       })).sort((a, b) => a.date - b.date)
     }
     
@@ -560,6 +598,186 @@ function RelatoriosPerformancePage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* Relatório de Profit Diário - MyFXBook */}
+        {myfxbookData?.dataDaily && myfxbookData.dataDaily.length > 0 && (
+          <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em] mb-1">Relatório de Profit Diário</h3>
+                <p className="text-sm text-[#6b7280]">
+                  Dados obtidos diretamente da API do MyFXBook - {profitStats.profitByDay.length} dias registrados
+                </p>
+              </div>
+              <span className="text-xs font-semibold text-[#00afaa] bg-[rgba(0,175,170,0.08)] px-3 py-1 rounded-full">
+                <Icon icon="lucide:check-circle" className="inline mr-1" />
+                Dados em Tempo Real
+              </span>
+            </div>
+
+            {/* Cards de Estatísticas de Profit */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-gradient-to-br from-[#10b981] to-[#059669] rounded-xl p-5 text-white">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold opacity-90 uppercase">Profit Total</span>
+                  <Icon icon="lucide:trending-up" className="text-xl" />
+                </div>
+                <div className="text-2xl font-bold">{formatCurrencyBR(profitStats.totalProfit)}</div>
+                <div className="text-xs opacity-80 mt-1">
+                  {profitStats.profitByDay.length} dias analisados
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-[#3b82f6] to-[#2563eb] rounded-xl p-5 text-white">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold opacity-90 uppercase">Média Diária</span>
+                  <Icon icon="lucide:bar-chart-3" className="text-xl" />
+                </div>
+                <div className="text-2xl font-bold">{formatCurrencyBR(profitStats.averageDailyProfit)}</div>
+                <div className="text-xs opacity-80 mt-1">
+                  Por dia útil
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-[#059669] to-[#047857] rounded-xl p-5 text-white">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold opacity-90 uppercase">Melhor Dia</span>
+                  <Icon icon="lucide:arrow-up-circle" className="text-xl" />
+                </div>
+                <div className="text-2xl font-bold">
+                  {profitStats.bestDay ? formatCurrencyBR(profitStats.bestDay.profit) : 'N/A'}
+                </div>
+                <div className="text-xs opacity-80 mt-1">
+                  {profitStats.bestDay ? profitStats.bestDay.date.toLocaleDateString('pt-BR') : '-'}
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-[#dc2626] to-[#991b1b] rounded-xl p-5 text-white">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold opacity-90 uppercase">Pior Dia</span>
+                  <Icon icon="lucide:arrow-down-circle" className="text-xl" />
+                </div>
+                <div className="text-2xl font-bold">
+                  {profitStats.worstDay ? formatCurrencyBR(profitStats.worstDay.profit) : 'N/A'}
+                </div>
+                <div className="text-xs opacity-80 mt-1">
+                  {profitStats.worstDay ? profitStats.worstDay.date.toLocaleDateString('pt-BR') : '-'}
+                </div>
+              </div>
+            </div>
+
+            {/* Cards Adicionais */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div className="bg-[#f0fdf4] border border-[#86efac] rounded-xl p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-[#166534] mb-1">Dias com Profit</div>
+                    <div className="text-2xl font-bold text-[#059669]">{profitStats.profitDays}</div>
+                    <div className="text-xs text-[#6b7280] mt-1">
+                      {profitStats.profitByDay.length > 0 
+                        ? `${((profitStats.profitDays / profitStats.profitByDay.length) * 100).toFixed(1)}% dos dias`
+                        : '0%'}
+                    </div>
+                  </div>
+                  <Icon icon="lucide:check-circle-2" className="text-3xl text-[#10b981]" />
+                </div>
+              </div>
+
+              <div className="bg-[#fef2f2] border border-[#fecaca] rounded-xl p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-[#991b1b] mb-1">Dias com Loss</div>
+                    <div className="text-2xl font-bold text-[#dc2626]">{profitStats.lossDays}</div>
+                    <div className="text-xs text-[#6b7280] mt-1">
+                      {profitStats.profitByDay.length > 0 
+                        ? `${((profitStats.lossDays / profitStats.profitByDay.length) * 100).toFixed(1)}% dos dias`
+                        : '0%'}
+                    </div>
+                  </div>
+                  <Icon icon="lucide:x-circle" className="text-3xl text-[#ef4444]" />
+                </div>
+              </div>
+            </div>
+
+            {/* Tabela de Profit Diário */}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#f3f4f6] bg-[#fafafa]">
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase tracking-wider">
+                      <Icon icon="lucide:calendar" className="inline mr-2" />
+                      Data
+                    </th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase tracking-wider">
+                      <Icon icon="lucide:dollar-sign" className="inline mr-2" />
+                      Profit Diário
+                    </th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase tracking-wider">
+                      <Icon icon="lucide:trending-up" className="inline mr-2" />
+                      Balance
+                    </th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase tracking-wider">
+                      <Icon icon="lucide:activity" className="inline mr-2" />
+                      Equity
+                    </th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase tracking-wider">
+                      <Icon icon="lucide:bar-chart" className="inline mr-2" />
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {profitStats.profitByDay.slice(0, 30).map((day, index) => {
+                    const dailyData = myfxbookData.dataDaily.find(d => {
+                      const dataDate = new Date(d.date || d.time)
+                      return dataDate.toDateString() === day.date.toDateString()
+                    })
+                    const isProfit = day.profit >= 0
+                    return (
+                      <tr key={index} className="border-b border-[#f9fafb] hover:bg-[#f3f4f6] transition-colors">
+                        <td className="py-3 px-4 text-sm font-medium text-[#111827]">
+                          {day.date.toLocaleDateString('pt-BR', { 
+                            day: '2-digit', 
+                            month: 'short', 
+                            year: 'numeric',
+                            weekday: 'short'
+                          })}
+                        </td>
+                        <td className={`py-3 px-4 text-sm text-right font-semibold ${
+                          isProfit ? 'text-[#059669]' : 'text-[#dc2626]'
+                        }`}>
+                          {isProfit ? '+' : ''}{formatCurrencyBR(day.profit)}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-right text-[#6b7280]">
+                          {dailyData ? formatCurrencyBR(parseFloat(dailyData.balance || 0)) : '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-right text-[#6b7280]">
+                          {dailyData ? formatCurrencyBR(parseFloat(dailyData.equity || 0)) : '-'}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            isProfit 
+                              ? 'bg-[#dcfce7] text-[#166534]' 
+                              : 'bg-[#fee2e2] text-[#991b1b]'
+                          }`}>
+                            <Icon icon={isProfit ? 'lucide:trending-up' : 'lucide:trending-down'} className="text-sm" />
+                            {isProfit ? 'Profit' : 'Loss'}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {profitStats.profitByDay.length > 30 && (
+              <div className="mt-4 text-center text-sm text-[#6b7280]">
+                Mostrando os 30 dias mais recentes de {profitStats.profitByDay.length} dias disponíveis
+              </div>
+            )}
           </div>
         )}
 
