@@ -11,7 +11,7 @@ function ReferralProgramPage() {
   const [loading, setLoading] = useState(true)
   
   const referralCode = referralData?.referralCode || user?.referralCode || 'JOA23'
-  const referralLink = `tradernex.com/i/${referralCode}`
+  const referralLink = `app.tradernex.com/register?ref=${referralCode}`
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -144,11 +144,11 @@ function ReferralProgramPage() {
             <label className="text-[10px] sm:text-xs font-semibold text-[#9ca3af] uppercase tracking-wider mb-3 sm:mb-4 block">Link de Cadastro</label>
             <div className="flex gap-2">
               <div className="flex-1 bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg text-[#d1d5db] px-3 sm:px-4 text-xs sm:text-[13px] h-10 flex items-center overflow-hidden">
-                <span className="truncate">{referralLink}</span>
+                <span className="truncate">https://{referralLink}</span>
               </div>
               <button
                 className="h-10 px-3 sm:px-4 rounded-lg bg-[#00ff88] text-[#002914] border-none font-semibold text-xs sm:text-[13px] cursor-pointer transition-all hover:bg-[#00cc6a] flex items-center gap-1.5 sm:gap-2 flex-shrink-0 whitespace-nowrap"
-                onClick={() => copyToClipboard(referralLink, 'link')}
+                onClick={() => copyToClipboard(`https://${referralLink}`, 'link')}
               >
                 {copied === 'link' ? 'Copiado!' : 'Copiar'}
               </button>

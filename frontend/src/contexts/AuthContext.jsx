@@ -72,7 +72,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const register = async (email, password, firstName, lastName, phone, country) => {
+  const register = async (email, password, firstName, lastName, phone, country, referralCode = null) => {
     try {
       const response = await api.post('/api/auth/register', {
         email,
@@ -80,7 +80,8 @@ export function AuthProvider({ children }) {
         firstName,
         lastName,
         phone,
-        country
+        country,
+        referralCode
       })
       
       // A API retorna: { success, message, data: { user, token } }

@@ -20,7 +20,7 @@ exports.register = async (req, res) => {
       });
     }
 
-    const { email, password, firstName, lastName, phone, country } = req.body;
+    const { email, password, firstName, lastName, phone, country, referralCode } = req.body;
 
     // Verificar se o usuário já existe
     const userExists = await pool.query(
@@ -35,6 +35,25 @@ exports.register = async (req, res) => {
       });
     }
 
+    // Verificar e validar código de indicação se fornecido
+    let referrerId = null;
+    if (referralCode) {
+      const referrerResult = await pool.query(
+        `SELECT u.id 
+         FROM client_profiles cp
+         JOIN users u ON cp.user_id = u.id
+         WHERE cp.referral_code = $1 AND u.is_active = TRUE`,
+        [referralCode.toUpperCase()]
+      );
+      
+      if (referrerResult.rows.length > 0) {
+        referrerId = referrerResult.rows[0].id;
+      } else {
+        // Código inválido, mas não bloqueia o registro
+        console.log(`[register] Código de indicação inválido: ${referralCode}`);
+      }
+    }
+
     // Hash da senha
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -47,13 +66,23 @@ exports.register = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Criar perfil do cliente
-    const referralCode = generateReferralCode();
+    // Criar perfil do cliente com código de indicação e referrer
+    const newReferralCode = generateReferralCode();
     await pool.query(
-      `INSERT INTO client_profiles (user_id, referral_code)
-       VALUES ($1, $2)`,
-      [user.id, referralCode]
+      `INSERT INTO client_profiles (user_id, referral_code, referred_by)
+       VALUES ($1, $2, $3)`,
+      [user.id, newReferralCode, referrerId]
     );
+
+    // Se houver indicador, criar registro de referral (sem comissão ainda)
+    if (referrerId) {
+      await pool.query(
+        `INSERT INTO referrals (referrer_id, referred_id, commission, status)
+         VALUES ($1, $2, 0, 'active')
+         ON CONFLICT (referrer_id, referred_id) DO NOTHING`,
+        [referrerId, user.id]
+      );
+    }
 
     // Gerar token JWT para autenticação
     const authToken = jwt.sign(

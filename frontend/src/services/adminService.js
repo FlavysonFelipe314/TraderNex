@@ -509,4 +509,23 @@ export const processProfitManually = async (userId, profit, investmentAmount, ty
   }
 }
 
+// Processar comissões semanais (Admin)
+export const processWeeklyCommissions = async () => {
+  try {
+    const response = await api.post('/api/admin/referrals/process-weekly')
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao processar comissões semanais:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao processar comissões semanais.',
+      error: error.response?.data
+    }
+  }
+}
+
 

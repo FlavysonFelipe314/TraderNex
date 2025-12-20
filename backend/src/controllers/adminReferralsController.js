@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { processWeeklyCommissionsManual } = require('../services/weeklyCommissionService');
 
 /**
  * Obter todas as comissões de indicações (Admin)
@@ -199,6 +200,29 @@ exports.getReferralCommissionStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao buscar estatísticas.',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Processar comissões semanais manualmente (Admin)
+ * POST /api/admin/referrals/process-weekly
+ */
+exports.processWeeklyCommissions = async (req, res) => {
+  try {
+    const result = await processWeeklyCommissionsManual();
+    
+    res.json({
+      success: true,
+      message: 'Comissões semanais processadas com sucesso',
+      data: result.results
+    });
+  } catch (error) {
+    console.error('Erro ao processar comissões semanais:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao processar comissões semanais.',
       error: error.message
     });
   }

@@ -5,7 +5,8 @@ import {
   getAllReferralCommissions,
   getReferralCommissionStats,
   approveCommissionPayment,
-  rejectCommissionPayment
+  rejectCommissionPayment,
+  processWeeklyCommissions
 } from '../services/adminService'
 import { formatCurrencyBR } from '../utils/format'
 
@@ -154,6 +155,36 @@ function AdminReferralsPage() {
             </div>
           </div>
         )}
+
+        {/* Botão de Processar Comissões Semanais */}
+        <div className="mb-6 flex justify-end">
+          <button
+            onClick={async () => {
+              if (!confirm('Deseja processar as comissões semanais agora? Isso calculará comissões baseado nos lucros da semana.')) return
+              
+              setActionLoading(true)
+              try {
+                const result = await processWeeklyCommissions()
+                if (result.success) {
+                  alert(`Comissões processadas!\nProcessados: ${result.data?.processed || 0}\nComissões: ${result.data?.commissions || 0}\nFaturas: ${result.data?.invoices || 0}`)
+                  await loadData()
+                } else {
+                  alert('Erro ao processar: ' + result.message)
+                }
+              } catch (error) {
+                console.error('Erro ao processar comissões:', error)
+                alert('Erro ao processar comissões semanais.')
+              } finally {
+                setActionLoading(false)
+              }
+            }}
+            disabled={actionLoading}
+            className="px-4 py-2 bg-gradient-to-r from-[#00afaa] to-[#009a96] text-white rounded-lg text-sm font-medium hover:from-[#009a96] hover:to-[#008882] transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
+          >
+            <Icon icon="lucide:refresh-cw" className="text-sm" />
+            {actionLoading ? 'Processando...' : 'Processar Comissões Semanais'}
+          </button>
+        </div>
 
         {/* Filtros */}
         <div className="mb-6 flex flex-wrap gap-2">

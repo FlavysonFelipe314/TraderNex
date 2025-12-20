@@ -327,6 +327,7 @@ router.get('/referrals/commissions', adminReferralsController.getAllReferralComm
 router.get('/referrals/stats', adminReferralsController.getReferralCommissionStats);
 router.post('/referrals/:referralId/approve-payment', adminReferralsController.approveCommissionPayment);
 router.post('/referrals/:referralId/reject-payment', adminReferralsController.rejectCommissionPayment);
+router.post('/referrals/process-weekly', adminReferralsController.processWeeklyCommissions);
 
 module.exports = router;
 

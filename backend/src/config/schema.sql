@@ -115,6 +115,8 @@ CREATE TABLE IF NOT EXISTS user_investments (
     end_date TIMESTAMP,
     current_value DECIMAL(15, 2),
     profit DECIMAL(15, 2) DEFAULT 0.00,
+    last_weekly_profit DECIMAL(15, 2) DEFAULT 0.00,
+    last_weekly_processed_date TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -226,6 +228,7 @@ CREATE INDEX IF NOT EXISTS idx_myfxbook_connections_user_id ON myfxbook_connecti
 CREATE INDEX IF NOT EXISTS idx_user_investments_user_id ON user_investments(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_investments_status ON user_investments(status);
 CREATE INDEX IF NOT EXISTS idx_user_investments_plan_id ON user_investments(plan_id);
+CREATE INDEX IF NOT EXISTS idx_user_investments_last_weekly_processed ON user_investments(last_weekly_processed_date);
 CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
 CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);

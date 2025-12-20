@@ -1,10 +1,11 @@
 import { Icon } from '@iconify/react'
-import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
 function RegisterPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { register } = useAuth()
   const [formData, setFormData] = useState({
     fullName: '',
@@ -17,6 +18,17 @@ function RegisterPage() {
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Buscar código de indicação da URL
+  useEffect(() => {
+    const refCode = searchParams.get('ref')
+    if (refCode) {
+      setFormData(prev => ({
+        ...prev,
+        referralCode: refCode.toUpperCase()
+      }))
+    }
+  }, [searchParams])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -66,7 +78,8 @@ function RegisterPage() {
         firstName,
         lastName,
         formData.whatsapp,
-        'BR' // País padrão, pode ser ajustado
+        'BR', // País padrão, pode ser ajustado
+        formData.referralCode || null // Código de indicação
       )
       
       if (result.success) {
