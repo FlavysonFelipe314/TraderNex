@@ -123,6 +123,26 @@ function RelatoriosPerformancePage() {
     }
   }, [myfxbookData])
 
+  // Função auxiliar para converter data do formato MyFXBook (MM/DD/YYYY) para Date
+  // DEVE estar declarada antes de qualquer useMemo que a utilize
+  const parseMyFXBookDate = (dateStr) => {
+    if (!dateStr) return new Date(NaN)
+    if (dateStr instanceof Date) return dateStr
+    
+    // Formato MM/DD/YYYY (formato da API MyFXBook)
+    const mmddyyyy = String(dateStr).match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+    if (mmddyyyy) {
+      const [, month, day, year] = mmddyyyy
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    }
+    
+    // Tentar formato ISO ou outros
+    const isoDate = new Date(dateStr)
+    if (!isNaN(isoDate.getTime())) return isoDate
+    
+    return new Date(NaN)
+  }
+
   // Processar histórico mensal dos dados do MyFXBook
   // Usando dataDaily para obter números reais e validados do MyFXBook
   const monthlyHistory = useMemo(() => {
@@ -276,27 +296,7 @@ function RelatoriosPerformancePage() {
     })
 
     return history
-  }, [myfxbookData, kpis.netProfit, parseMyFXBookDate])
-
-  // Função auxiliar para converter data do formato MyFXBook (MM/DD/YYYY) para Date
-  // Movida para fora do useMemo para ser reutilizável
-  const parseMyFXBookDate = (dateStr) => {
-    if (!dateStr) return new Date(NaN)
-    if (dateStr instanceof Date) return dateStr
-    
-    // Formato MM/DD/YYYY (formato da API MyFXBook)
-    const mmddyyyy = String(dateStr).match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-    if (mmddyyyy) {
-      const [, month, day, year] = mmddyyyy
-      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-    }
-    
-    // Tentar formato ISO ou outros
-    const isoDate = new Date(dateStr)
-    if (!isNaN(isoDate.getTime())) return isoDate
-    
-    return new Date(NaN)
-  }
+  }, [myfxbookData, kpis.netProfit])
 
   // Calcular estatísticas de profit
   const profitStats = useMemo(() => {
