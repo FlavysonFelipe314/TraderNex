@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
 import { 
@@ -16,6 +16,9 @@ function ContaForexMT4Page() {
   const [loading, setLoading] = useState(true)
   const [myfxbookConnected, setMyfxbookConnected] = useState(false)
   const [myfxbookData, setMyfxbookData] = useState(null)
+  
+  // Refs para controlar requisições e evitar múltiplas chamadas
+  const isLoadingRef = useRef(false)
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -24,19 +27,30 @@ function ContaForexMT4Page() {
     }
   }, [])
 
-  // Carregar contas MT4 e dados MyFXBook
-  useEffect(() => {
-    const loadMT4Accounts = async () => {
-      setLoading(true)
-      try {
-        const [mt4Result, myfxbookResult] = await Promise.all([
-          getMT4Accounts(),
-          getMyfxbookData()
-        ])
-        
-        console.log('Resultado getMT4Accounts:', mt4Result)
-        if (mt4Result.success) {
-          const accounts = mt4Result.data || []
+  // Função para carregar dados com proteção contra múltiplas requisições
+  const loadMT4Accounts = useCallback(async () => {
+    // Se já está carregando, não fazer nova requisição
+    if (isLoadingRef.current) {
+      console.log('[ContaForex] Ignorando requisição, já está carregando...')
+      return
+    }
+    
+    isLoadingRef.current = true
+    setLoading(true)
+    
+    try {
+      // Usar Promise.allSettled para não falhar completamente se uma requisição falhar
+      const [mt4Result, myfxbookResult] = await Promise.allSettled([
+        getMT4Accounts(),
+        getMyfxbookData()
+      ])
+      
+      // Processar resultado MT4
+      if (mt4Result.status === 'fulfilled') {
+        const result = mt4Result.value
+        console.log('Resultado getMT4Accounts:', result)
+        if (result.success) {
+          const accounts = result.data || []
           console.log('Contas MT4 carregadas:', accounts)
           setMt4Accounts(accounts)
           
@@ -51,35 +65,72 @@ function ContaForexMT4Page() {
             }
           }
         } else {
-          console.warn('Falha ao carregar contas MT4:', mt4Result.message)
+          console.warn('Falha ao carregar contas MT4:', result.message)
         }
+      } else {
+        const error = mt4Result.reason
+        if (error.response?.status !== 401 && error.response?.status !== 429) {
+          console.error('[ContaForex] Erro ao carregar MT4:', error)
+        }
+      }
 
-        // Carregar dados MyFXBook
-        if (myfxbookResult.success && myfxbookResult.data) {
-          const isConnected = myfxbookResult.data.connected
+      // Processar resultado MyFXBook
+      if (myfxbookResult.status === 'fulfilled') {
+        const result = myfxbookResult.value
+        if (result.success && result.data) {
+          const isConnected = result.data.connected
           setMyfxbookConnected(isConnected)
-          if (isConnected && myfxbookResult.data.account) {
+          if (isConnected && result.data.account) {
             setMyfxbookData({
-              equity: myfxbookResult.data.account.equity,
-              profit: myfxbookResult.data.account.profit,
-              currency: myfxbookResult.data.account.currency || 'USD'
+              equity: result.data.account.equity,
+              profit: result.data.account.profit,
+              currency: result.data.account.currency || 'USD'
             })
           } else {
             setMyfxbookData(null)
           }
         } else {
+          // Não limpar dados se foi rate limit
+          if (result.error?.status !== 429 && result.error?.response?.status !== 429) {
+            setMyfxbookConnected(false)
+            setMyfxbookData(null)
+          }
+        }
+      } else {
+        const error = myfxbookResult.reason
+        if (error.response?.status === 429) {
+          console.warn('[ContaForex] Rate limit MyFXBook, mantendo dados anteriores')
+          // Não limpar dados em caso de rate limit
+        } else if (error.response?.status === 401) {
+          // Erro de autenticação será tratado pelo interceptor
+          console.warn('[ContaForex] Erro de autenticação')
+        } else {
+          console.error('[ContaForex] Erro ao carregar MyFXBook:', error)
           setMyfxbookConnected(false)
           setMyfxbookData(null)
         }
-      } catch (error) {
-        console.error('Erro ao carregar dados:', error)
-      } finally {
-        setLoading(false)
       }
+    } catch (error) {
+      // Tratamento de erro geral
+      if (error.response?.status === 429) {
+        console.warn('[ContaForex] Rate limit atingido, mantendo dados anteriores')
+        return
+      }
+      if (error.response?.status === 401) {
+        // Erro de autenticação será tratado pelo interceptor
+        return
+      }
+      console.error('Erro ao carregar dados:', error)
+    } finally {
+      isLoadingRef.current = false
+      setLoading(false)
     }
-
-    loadMT4Accounts()
   }, [])
+
+  // Carregar contas MT4 e dados MyFXBook
+  useEffect(() => {
+    loadMT4Accounts()
+  }, [loadMT4Accounts])
 
   // MyFXBook removido - apenas admin pode configurar via painel admin
 

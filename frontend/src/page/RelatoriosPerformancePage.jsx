@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
 import { getPerformanceStats, getMyfxbookData } from '../services/dashboardService'
@@ -11,6 +11,11 @@ function RelatoriosPerformancePage() {
   const [performanceData, setPerformanceData] = useState(null)
   const [myfxbookData, setMyfxbookData] = useState(null)
   const [loading, setLoading] = useState(true)
+  
+  // Refs para controlar requisições e debounce
+  const abortControllerRef = useRef(null)
+  const loadTimeoutRef = useRef(null)
+  const isLoadingRef = useRef(false)
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -53,47 +58,118 @@ function RelatoriosPerformancePage() {
     return { startDate, endDate }
   }
 
-  // Carregar dados de performance e MyFXBook
-  useEffect(() => {
-    const loadPerformanceData = async () => {
-      setLoading(true)
-      try {
-        const dateRange = getDateRange(selectedPeriod)
-        console.log('[Relatórios] Carregando dados para período:', selectedPeriod, 'Datas:', dateRange)
+  // Função para carregar dados com proteção contra múltiplas requisições
+  const loadPerformanceData = useCallback(async (period, startDate, endDate) => {
+    // Se já está carregando, ignorar nova requisição
+    if (isLoadingRef.current) {
+      console.log('[Relatórios] Ignorando requisição, já está carregando...')
+      return
+    }
+    
+    isLoadingRef.current = true
+    setLoading(true)
+    
+    try {
+      const dateRange = getDateRange(period)
+      console.log('[Relatórios] Carregando dados para período:', period, 'Datas:', dateRange)
+      
+      // Carregar dados do MyFXBook com filtros de data
+      const myfxbookPromise = getMyfxbookData(dateRange.startDate, dateRange.endDate)
+      
+      // Carregar dados de performance como fallback
+      const periodMap = {
+        'hoje': 'day',
+        '7-dias': 'week',
+        'este-mes': 'month',
+        'este-ano': 'year',
+        'custom': 'month'
+      }
+      const backendPeriod = periodMap[period] || 'month'
+      const performancePromise = getPerformanceStats(backendPeriod)
+      
+      // Aguardar ambas as requisições com tratamento de erros
+      const [myfxbookResult, performanceResult] = await Promise.allSettled([
+        myfxbookPromise,
+        performancePromise
+      ])
+      
+      // Processar resultado MyFXBook
+      if (myfxbookResult.status === 'fulfilled') {
+        const result = myfxbookResult.value
+        console.log('[Relatórios] Resultado MyFXBook:', result)
         
-        // Carregar dados do MyFXBook com filtros de data
-        const myfxbookResult = await getMyfxbookData(dateRange.startDate, dateRange.endDate)
-        console.log('[Relatórios] Resultado MyFXBook:', myfxbookResult)
-        
-        if (myfxbookResult.success && myfxbookResult.data?.connected) {
-          setMyfxbookData(myfxbookResult.data)
+        if (result.success && result.data?.connected) {
+          setMyfxbookData(result.data)
         } else {
-          // Se não conectado, limpar dados anteriores
-          setMyfxbookData(null)
+          // Não limpar dados se foi erro de rate limit (429)
+          if (result.error?.status !== 429 && result.error?.response?.status !== 429) {
+            setMyfxbookData(null)
+          }
         }
+      } else {
+        // Erro na requisição MyFXBook
+        const error = myfxbookResult.reason
+        if (error.response?.status === 429) {
+          console.warn('[Relatórios] Rate limit MyFXBook, mantendo dados anteriores')
+          // Não limpar dados em caso de rate limit
+        } else {
+          console.error('[Relatórios] Erro ao carregar MyFXBook:', error)
+          // Só limpar se não for erro de autenticação (para não deslogar)
+          if (error.response?.status !== 401) {
+            setMyfxbookData(null)
+          }
+        }
+      }
 
-        // Carregar dados de performance como fallback
-        const periodMap = {
-          'hoje': 'day',
-          '7-dias': 'week',
-          'este-mes': 'month',
-          'este-ano': 'year',
-          'custom': 'month' // Para custom, usar month como fallback
-        }
-        const backendPeriod = periodMap[selectedPeriod] || 'month'
-        const result = await getPerformanceStats(backendPeriod)
+      // Processar resultado Performance
+      if (performanceResult.status === 'fulfilled') {
+        const result = performanceResult.value
         if (result.success) {
           setPerformanceData(result.data)
         }
-      } catch (error) {
-        console.error('Erro ao carregar dados de performance:', error)
-      } finally {
-        setLoading(false)
+      } else {
+        const error = performanceResult.reason
+        if (error.response?.status !== 401 && error.response?.status !== 429) {
+          console.error('[Relatórios] Erro ao carregar performance:', error)
+        }
+      }
+    } catch (error) {
+      // Tratamento de erro geral
+      if (error.response?.status === 429) {
+        console.warn('[Relatórios] Rate limit atingido, mantendo dados anteriores')
+        return
+      }
+      if (error.response?.status === 401) {
+        // Erro de autenticação será tratado pelo interceptor do axios
+        console.warn('[Relatórios] Erro de autenticação')
+        return
+      }
+      console.error('Erro ao carregar dados de performance:', error)
+    } finally {
+      isLoadingRef.current = false
+      setLoading(false)
+    }
+  }, [])
+
+  // Carregar dados de performance e MyFXBook com debounce
+  useEffect(() => {
+    // Limpar timeout anterior
+    if (loadTimeoutRef.current) {
+      clearTimeout(loadTimeoutRef.current)
+    }
+    
+    // Debounce de 300ms para evitar múltiplas requisições rápidas
+    loadTimeoutRef.current = setTimeout(() => {
+      loadPerformanceData(selectedPeriod, customDates.startDate, customDates.endDate)
+    }, 300)
+    
+    // Cleanup: cancelar timeout ao desmontar ou mudar dependências
+    return () => {
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current)
       }
     }
-
-    loadPerformanceData()
-  }, [selectedPeriod, customDates.startDate, customDates.endDate])
+  }, [selectedPeriod, customDates.startDate, customDates.endDate, loadPerformanceData])
 
   // Calcular KPIs baseados em dados do MyFXBook
   const kpis = useMemo(() => {
@@ -450,7 +526,23 @@ function RelatoriosPerformancePage() {
     { id: 'custom', label: 'Personalizado' },
   ]
 
-  const handleCustomDateApply = () => {
+  // Handler com debounce para evitar múltiplos cliques
+  const handlePeriodChange = useCallback((periodId) => {
+    // Se já está carregando, ignorar cliques adicionais
+    if (isLoadingRef.current) {
+      console.log('[Relatórios] Ignorando clique, já está carregando...')
+      return
+    }
+    setSelectedPeriod(periodId)
+  }, [])
+
+  const handleCustomDateApply = useCallback(() => {
+    // Se já está carregando, ignorar
+    if (isLoadingRef.current) {
+      console.log('[Relatórios] Ignorando aplicação de data, já está carregando...')
+      return
+    }
+    
     if (customDates.startDate && customDates.endDate) {
       if (new Date(customDates.startDate) > new Date(customDates.endDate)) {
         alert('A data inicial deve ser anterior à data final')
@@ -461,7 +553,7 @@ function RelatoriosPerformancePage() {
     } else {
       alert('Por favor, selecione ambas as datas')
     }
-  }
+  }, [customDates])
 
   return (
     <DashboardLayout>
@@ -494,10 +586,11 @@ function RelatoriosPerformancePage() {
                     if (period.id === 'custom') {
                       setShowDatePicker(!showDatePicker)
                     } else {
-                      setSelectedPeriod(period.id)
+                      handlePeriodChange(period.id)
                       setShowDatePicker(false)
                     }
                   }}
+                  disabled={loading || isLoadingRef.current}
                 >
                   {period.label}
                 </button>
