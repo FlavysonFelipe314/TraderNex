@@ -5,6 +5,8 @@ import { getPerformanceStats, getMyfxbookData } from '../services/dashboardServi
 
 function RelatoriosPerformancePage() {
   const [selectedPeriod, setSelectedPeriod] = useState('este-mes')
+  const [customDates, setCustomDates] = useState({ startDate: '', endDate: '' })
+  const [showDatePicker, setShowDatePicker] = useState(false)
   const [performanceData, setPerformanceData] = useState(null)
   const [myfxbookData, setMyfxbookData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -16,13 +18,49 @@ function RelatoriosPerformancePage() {
     }
   }, [])
 
+  // Calcular datas baseadas no período selecionado
+  const getDateRange = (period) => {
+    const today = new Date()
+    const endDate = today.toISOString().split('T')[0]
+    let startDate = ''
+
+    switch (period) {
+      case 'hoje':
+        startDate = endDate
+        break
+      case '7-dias':
+        const sevenDaysAgo = new Date(today)
+        sevenDaysAgo.setDate(today.getDate() - 7)
+        startDate = sevenDaysAgo.toISOString().split('T')[0]
+        break
+      case 'este-mes':
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+        startDate = firstDayOfMonth.toISOString().split('T')[0]
+        break
+      case 'este-ano':
+        const firstDayOfYear = new Date(today.getFullYear(), 0, 1)
+        startDate = firstDayOfYear.toISOString().split('T')[0]
+        break
+      case 'custom':
+        return { startDate: customDates.startDate, endDate: customDates.endDate }
+      default:
+        const thirtyDaysAgo = new Date(today)
+        thirtyDaysAgo.setDate(today.getDate() - 30)
+        startDate = thirtyDaysAgo.toISOString().split('T')[0]
+    }
+
+    return { startDate, endDate }
+  }
+
   // Carregar dados de performance e MyFXBook
   useEffect(() => {
     const loadPerformanceData = async () => {
       setLoading(true)
       try {
-        // Carregar dados do MyFXBook
-        const myfxbookResult = await getMyfxbookData()
+        const dateRange = getDateRange(selectedPeriod)
+        
+        // Carregar dados do MyFXBook com filtros de data
+        const myfxbookResult = await getMyfxbookData(dateRange.startDate, dateRange.endDate)
         if (myfxbookResult.success && myfxbookResult.data?.connected) {
           setMyfxbookData(myfxbookResult.data)
         }
@@ -47,7 +85,7 @@ function RelatoriosPerformancePage() {
     }
 
     loadPerformanceData()
-  }, [selectedPeriod])
+  }, [selectedPeriod, customDates.startDate, customDates.endDate])
 
   // Calcular KPIs baseados em dados do MyFXBook
   const kpis = useMemo(() => {
@@ -56,7 +94,11 @@ function RelatoriosPerformancePage() {
         totalReturn: 0,
         netProfit: 0,
         profitFactor: 0,
-        maxDrawdown: 0
+        maxDrawdown: 0,
+        gain: 0,
+        openTrades: 0,
+        openOrders: 0,
+        totalTrades: 0
       }
     }
 
@@ -65,7 +107,11 @@ function RelatoriosPerformancePage() {
       totalReturn: parseFloat(account.absGain || account.gain || 0),
       netProfit: parseFloat(account.profit || 0),
       profitFactor: parseFloat(account.profitFactor || 0),
-      maxDrawdown: Math.abs(parseFloat(account.drawdown || 0))
+      maxDrawdown: Math.abs(parseFloat(account.drawdown || 0)),
+      gain: parseFloat(myfxbookData.gain || account.gain || 0),
+      openTrades: myfxbookData.openTrades?.length || 0,
+      openOrders: myfxbookData.openOrders?.length || 0,
+      totalTrades: myfxbookData.history?.length || 0
     }
   }, [myfxbookData])
 
@@ -217,18 +263,37 @@ function RelatoriosPerformancePage() {
     { id: '7-dias', label: '7 dias' },
     { id: 'este-mes', label: 'Este mês' },
     { id: 'este-ano', label: 'Este ano' },
+    { id: 'custom', label: 'Personalizado' },
   ]
+
+  const handleCustomDateApply = () => {
+    if (customDates.startDate && customDates.endDate) {
+      if (new Date(customDates.startDate) > new Date(customDates.endDate)) {
+        alert('A data inicial deve ser anterior à data final')
+        return
+      }
+      setSelectedPeriod('custom')
+      setShowDatePicker(false)
+    } else {
+      alert('Por favor, selecione ambas as datas')
+    }
+  }
 
   return (
     <DashboardLayout>
       <div className="px-4 sm:px-6 lg:px-16 py-6 sm:py-8 lg:py-12">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 sm:mb-10 lg:mb-12 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 sm:mb-10 lg:mb-12 gap-4 relative">
           <div>
             <h1 className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-[#111827] mb-2 sm:mb-2.5 tracking-[-0.02em]">Relatórios de Performance</h1>
             <p className="text-sm sm:text-[15px] text-[#6b7280] font-normal">
               Análise detalhada da evolução e resultados institucionais da sua conta.
             </p>
+            {myfxbookData?.period && (
+              <p className="text-xs text-[#9ca3af] mt-1">
+                Período: {new Date(myfxbookData.period.startDate).toLocaleDateString('pt-BR')} até {new Date(myfxbookData.period.endDate).toLocaleDateString('pt-BR')}
+              </p>
+            )}
           </div>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center w-full sm:w-auto">
             {/* Filter Pills */}
@@ -241,12 +306,61 @@ function RelatoriosPerformancePage() {
                       ? 'bg-white text-[#00afaa] font-bold shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#f0f0f0]'
                       : 'text-[#6b7280] hover:text-[#111827] hover:bg-[#f9fafb]'
                   }`}
-                  onClick={() => setSelectedPeriod(period.id)}
+                  onClick={() => {
+                    if (period.id === 'custom') {
+                      setShowDatePicker(!showDatePicker)
+                    } else {
+                      setSelectedPeriod(period.id)
+                      setShowDatePicker(false)
+                    }
+                  }}
                 >
                   {period.label}
                 </button>
               ))}
             </div>
+            
+            {/* Date Picker (aparece quando custom está selecionado) */}
+            {showDatePicker && (
+              <div className="absolute top-full mt-2 bg-white rounded-xl p-4 border border-[#ebebeb] shadow-lg z-10 flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-semibold text-[#6b7280]">Data Inicial</label>
+                  <input
+                    type="date"
+                    value={customDates.startDate}
+                    onChange={(e) => setCustomDates({ ...customDates, startDate: e.target.value })}
+                    className="px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-semibold text-[#6b7280]">Data Final</label>
+                  <input
+                    type="date"
+                    value={customDates.endDate}
+                    onChange={(e) => setCustomDates({ ...customDates, endDate: e.target.value })}
+                    className="px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
+                  />
+                </div>
+                <div className="flex items-end gap-2">
+                  <button
+                    onClick={handleCustomDateApply}
+                    className="px-4 py-2 bg-[#00afaa] text-white rounded-lg text-sm font-semibold hover:bg-[#009994] transition-colors"
+                  >
+                    Aplicar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowDatePicker(false)
+                      setCustomDates({ startDate: '', endDate: '' })
+                    }}
+                    className="px-4 py-2 bg-[#f3f4f6] text-[#6b7280] rounded-lg text-sm font-semibold hover:bg-[#e5e7eb] transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+            
             {/* Export Button */}
             <button 
               onClick={handleExportCSV}
@@ -329,6 +443,121 @@ function RelatoriosPerformancePage() {
           </div>
         </div>
 
+        {/* Informações Adicionais */}
+        {myfxbookData?.connected && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12">
+            {/* Trades Abertos */}
+            <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">TRADES ABERTOS</span>
+                <Icon icon="lucide:trending-up" className="text-base text-[#059669]" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold text-[#111827]">{kpis.openTrades}</div>
+            </div>
+
+            {/* Ordens Abertas */}
+            <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">ORDENS ABERTAS</span>
+                <Icon icon="lucide:list" className="text-base text-[#6b7280]" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold text-[#111827]">{kpis.openOrders}</div>
+            </div>
+
+            {/* Total de Trades */}
+            <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">TOTAL TRADES</span>
+                <Icon icon="lucide:bar-chart-2" className="text-base text-[#6b7280]" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold text-[#111827]">{kpis.totalTrades}</div>
+            </div>
+
+            {/* Ganho no Período */}
+            <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">GANHO PERÍODO</span>
+                <Icon icon="lucide:percent" className="text-base text-[#059669]" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold text-[#059669]">
+                {loading ? '...' : kpis.gain ? `${kpis.gain >= 0 ? '+' : ''}${kpis.gain.toFixed(2)}%` : 'N/A'}
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {/* Trades Abertos */}
+        {myfxbookData?.openTrades && myfxbookData.openTrades.length > 0 && (
+          <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em]">Trades Abertos</h3>
+              <span className="text-xs font-semibold text-[#00afaa] bg-[rgba(0,175,170,0.08)] px-3 py-1 rounded-full">
+                {myfxbookData.openTrades.length} {myfxbookData.openTrades.length === 1 ? 'trade' : 'trades'}
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#f3f4f6]">
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Símbolo</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Tipo</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Lotes</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Preço Abertura</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">P/L</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myfxbookData.openTrades.map((trade, index) => (
+                    <tr key={index} className="border-b border-[#f9fafb] hover:bg-[#f3f4f6]">
+                      <td className="py-3 px-4 text-sm font-semibold text-[#111827]">{trade.symbol || 'N/A'}</td>
+                      <td className="py-3 px-4 text-sm text-[#6b7280]">{trade.side === 'buy' ? 'Compra' : 'Venda'}</td>
+                      <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(trade.lots || 0).toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(trade.openPrice || 0).toFixed(5)}</td>
+                      <td className={`py-3 px-4 text-sm text-right font-semibold ${parseFloat(trade.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#e53935]'}`}>
+                        ${parseFloat(trade.profit || 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Ordens Abertas */}
+        {myfxbookData?.openOrders && myfxbookData.openOrders.length > 0 && (
+          <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em]">Ordens Abertas</h3>
+              <span className="text-xs font-semibold text-[#00afaa] bg-[rgba(0,175,170,0.08)] px-3 py-1 rounded-full">
+                {myfxbookData.openOrders.length} {myfxbookData.openOrders.length === 1 ? 'ordem' : 'ordens'}
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#f3f4f6]">
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Símbolo</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Tipo</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Lotes</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Preço</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myfxbookData.openOrders.map((order, index) => (
+                    <tr key={index} className="border-b border-[#f9fafb] hover:bg-[#f3f4f6]">
+                      <td className="py-3 px-4 text-sm font-semibold text-[#111827]">{order.symbol || 'N/A'}</td>
+                      <td className="py-3 px-4 text-sm text-[#6b7280]">{order.type || 'N/A'}</td>
+                      <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(order.lots || 0).toFixed(2)}</td>
+                      <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(order.price || 0).toFixed(5)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* History Table */}
         <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">

@@ -302,10 +302,12 @@ exports.updateMT4Settings = async (req, res) => {
 /**
  * Obter dados MyFXBook da conta do usuário usando accountId configurado pelo admin
  * GET /api/dashboard/myfxbook-data
+ * Query params: startDate (yyyy-mm-dd), endDate (yyyy-mm-dd)
  */
 exports.getMyfxbookData = async (req, res) => {
   try {
     const userId = req.user.userId;
+    const { startDate, endDate } = req.query;
 
     // Buscar conta MT4 do usuário com myfxbook_integration_login configurado
     const mt4Result = await pool.query(
@@ -350,7 +352,19 @@ exports.getMyfxbookData = async (req, res) => {
     const password = decrypt(encrypted_password);
 
     // Fazer login no MyFXBook usando credenciais padrão
-    const { loginMyfxbook, getMyAccounts, getOpenTrades, getHistory, getDailyGain, getDataDaily } = require('../services/myfxbookService');
+    const {
+      loginMyfxbook,
+      getMyAccounts,
+      getOpenTrades,
+      getOpenOrders,
+      getHistory,
+      getDailyGain,
+      getGain,
+      getDataDaily,
+      getWatchedAccounts,
+      getCommunityOutlook
+    } = require('../services/myfxbookService');
+    
     const loginResult = await loginMyfxbook(email, password);
 
     if (!loginResult.success) {
@@ -395,18 +409,47 @@ exports.getMyfxbookData = async (req, res) => {
     // Usar o ID interno da conta para buscar dados
     const internalId = targetAccount.id;
 
-    // Buscar dados em paralelo
-    const [openTradesResult, historyResult, dailyGainResult, dataDailyResult] = await Promise.all([
+    // Calcular datas padrão se não fornecidas (últimos 30 dias)
+    let finalStartDate = startDate;
+    let finalEndDate = endDate;
+    
+    if (!finalStartDate || !finalEndDate) {
+      const today = new Date();
+      finalEndDate = today.toISOString().split('T')[0];
+      const thirtyDaysAgo = new Date(today);
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      finalStartDate = thirtyDaysAgo.toISOString().split('T')[0];
+    }
+
+    // Buscar TODOS os dados disponíveis em paralelo
+    const [
+      openTradesResult,
+      openOrdersResult,
+      historyResult,
+      dailyGainResult,
+      gainResult,
+      dataDailyResult,
+      watchedAccountsResult,
+      communityOutlookResult
+    ] = await Promise.all([
       getOpenTrades(loginResult.session, internalId).catch(err => ({ success: false, message: err.message })),
+      getOpenOrders(loginResult.session, internalId).catch(err => ({ success: false, message: err.message })),
       getHistory(loginResult.session, internalId).catch(err => ({ success: false, message: err.message })),
-      getDailyGain(loginResult.session, internalId).catch(err => ({ success: false, message: err.message })),
-      getDataDaily(loginResult.session, internalId).catch(err => ({ success: false, message: err.message }))
+      getDailyGain(loginResult.session, internalId, finalStartDate, finalEndDate).catch(err => ({ success: false, message: err.message })),
+      getGain(loginResult.session, internalId, finalStartDate, finalEndDate).catch(err => ({ success: false, message: err.message })),
+      getDataDaily(loginResult.session, internalId, finalStartDate, finalEndDate).catch(err => ({ success: false, message: err.message })),
+      getWatchedAccounts(loginResult.session).catch(err => ({ success: false, message: err.message })),
+      getCommunityOutlook(loginResult.session).catch(err => ({ success: false, message: err.message }))
     ]);
 
-    console.log('[getMyfxbookData] Histórico recebido:', {
-      success: historyResult.success,
-      length: historyResult.history ? historyResult.history.length : 0,
-      firstRecord: historyResult.history && historyResult.history.length > 0 ? historyResult.history[0] : null
+    console.log('[getMyfxbookData] Dados recebidos:', {
+      openTrades: openTradesResult.success ? (openTradesResult.openTrades?.length || 0) : 0,
+      openOrders: openOrdersResult.success ? (openOrdersResult.openOrders?.length || 0) : 0,
+      history: historyResult.success ? (historyResult.history?.length || 0) : 0,
+      dailyGain: dailyGainResult.success ? (dailyGainResult.dailyGain?.length || 0) : 0,
+      dataDaily: dataDailyResult.success ? (dataDailyResult.dataDaily?.length || 0) : 0,
+      gain: gainResult.success ? gainResult.value : null,
+      period: { startDate: finalStartDate, endDate: finalEndDate }
     });
 
     res.json({
@@ -415,6 +458,10 @@ exports.getMyfxbookData = async (req, res) => {
         connected: true,
         accountId: targetAccount.accountId,
         mt4AccountNumber: mt4Account.account_number,
+        period: {
+          startDate: finalStartDate,
+          endDate: finalEndDate
+        },
         account: {
           id: targetAccount.id,
           accountId: targetAccount.accountId,
@@ -427,12 +474,28 @@ exports.getMyfxbookData = async (req, res) => {
           absGain: targetAccount.absGain,
           daily: targetAccount.daily,
           monthly: targetAccount.monthly,
-          currency: targetAccount.currency || 'USD'
+          currency: targetAccount.currency || 'USD',
+          profitFactor: targetAccount.profitFactor,
+          sharpeRatio: targetAccount.sharpeRatio,
+          sortinoRatio: targetAccount.sortinoRatio,
+          calmarRatio: targetAccount.calmarRatio,
+          maxDrawdown: targetAccount.maxDrawdown,
+          maxDrawdownDate: targetAccount.maxDrawdownDate,
+          maxDrawdownValue: targetAccount.maxDrawdownValue,
+          interest: targetAccount.interest,
+          commission: targetAccount.commission
         },
         openTrades: openTradesResult.success ? (openTradesResult.openTrades || []) : [],
+        openOrders: openOrdersResult.success ? (openOrdersResult.openOrders || []) : [],
         history: historyResult.success ? (historyResult.history || []) : [],
         dailyGain: dailyGainResult.success ? (dailyGainResult.dailyGain || []) : [],
-        dataDaily: dataDailyResult.success ? (dataDailyResult.dataDaily || []) : []
+        gain: gainResult.success ? gainResult.value : null,
+        dataDaily: dataDailyResult.success ? (dataDailyResult.dataDaily || []) : [],
+        watchedAccounts: watchedAccountsResult.success ? (watchedAccountsResult.watchedAccounts || []) : [],
+        communityOutlook: communityOutlookResult.success ? {
+          symbols: communityOutlookResult.symbols || [],
+          general: communityOutlookResult.general || {}
+        } : null
       }
     });
   } catch (error) {

@@ -482,14 +482,15 @@ exports.getMyfxbookAccounts = async (req, res) => {
 };
 
 /**
- * Obter dados de uma conta específica
+ * Obter dados de uma conta específica (COMPLETO - todos os dados disponíveis)
  * GET /api/myfxbook/accounts/:accountId/data
+ * Query params: startDate (yyyy-mm-dd), endDate (yyyy-mm-dd), symbol (para sentimento por país)
  */
 exports.getAccountData = async (req, res) => {
   try {
     const userId = req.user.userId;
     const { accountId } = req.params;
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, symbol } = req.query;
 
     const connectionResult = await pool.query(
       'SELECT session_id FROM myfxbook_connections WHERE user_id = $1',
@@ -517,26 +518,63 @@ exports.getAccountData = async (req, res) => {
       console.log('[Myfxbook Account Data] Session não precisa decodificação');
     }
 
-    // Buscar múltiplos dados em paralelo
-    const [openTrades, history, dailyGain, dataDaily] = await Promise.all([
-      myfxbookService.getOpenTrades(sessionId, accountId),
-      myfxbookService.getHistory(sessionId, accountId),
-      startDate && endDate 
-        ? myfxbookService.getDailyGain(sessionId, accountId, startDate, endDate)
-        : Promise.resolve({ success: true, dailyGain: [] }),
-      startDate && endDate
-        ? myfxbookService.getDataDaily(sessionId, accountId, startDate, endDate)
-        : Promise.resolve({ success: true, dataDaily: [] })
+    // Calcular datas padrão se não fornecidas (últimos 30 dias)
+    let finalStartDate = startDate;
+    let finalEndDate = endDate;
+    
+    if (!finalStartDate || !finalEndDate) {
+      const today = new Date();
+      finalEndDate = today.toISOString().split('T')[0];
+      const thirtyDaysAgo = new Date(today);
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      finalStartDate = thirtyDaysAgo.toISOString().split('T')[0];
+    }
+
+    // Buscar TODOS os dados disponíveis em paralelo
+    const [
+      openTrades,
+      openOrders,
+      history,
+      dailyGain,
+      gain,
+      dataDaily,
+      watchedAccounts,
+      communityOutlook,
+      communityOutlookByCountry
+    ] = await Promise.all([
+      myfxbookService.getOpenTrades(sessionId, accountId).catch(err => ({ success: false, message: err.message })),
+      myfxbookService.getOpenOrders(sessionId, accountId).catch(err => ({ success: false, message: err.message })),
+      myfxbookService.getHistory(sessionId, accountId).catch(err => ({ success: false, message: err.message })),
+      myfxbookService.getDailyGain(sessionId, accountId, finalStartDate, finalEndDate).catch(err => ({ success: false, message: err.message })),
+      myfxbookService.getGain(sessionId, accountId, finalStartDate, finalEndDate).catch(err => ({ success: false, message: err.message })),
+      myfxbookService.getDataDaily(sessionId, accountId, finalStartDate, finalEndDate).catch(err => ({ success: false, message: err.message })),
+      myfxbookService.getWatchedAccounts(sessionId).catch(err => ({ success: false, message: err.message })),
+      myfxbookService.getCommunityOutlook(sessionId).catch(err => ({ success: false, message: err.message })),
+      symbol 
+        ? myfxbookService.getCommunityOutlookByCountry(sessionId, symbol).catch(err => ({ success: false, message: err.message }))
+        : Promise.resolve({ success: true, countries: [] })
     ]);
 
     res.json({
       success: true,
       data: {
         accountId,
+        period: {
+          startDate: finalStartDate,
+          endDate: finalEndDate
+        },
         openTrades: openTrades.success ? openTrades.trades : [],
+        openOrders: openOrders.success ? openOrders.openOrders : [],
         history: history.success ? history.history : [],
         dailyGain: dailyGain.success ? dailyGain.dailyGain : [],
-        dataDaily: dataDaily.success ? dataDaily.dataDaily : []
+        gain: gain.success ? gain.value : null,
+        dataDaily: dataDaily.success ? dataDaily.dataDaily : [],
+        watchedAccounts: watchedAccounts.success ? watchedAccounts.watchedAccounts : [],
+        communityOutlook: communityOutlook.success ? {
+          symbols: communityOutlook.symbols || [],
+          general: communityOutlook.general || {}
+        } : null,
+        communityOutlookByCountry: communityOutlookByCountry.success ? (communityOutlookByCountry.countries || []) : []
       }
     });
   } catch (error) {
