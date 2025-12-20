@@ -395,49 +395,18 @@ exports.getMyfxbookData = async (req, res) => {
     // Usar o ID interno da conta para buscar dados
     const internalId = targetAccount.id;
 
-    // Obter parâmetros de data opcionais (padrão: últimos 365 dias)
-    const endDate = req.query.endDate || new Date().toISOString().split('T')[0];
-    const startDate = req.query.startDate || (() => {
-      const date = new Date();
-      date.setFullYear(date.getFullYear() - 1);
-      return date.toISOString().split('T')[0];
-    })();
-
-    console.log('[getMyfxbookData] Buscando dados com período:', { startDate, endDate });
-
-    // Buscar todos os dados disponíveis em paralelo
-    const {
-      getOpenTrades,
-      getOpenOrders,
-      getHistory,
-      getDailyGain,
-      getGain,
-      getDataDaily
-    } = require('../services/myfxbookService');
-
-    const [
-      openTradesResult,
-      openOrdersResult,
-      historyResult,
-      dailyGainResult,
-      gainResult,
-      dataDailyResult
-    ] = await Promise.all([
+    // Buscar dados em paralelo
+    const [openTradesResult, historyResult, dailyGainResult, dataDailyResult] = await Promise.all([
       getOpenTrades(loginResult.session, internalId).catch(err => ({ success: false, message: err.message })),
-      getOpenOrders(loginResult.session, internalId).catch(err => ({ success: false, message: err.message })),
       getHistory(loginResult.session, internalId).catch(err => ({ success: false, message: err.message })),
-      getDailyGain(loginResult.session, internalId, startDate, endDate).catch(err => ({ success: false, message: err.message })),
-      getGain(loginResult.session, internalId, startDate, endDate).catch(err => ({ success: false, message: err.message })),
-      getDataDaily(loginResult.session, internalId, startDate, endDate).catch(err => ({ success: false, message: err.message }))
+      getDailyGain(loginResult.session, internalId).catch(err => ({ success: false, message: err.message })),
+      getDataDaily(loginResult.session, internalId).catch(err => ({ success: false, message: err.message }))
     ]);
 
-    console.log('[getMyfxbookData] Dados recebidos:', {
-      openTrades: openTradesResult.success ? openTradesResult.openTrades?.length : 0,
-      openOrders: openOrdersResult.success ? openOrdersResult.openOrders?.length : 0,
-      history: historyResult.success ? historyResult.history?.length : 0,
-      dailyGain: dailyGainResult.success ? dailyGainResult.dailyGain?.length : 0,
-      gain: gainResult.success ? gainResult.gain : null,
-      dataDaily: dataDailyResult.success ? dataDailyResult.dataDaily?.length : 0
+    console.log('[getMyfxbookData] Histórico recebido:', {
+      success: historyResult.success,
+      length: historyResult.history ? historyResult.history.length : 0,
+      firstRecord: historyResult.history && historyResult.history.length > 0 ? historyResult.history[0] : null
     });
 
     res.json({
@@ -446,10 +415,6 @@ exports.getMyfxbookData = async (req, res) => {
         connected: true,
         accountId: targetAccount.accountId,
         mt4AccountNumber: mt4Account.account_number,
-        period: {
-          startDate,
-          endDate
-        },
         account: {
           id: targetAccount.id,
           accountId: targetAccount.accountId,
@@ -462,19 +427,11 @@ exports.getMyfxbookData = async (req, res) => {
           absGain: targetAccount.absGain,
           daily: targetAccount.daily,
           monthly: targetAccount.monthly,
-          currency: targetAccount.currency || 'USD',
-          profitFactor: targetAccount.profitFactor,
-          pips: targetAccount.pips,
-          lots: targetAccount.lots,
-          interest: targetAccount.interest,
-          commission: targetAccount.commission,
-          swap: targetAccount.swap
+          currency: targetAccount.currency || 'USD'
         },
-        openTrades: openTradesResult.success ? (openTradesResult.trades || openTradesResult.openTrades || []) : [],
-        openOrders: openOrdersResult.success ? (openOrdersResult.openOrders || []) : [],
+        openTrades: openTradesResult.success ? (openTradesResult.openTrades || []) : [],
         history: historyResult.success ? (historyResult.history || []) : [],
         dailyGain: dailyGainResult.success ? (dailyGainResult.dailyGain || []) : [],
-        gain: gainResult.success ? gainResult.gain : null,
         dataDaily: dataDailyResult.success ? (dataDailyResult.dataDaily || []) : []
       }
     });

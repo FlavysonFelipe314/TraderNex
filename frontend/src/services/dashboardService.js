@@ -166,14 +166,9 @@ export const getUserInvestments = async () => {
 }
 
 // Obter dados MyFXBook usando accountId configurado pelo admin
-export const getMyfxbookData = async (startDate = null, endDate = null) => {
+export const getMyfxbookData = async () => {
   try {
-    const params = new URLSearchParams()
-    if (startDate) params.append('startDate', startDate)
-    if (endDate) params.append('endDate', endDate)
-    
-    const url = `/api/dashboard/myfxbook-data${params.toString() ? '?' + params.toString() : ''}`
-    const response = await api.get(url)
+    const response = await api.get('/api/dashboard/myfxbook-data')
     return {
       success: response.data.success,
       data: response.data.data,
