@@ -124,39 +124,77 @@ function RelatoriosPerformancePage() {
   }, [myfxbookData])
 
   // Processar histórico mensal dos dados do MyFXBook
+  // Usando dataDaily para obter números reais e validados do MyFXBook
   const monthlyHistory = useMemo(() => {
-    if (!myfxbookData?.history || myfxbookData.history.length === 0) {
-      return []
+    // Prioridade 1: Usar dataDaily (dados reais validados do MyFXBook)
+    let dataDailyArray = myfxbookData?.dataDaily || []
+    if (dataDailyArray.length > 0 && Array.isArray(dataDailyArray[0])) {
+      dataDailyArray = dataDailyArray.flat()
     }
 
-    // Agrupar trades por mês
     const monthlyMap = new Map()
-    
-    myfxbookData.history.forEach(trade => {
-      const date = new Date(trade.closeTime || trade.time || trade.date)
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      const monthLabel = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-      
-      if (!monthlyMap.has(monthKey)) {
-        monthlyMap.set(monthKey, {
-          period: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
-          trades: 0,
-          profit: 0,
-          drawdown: 0,
-          return: 0
-        })
-      }
-      
-      const monthData = monthlyMap.get(monthKey)
-      monthData.trades += 1
-      const profit = parseFloat(trade.profit || 0)
-      monthData.profit += profit
-    })
 
-    // Calcular drawdown e retorno para cada mês
-    if (myfxbookData.dailyGain && myfxbookData.dailyGain.length > 0) {
+    if (dataDailyArray && dataDailyArray.length > 0) {
+      // Agrupar dados diários por mês usando profit real do MyFXBook
+      dataDailyArray.forEach(day => {
+        const dateStr = day.date || day.time || day.openTime || day.closeTime
+        const date = parseMyFXBookDate(dateStr)
+        
+        if (isNaN(date.getTime())) return // Pular datas inválidas
+        
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        const monthLabel = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+        
+        if (!monthlyMap.has(monthKey)) {
+          monthlyMap.set(monthKey, {
+            period: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
+            monthKey: monthKey,
+            trades: 0, // Será calculado do history se disponível
+            profit: 0, // Soma do profit diário (valor real do MyFXBook)
+            drawdown: 0,
+            return: 0,
+            startBalance: null, // Balance inicial do mês
+            endBalance: null, // Balance final do mês
+            days: 0 // Número de dias com dados
+          })
+        }
+        
+        const monthData = monthlyMap.get(monthKey)
+        const profit = parseFloat(day.profit || 0)
+        const balance = parseFloat(day.balance || 0)
+        
+        monthData.profit += profit // Soma o profit diário real
+        monthData.days += 1
+        
+        // Armazenar balance inicial e final do mês
+        if (monthData.startBalance === null || balance < monthData.startBalance) {
+          monthData.startBalance = balance
+        }
+        if (monthData.endBalance === null || balance > monthData.endBalance) {
+          monthData.endBalance = balance
+        }
+      })
+    }
+
+    // Calcular número de trades por mês (usando history se disponível)
+    if (myfxbookData?.history && myfxbookData.history.length > 0) {
+      myfxbookData.history.forEach(trade => {
+        const date = parseMyFXBookDate(trade.closeTime || trade.time || trade.date)
+        if (isNaN(date.getTime())) return
+        
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        if (monthlyMap.has(monthKey)) {
+          monthlyMap.get(monthKey).trades += 1
+        }
+      })
+    }
+
+    // Calcular drawdown máximo por mês (usando dailyGain se disponível)
+    if (myfxbookData?.dailyGain && myfxbookData.dailyGain.length > 0) {
       myfxbookData.dailyGain.forEach(day => {
-        const date = new Date(day.date || day.time)
+        const date = parseMyFXBookDate(day.date || day.time)
+        if (isNaN(date.getTime())) return
+        
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
         
         if (monthlyMap.has(monthKey)) {
@@ -169,26 +207,76 @@ function RelatoriosPerformancePage() {
       })
     }
 
-    // Converter para array e ordenar por data (mais recente primeiro)
+    // Se não temos dataDaily, tentar usar apenas dailyGain como fallback
+    if (monthlyMap.size === 0 && myfxbookData?.dailyGain && myfxbookData.dailyGain.length > 0) {
+      myfxbookData.dailyGain.forEach(day => {
+        const date = parseMyFXBookDate(day.date || day.time)
+        if (isNaN(date.getTime())) return
+        
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        const monthLabel = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+        
+        if (!monthlyMap.has(monthKey)) {
+          monthlyMap.set(monthKey, {
+            period: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
+            monthKey: monthKey,
+            trades: 0,
+            profit: 0,
+            drawdown: 0,
+            return: 0,
+            startBalance: null,
+            endBalance: null,
+            days: 0
+          })
+        }
+        
+        const monthData = monthlyMap.get(monthKey)
+        const profit = parseFloat(day.profit || 0)
+        monthData.profit += profit
+        monthData.days += 1
+        
+        const drawdown = Math.abs(parseFloat(day.drawdown || 0))
+        if (drawdown > monthData.drawdown) {
+          monthData.drawdown = drawdown
+        }
+      })
+    }
+
+    // Converter para array e calcular retorno percentual
     const history = Array.from(monthlyMap.values())
-      .map(month => ({
-        ...month,
-        profitFormatted: formatCurrencyBR(month.profit),
-        drawdownFormatted: `${formatNumberBR(month.drawdown)}%`,
-        returnFormatted: formatPercentBR((month.profit / (kpis.netProfit || 1)) * 100, 1),
-        isPositive: month.profit >= 0,
-        isWarning: month.drawdown > 3
-      }))
+      .map(month => {
+        // Calcular retorno percentual baseado no balance inicial e final
+        let returnPercent = 0
+        if (month.startBalance && month.startBalance > 0) {
+          const balanceChange = (month.endBalance || month.startBalance) - month.startBalance
+          returnPercent = (balanceChange / month.startBalance) * 100
+        } else if (kpis.netProfit && kpis.netProfit !== 0) {
+          // Fallback: usar profit total da conta como referência
+          returnPercent = (month.profit / Math.abs(kpis.netProfit)) * 100
+        }
+
+        return {
+          ...month,
+          profitFormatted: formatCurrencyBR(month.profit),
+          drawdownFormatted: `${formatNumberBR(month.drawdown)}%`,
+          returnFormatted: formatPercentBR(returnPercent, 1),
+          isPositive: month.profit >= 0,
+          isWarning: month.drawdown > 3
+        }
+      })
       .sort((a, b) => {
-        // Ordenar por período (mais recente primeiro)
-        const dateA = new Date(a.period)
-        const dateB = new Date(b.period)
-        return dateB - dateA
+        // Ordenar por monthKey (mais recente primeiro)
+        return b.monthKey.localeCompare(a.monthKey)
       })
       .slice(0, 12) // Últimos 12 meses
 
+    console.log('[MonthlyHistory] Histórico mensal calculado:', {
+      totalMonths: history.length,
+      months: history.map(m => ({ period: m.period, profit: m.profit, trades: m.trades }))
+    })
+
     return history
-  }, [myfxbookData, kpis.netProfit])
+  }, [myfxbookData, kpis.netProfit, parseMyFXBookDate])
 
   // Função auxiliar para converter data do formato MyFXBook (MM/DD/YYYY) para Date
   // Movida para fora do useMemo para ser reutilizável
