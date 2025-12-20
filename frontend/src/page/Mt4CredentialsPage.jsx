@@ -4,6 +4,44 @@ import DashboardLayout from '../components/DashboardLayout'
 import { addMT4Account, getMT4Accounts } from '../services/dashboardService'
 import { useNavigate } from 'react-router-dom'
 
+// Configuração de corretoras e seus servidores
+const BROKERS_CONFIG = {
+  'Roboforex': [
+    'RoboForex-Demo',
+    'RoboForex-DemoPro',
+    'RoboForex-ECN',
+    'RoboForex-ECN-2',
+    'RoboForex-ECN-3',
+    'RoboForex-Prime',
+    'RoboForex-Pro',
+    'RoboForex-Pro-2',
+    'RoboForex-Pro-3',
+    'RoboForex-Pro-4',
+    'RoboForex-Pro-5',
+    'RoboForex-Pro-6',
+    'RoboForex-ProCent',
+    'RoboForex-ProCent-2',
+    'RoboForex-ProCent-3',
+    'RoboForex-ProCent-4',
+    'RoboForex-ProCent-5',
+    'RoboForex-ProCent-6',
+    'RoboForex-ProCent-7',
+    'RoboForex-ProCent-8'
+  ],
+  'Vantage Markets': [
+    'VantageST-Live01',
+    'VantageST-Live02',
+    'VantageST-Live03',
+    'VantageST-Live04',
+    'VantageST-Live05',
+    'VantageST-Live06',
+    'VantageST-Live07',
+    'VantageST-Live08'
+  ]
+}
+
+const AVAILABLE_BROKERS = Object.keys(BROKERS_CONFIG)
+
 function Mt4CredentialsPage() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
@@ -16,6 +54,7 @@ function Mt4CredentialsPage() {
   const [loadingData, setLoadingData] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [availableServers, setAvailableServers] = useState([])
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -23,6 +62,21 @@ function Mt4CredentialsPage() {
       document.body.classList.remove('scroll-enabled')
     }
   }, [])
+
+  // Atualizar servidores disponíveis quando a corretora mudar
+  useEffect(() => {
+    if (formData.broker && BROKERS_CONFIG[formData.broker]) {
+      const servers = BROKERS_CONFIG[formData.broker]
+      setAvailableServers(servers)
+      // Se o servidor atual não está na lista da corretora selecionada, limpar
+      if (formData.server && !servers.includes(formData.server)) {
+        setFormData(prev => ({ ...prev, server: '' }))
+      }
+    } else {
+      setAvailableServers([])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.broker])
 
   // Carregar dados existentes da conta MT4
   useEffect(() => {
@@ -32,12 +86,20 @@ function Mt4CredentialsPage() {
         const result = await getMT4Accounts()
         if (result.success && result.data && result.data.length > 0) {
           const account = result.data[0] // Pegar a primeira conta
+          const broker = account.broker || ''
+          const server = account.server || ''
+          
           setFormData({
             login: account.account_number || '',
             password: '', // Senha não é retornada por segurança
-            server: account.server || '',
-            broker: account.broker || ''
+            server: server,
+            broker: broker
           })
+          
+          // Atualizar servidores disponíveis se a corretora estiver configurada
+          if (broker && BROKERS_CONFIG[broker]) {
+            setAvailableServers(BROKERS_CONFIG[broker])
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar conta MT4 existente:', error)
@@ -54,6 +116,15 @@ function Mt4CredentialsPage() {
     setFormData(prev => ({
       ...prev,
       [name]: value
+    }))
+  }
+
+  const handleBrokerChange = (e) => {
+    const broker = e.target.value
+    setFormData(prev => ({
+      ...prev,
+      broker: broker,
+      server: '' // Limpar servidor ao trocar corretora
     }))
   }
 
@@ -151,38 +222,57 @@ function Mt4CredentialsPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold text-[#374151]">Nome do Servidor</label>
+                <label className="text-sm font-semibold text-[#374151]">Corretora (Broker)</label>
                 <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]">
-                    <Icon icon="lucide:hard-drive" />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af] z-10">
+                    <Icon icon="lucide:building-2" />
                   </div>
-                  <input
-                    type="text"
-                    name="server"
-                    value={formData.server}
-                    onChange={handleChange}
-                    placeholder="Ex: ICMarkets-Live18"
+                  <select
+                    name="broker"
+                    value={formData.broker}
+                    onChange={handleBrokerChange}
                     required
-                    className="w-full h-11 pl-10 pr-4 bg-[#f9fafb] border border-[#e5e7eb] rounded-xl text-sm outline-none focus:border-[#00afaa] focus:ring-2 focus:ring-[#00afaa]/10 transition-all"
-                  />
+                    className="w-full h-11 pl-10 pr-4 bg-[#f9fafb] border border-[#e5e7eb] rounded-xl text-sm outline-none focus:border-[#00afaa] focus:ring-2 focus:ring-[#00afaa]/10 transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">Selecione uma corretora</option>
+                    {AVAILABLE_BROKERS.map(broker => (
+                      <option key={broker} value={broker}>{broker}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] pointer-events-none">
+                    <Icon icon="lucide:chevron-down" />
+                  </div>
                 </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold text-[#374151]">Corretora (Broker)</label>
+                <label className="text-sm font-semibold text-[#374151]">Nome do Servidor</label>
                 <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]">
-                    <Icon icon="lucide:building-2" />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af] z-10">
+                    <Icon icon="lucide:hard-drive" />
                   </div>
-                  <input
-                    type="text"
-                    name="broker"
-                    value={formData.broker}
+                  <select
+                    name="server"
+                    value={formData.server}
                     onChange={handleChange}
-                    placeholder="Ex: IC Markets Global"
                     required
-                    className="w-full h-11 pl-10 pr-4 bg-[#f9fafb] border border-[#e5e7eb] rounded-xl text-sm outline-none focus:border-[#00afaa] focus:ring-2 focus:ring-[#00afaa]/10 transition-all"
-                  />
+                    disabled={!formData.broker || availableServers.length === 0}
+                    className="w-full h-11 pl-10 pr-4 bg-[#f9fafb] border border-[#e5e7eb] rounded-xl text-sm outline-none focus:border-[#00afaa] focus:ring-2 focus:ring-[#00afaa]/10 transition-all appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {!formData.broker 
+                        ? 'Selecione primeiro uma corretora' 
+                        : availableServers.length === 0 
+                          ? 'Carregando servidores...' 
+                          : 'Selecione um servidor'}
+                    </option>
+                    {availableServers.map(server => (
+                      <option key={server} value={server}>{server}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] pointer-events-none">
+                    <Icon icon="lucide:chevron-down" />
+                  </div>
                 </div>
               </div>
 
