@@ -13,6 +13,7 @@ import ForgotPasswordPage from "./page/ForgotPasswordPage";
 import ResetPasswordPage from "./page/ResetPasswordPage";
 import DashboardPage from "./page/DashboardPage";
 import PerfilClientePage from "./page/PerfilClientePage";
+import PerfilAdminPage from "./page/PerfilAdminPage";
 import ContaForexMT4Page from "./page/ContaForexMT4Page";
 import ReferralProgramPage from "./page/ReferralProgramPage";
 import InvestirPlanosPage from "./page/InvestirPlanosPage";
@@ -170,6 +171,14 @@ function App() {
           element={
             <AdminProtectedRoute>
               <AdminInvoicesPage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/perfil-admin"
+          element={
+            <AdminProtectedRoute>
+              <PerfilAdminPage />
             </AdminProtectedRoute>
           }
         />
