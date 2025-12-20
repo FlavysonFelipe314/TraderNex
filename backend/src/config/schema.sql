@@ -171,7 +171,14 @@ CREATE TABLE IF NOT EXISTS referrals (
     commission DECIMAL(15, 2) DEFAULT 0.00 CHECK (commission >= 0),
     commission_paid BOOLEAN DEFAULT FALSE,
     status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+    -- Campos detalhados de comissão
+    investment_amount DECIMAL(15, 2),
+    profit_amount DECIMAL(15, 2),
+    broker_fee_percentage DECIMAL(5, 2),
+    broker_profit DECIMAL(15, 2),
+    last_commission_date TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(referrer_id, referred_id) -- Um usuário não pode ser referido duas vezes pela mesma pessoa
 );
 
@@ -233,6 +240,7 @@ CREATE INDEX IF NOT EXISTS idx_performance_reports_user_date ON performance_repo
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id);
 CREATE INDEX IF NOT EXISTS idx_referrals_referred_id ON referrals(referred_id);
 CREATE INDEX IF NOT EXISTS idx_referrals_status ON referrals(status);
+CREATE INDEX IF NOT EXISTS idx_referrals_last_commission_date ON referrals(last_commission_date);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_user_id ON support_tickets(user_id);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_priority ON support_tickets(priority);
@@ -285,4 +293,8 @@ CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices
 
 DROP TRIGGER IF EXISTS update_support_tickets_updated_at ON support_tickets;
 CREATE TRIGGER update_support_tickets_updated_at BEFORE UPDATE ON support_tickets
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_referrals_updated_at ON referrals;
+CREATE TRIGGER update_referrals_updated_at BEFORE UPDATE ON referrals
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

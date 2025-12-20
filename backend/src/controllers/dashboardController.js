@@ -1,4 +1,7 @@
 const pool = require('../config/database');
+const { processInvestmentProfit, processMT4AccountProfit } = require('../services/profitProcessingService');
+const { createPerformanceInvoice, generateWeeklyInvoices, markInvoiceAsPaid } = require('../services/invoiceService');
+const { getReferralStats } = require('../services/referralCommissionService');
 
 // Obter dados do dashboard
 exports.getDashboardData = async (req, res) => {
@@ -677,18 +680,29 @@ exports.getInvoices = async (req, res) => {
     const userId = req.user.userId;
 
     const result = await pool.query(
-      `SELECT id, invoice_number, amount, status, due_date, created_at
+      `SELECT id, invoice_number, amount, status, due_date, paid_date, created_at, description
        FROM invoices WHERE user_id = $1
        ORDER BY created_at DESC`,
       [userId]
     );
+
+    // Calcular totais
+    const totals = result.rows.reduce((acc, row) => {
+      const amount = parseFloat(row.amount) || 0;
+      acc.total += amount;
+      if (row.status === 'pending') acc.pending += amount;
+      if (row.status === 'paid') acc.paid += amount;
+      if (row.status === 'overdue') acc.overdue += amount;
+      return acc;
+    }, { total: 0, pending: 0, paid: 0, overdue: 0 });
 
     res.json({
       success: true,
       data: result.rows.map(row => ({
         ...row,
         amount: parseFloat(row.amount) || 0
-      }))
+      })),
+      totals
     });
   } catch (error) {
     console.error('Erro ao buscar faturas:', error);
@@ -713,32 +727,59 @@ exports.getReferrals = async (req, res) => {
 
     const referralCode = profileResult.rows[0]?.referral_code || null;
 
-    // Buscar indicações feitas por este usuário
+    // Buscar indicações feitas por este usuário com mais detalhes
     const referralsResult = await pool.query(
-      `SELECT r.id, r.commission, r.status, r.created_at,
-              u.email as referred_email, u.first_name as referred_first_name, u.last_name as referred_last_name
+      `SELECT r.id, r.commission, r.status, r.created_at, r.last_commission_date,
+              r.investment_amount, r.profit_amount, r.broker_fee_percentage, r.broker_profit,
+              u.email as referred_email, u.first_name as referred_first_name, u.last_name as referred_last_name,
+              cp.account_type as referred_account_type
        FROM referrals r
        JOIN users u ON r.referred_id = u.id
+       LEFT JOIN client_profiles cp ON cp.user_id = u.id
        WHERE r.referrer_id = $1
-       ORDER BY r.created_at DESC`,
+       ORDER BY r.last_commission_date DESC NULLS LAST, r.created_at DESC`,
       [userId]
     );
 
-    // Calcular totais
-    const totalReferrals = referralsResult.rows.length;
-    const totalEarnings = referralsResult.rows.reduce((sum, ref) => {
-      return sum + (parseFloat(ref.commission) || 0);
-    }, 0);
+    // Buscar estatísticas adicionais
+    const statsResult = await pool.query(
+      `SELECT 
+         COUNT(*) as total_referrals,
+         COUNT(CASE WHEN status = 'active' THEN 1 END) as active_referrals,
+         COALESCE(SUM(commission), 0) as total_commission,
+         COALESCE(SUM(CASE WHEN commission_paid = FALSE THEN commission ELSE 0 END), 0) as pending_commission
+       FROM referrals
+       WHERE referrer_id = $1`,
+      [userId]
+    );
+
+    const stats = statsResult.rows[0];
+
+    // Calcular comissão disponível para saque (não paga)
+    const availableForWithdrawal = parseFloat(stats.pending_commission) || 0;
+    const totalEarnings = parseFloat(stats.total_commission) || 0;
 
     res.json({
       success: true,
       data: {
         referralCode,
-        totalReferrals,
+        totalReferrals: parseInt(stats.total_referrals) || 0,
+        activeReferrals: parseInt(stats.active_referrals) || 0,
         totalEarnings,
+        availableForWithdrawal,
         referrals: referralsResult.rows.map(row => ({
-          ...row,
-          commission: parseFloat(row.commission) || 0
+          id: row.id,
+          referredName: `${row.referred_first_name || ''} ${row.referred_last_name || ''}`.trim() || row.referred_email,
+          referredEmail: row.referred_email,
+          referredAccountType: row.referred_account_type,
+          commission: parseFloat(row.commission) || 0,
+          investmentAmount: parseFloat(row.investment_amount) || 0,
+          profitAmount: parseFloat(row.profit_amount) || 0,
+          brokerFeePercentage: parseFloat(row.broker_fee_percentage) || 0,
+          brokerProfit: parseFloat(row.broker_profit) || 0,
+          status: row.status,
+          createdAt: row.created_at,
+          lastCommissionDate: row.last_commission_date
         }))
       }
     });
@@ -747,6 +788,176 @@ exports.getReferrals = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao buscar dados de indicações.',
+      error: error.message
+    });
+  }
+};
+
+// Processar lucro de investimento (endpoint para uso interno/admin)
+exports.processInvestmentProfit = async (req, res) => {
+  try {
+    const { investmentId, newProfit, previousProfit } = req.body;
+    const userId = req.user.userId;
+
+    if (!investmentId || newProfit === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'investmentId e newProfit são obrigatórios'
+      });
+    }
+
+    const result = await processInvestmentProfit(
+      userId,
+      investmentId,
+      parseFloat(newProfit),
+      parseFloat(previousProfit || 0)
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('Erro ao processar lucro do investimento:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao processar lucro do investimento.',
+      error: error.message
+    });
+  }
+};
+
+// Processar lucro de conta MT4
+exports.processMT4Profit = async (req, res) => {
+  try {
+    const { mt4AccountId, profit, investmentAmount } = req.body;
+    const userId = req.user.userId;
+
+    if (!mt4AccountId || profit === undefined || investmentAmount === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'mt4AccountId, profit e investmentAmount são obrigatórios'
+      });
+    }
+
+    const result = await processMT4AccountProfit(
+      userId,
+      mt4AccountId,
+      parseFloat(profit),
+      parseFloat(investmentAmount)
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('Erro ao processar lucro da conta MT4:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao processar lucro da conta MT4.',
+      error: error.message
+    });
+  }
+};
+
+// Criar fatura de performance
+exports.createPerformanceInvoice = async (req, res) => {
+  try {
+    const { profit, investmentAmount, periodStart, periodEnd, description } = req.body;
+    const userId = req.user.userId;
+
+    if (!profit || !investmentAmount) {
+      return res.status(400).json({
+        success: false,
+        message: 'profit e investmentAmount são obrigatórios'
+      });
+    }
+
+    const startDate = periodStart ? new Date(periodStart) : new Date();
+    const endDate = periodEnd ? new Date(periodEnd) : new Date();
+
+    const result = await createPerformanceInvoice(
+      userId,
+      parseFloat(profit),
+      parseFloat(investmentAmount),
+      startDate,
+      endDate,
+      description
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('Erro ao criar fatura de performance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao criar fatura de performance.',
+      error: error.message
+    });
+  }
+};
+
+// Gerar faturas semanais
+exports.generateWeeklyInvoices = async (req, res) => {
+  try {
+    const { weekStart, weekEnd } = req.body;
+    const userId = req.user.userId;
+
+    const startDate = weekStart ? new Date(weekStart) : new Date();
+    const endDate = weekEnd ? new Date(weekEnd) : new Date();
+
+    // Se não fornecido, usar a semana atual
+    if (!weekStart) {
+      startDate.setDate(startDate.getDate() - startDate.getDay()); // Domingo
+      startDate.setHours(0, 0, 0, 0);
+    }
+    if (!weekEnd) {
+      endDate.setDate(startDate.getDate() + 6); // Sábado
+      endDate.setHours(23, 59, 59, 999);
+    }
+
+    const result = await generateWeeklyInvoices(userId, startDate, endDate);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Erro ao gerar faturas semanais:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao gerar faturas semanais.',
+      error: error.message
+    });
+  }
+};
+
+// Marcar fatura como paga
+exports.markInvoiceAsPaid = async (req, res) => {
+  try {
+    const { invoiceId, paidDate } = req.body;
+    const userId = req.user.userId;
+
+    if (!invoiceId) {
+      return res.status(400).json({
+        success: false,
+        message: 'invoiceId é obrigatório'
+      });
+    }
+
+    // Verificar se a fatura pertence ao usuário
+    const invoiceCheck = await pool.query(
+      'SELECT id FROM invoices WHERE id = $1 AND user_id = $2',
+      [invoiceId, userId]
+    );
+
+    if (invoiceCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Fatura não encontrada ou não pertence ao usuário'
+      });
+    }
+
+    const paymentDate = paidDate ? new Date(paidDate) : null;
+    const result = await markInvoiceAsPaid(invoiceId, paymentDate);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Erro ao marcar fatura como paga:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao marcar fatura como paga.',
       error: error.message
     });
   }

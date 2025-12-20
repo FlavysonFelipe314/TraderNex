@@ -416,6 +416,15 @@ router.get('/invoices', dashboardController.getInvoices);
  */
 router.get('/referrals', dashboardController.getReferrals);
 
+// Processar lucros e comissões
+router.post('/process-investment-profit', dashboardController.processInvestmentProfit);
+router.post('/process-mt4-profit', dashboardController.processMT4Profit);
+
+// Faturas
+router.post('/invoices/create', dashboardController.createPerformanceInvoice);
+router.post('/invoices/generate-weekly', dashboardController.generateWeeklyInvoices);
+router.post('/invoices/mark-paid', dashboardController.markInvoiceAsPaid);
+
 // Registrar interesse em cripto
 router.post('/crypto/register-interest', cryptoController.registerInterest);
 
