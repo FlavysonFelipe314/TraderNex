@@ -171,6 +171,25 @@ function RelatoriosPerformancePage() {
     }
   }, [selectedPeriod, customDates.startDate, customDates.endDate, loadPerformanceData])
 
+  // Função auxiliar para converter data do formato MyFXBook (MM/DD/YYYY) para Date
+  // DEVE estar declarada antes de qualquer useMemo que a utilize
+  const parseMyFXBookDate = (dateStr) => {
+    if (!dateStr) return new Date(NaN)
+    if (dateStr instanceof Date) return dateStr
+
+    // Formato MM/DD/YYYY (formato da API MyFXBook)
+    const mmddyyyy = String(dateStr).match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+    if (mmddyyyy) {
+      return new Date(parseInt(mmddyyyy[3]), parseInt(mmddyyyy[1]) - 1, parseInt(mmddyyyy[2]))
+    }
+
+    // Tentar parse padrão (ISO, timestamp, etc)
+    const parsed = new Date(dateStr)
+    if (!isNaN(parsed.getTime())) return parsed
+
+    return new Date(NaN)
+  }
+
   // Calcular KPIs baseados em dados do MyFXBook
   const kpis = useMemo(() => {
     if (!myfxbookData?.account) {
@@ -187,6 +206,40 @@ function RelatoriosPerformancePage() {
     }
 
     const account = myfxbookData.account
+    
+    // Calcular total de trades do período filtrado
+    // IMPORTANTE: A API get-history retorna apenas as últimas 50 trades
+    // O total real de trades (ex: 7970) não está disponível via API diretamente
+    // Por enquanto, contamos apenas os trades disponíveis no histórico filtrado por data
+    let totalTrades = 0
+    
+    if (myfxbookData.history && Array.isArray(myfxbookData.history)) {
+      // Se temos período definido, filtrar trades por data do período
+      if (myfxbookData.period?.startDate && myfxbookData.period?.endDate) {
+        const startDate = new Date(myfxbookData.period.startDate)
+        const endDate = new Date(myfxbookData.period.endDate)
+        endDate.setHours(23, 59, 59, 999) // Incluir o dia inteiro
+        
+        // parseMyFXBookDate está definida antes deste useMemo, podemos usar
+        const filteredHistory = myfxbookData.history.filter(trade => {
+          // Usar closeTime preferencialmente, depois time, date ou openTime
+          const dateStr = trade.closeTime || trade.time || trade.date || trade.openTime
+          const tradeDate = parseMyFXBookDate(dateStr)
+          if (isNaN(tradeDate.getTime())) return false
+          return tradeDate >= startDate && tradeDate <= endDate
+        })
+        
+        totalTrades = filteredHistory.length
+      } else {
+        // Se não há período definido, usar todos os trades disponíveis (limitado a 50 pela API)
+        totalTrades = myfxbookData.history.length
+      }
+    }
+    
+    // NOTA: A API MyFXBook get-history retorna apenas as últimas 50 trades
+    // Para obter o total completo (ex: 7970), seria necessário usar outra fonte de dados
+    // Este valor representa apenas os trades do período filtrado disponíveis via API
+    
     return {
       totalReturn: parseFloat(account.absGain || account.gain || 0),
       netProfit: parseFloat(account.profit || 0),
@@ -195,29 +248,9 @@ function RelatoriosPerformancePage() {
       gain: parseFloat(myfxbookData.gain || account.gain || 0),
       openTrades: myfxbookData.openTrades?.length || 0,
       openOrders: myfxbookData.openOrders?.length || 0,
-      totalTrades: myfxbookData.history?.length || 0
+      totalTrades: totalTrades
     }
-  }, [myfxbookData])
-
-  // Função auxiliar para converter data do formato MyFXBook (MM/DD/YYYY) para Date
-  // DEVE estar declarada antes de qualquer useMemo que a utilize
-  const parseMyFXBookDate = (dateStr) => {
-    if (!dateStr) return new Date(NaN)
-    if (dateStr instanceof Date) return dateStr
-    
-    // Formato MM/DD/YYYY (formato da API MyFXBook)
-    const mmddyyyy = String(dateStr).match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-    if (mmddyyyy) {
-      const [, month, day, year] = mmddyyyy
-      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-    }
-    
-    // Tentar formato ISO ou outros
-    const isoDate = new Date(dateStr)
-    if (!isNaN(isoDate.getTime())) return isoDate
-    
-    return new Date(NaN)
-  }
+  }, [myfxbookData, parseMyFXBookDate])
 
   // Processar histórico mensal dos dados do MyFXBook
   // Usando dataDaily para obter números reais e validados do MyFXBook
@@ -748,6 +781,11 @@ function RelatoriosPerformancePage() {
                 <Icon icon="lucide:bar-chart-2" className="text-base text-[#6b7280]" />
               </div>
               <div className="text-2xl sm:text-3xl font-bold text-[#111827]">{kpis.totalTrades}</div>
+              {kpis.totalTrades < 50 && myfxbookData?.history?.length > 0 && (
+                <div className="text-[10px] text-[#9ca3af] mt-1">
+                  * Limitado aos últimos 50 trades da API
+                </div>
+              )}
             </div>
 
             {/* Ganho no Período */}

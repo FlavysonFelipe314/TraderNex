@@ -749,6 +749,9 @@ function DashboardPage() {
                         <div className="text-base font-bold text-[#111827]">
                           {myfxbookAccountData.history.length}
                         </div>
+                        <div className="text-[9px] text-[#9ca3af] mt-0.5">
+                          * Últimos 50 da API
+                        </div>
                       </div>
                     )}
                   </div>
