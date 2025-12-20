@@ -9,24 +9,36 @@ function Sidebar() {
   const { user, logout } = useAuth()
   const { isSidebarOpen, toggleSidebar } = useSidebar()
   
-  // Verificar status de admin - garantir que sempre verifique corretamente
-  // Verificar múltiplas formas de identificar admin para garantir robustez
-  const isAdmin = Boolean(
+  // Verificar status de admin - verificar múltiplas fontes para garantir robustez
+  // Também verificar localStorage como fallback caso o contexto não esteja atualizado
+  const getUserFromStorage = () => {
+    try {
+      const stored = localStorage.getItem('user')
+      return stored ? JSON.parse(stored) : null
+    } catch {
+      return null
+    }
+  }
+  
+  const storedUser = getUserFromStorage()
+  const adminCheck = 
     user?.is_admin === true || 
     user?.isAdmin === true || 
     user?.role === 'admin' ||
-    user?.role === 'Admin' ||
-    (typeof user?.is_admin !== 'undefined' && user?.is_admin !== false && user?.is_admin !== null) ||
-    (typeof user?.isAdmin !== 'undefined' && user?.isAdmin !== false && user?.isAdmin !== null)
-  )
+    storedUser?.is_admin === true ||
+    storedUser?.isAdmin === true ||
+    storedUser?.role === 'admin'
   
-  // Debug: verificar status de admin em todas as rotas (apenas em desenvolvimento)
-  if (process.env.NODE_ENV === 'development' && user) {
+  const isAdmin = Boolean(adminCheck)
+  
+  // Debug: verificar status de admin em todas as rotas
+  if (user) {
     console.log('[Sidebar] Verificação de admin:', {
       isAdmin,
-      is_admin: user?.is_admin,
-      isAdmin_field: user?.isAdmin,
-      role: user?.role,
+      user_is_admin: user?.is_admin,
+      user_isAdmin: user?.isAdmin,
+      stored_is_admin: storedUser?.is_admin,
+      stored_isAdmin: storedUser?.isAdmin,
       pathname: location.pathname,
       user_id: user?.id
     })
@@ -149,9 +161,10 @@ function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex flex-col gap-1 mb-10">
-          {/* Admin Section - SEMPRE mostrar se for admin, independente da rota atual */}
-          {isAdmin ? (
+          {/* MENU DE ADMIN - Exibir apenas se for admin, em TODAS as rotas */}
+          {isAdmin && (
             <>
+              {/* Seção Administração */}
               <div className="text-[10px] font-semibold text-[rgba(255,193,7,0.4)] uppercase tracking-[0.1em] mx-3 mb-3">
                 Administração
               </div>
@@ -175,11 +188,40 @@ function Sidebar() {
                   </div>
                 )
               })}
+
+              {/* Seção Sua Conta - apenas Perfil para admins */}
+              <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
+                Sua Conta
+              </div>
+              {accountNavItems
+                .filter(item => item.id === 'profile')
+                .map((item) => {
+                  const active = isActive(item.path)
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                        active
+                          ? 'bg-gradient-to-r from-[rgba(255,193,7,0.1)] to-[rgba(255,193,7,0.02)] text-[#ffc107] border border-[rgba(255,193,7,0.15)]'
+                          : 'text-[#ffc107] border border-transparent hover:bg-[rgba(255,193,7,0.05)] hover:text-[#ffd54f] hover:pl-4'
+                      }`}
+                      onClick={() => handleNavigation(item.path)}
+                      data-media-type="banani-button"
+                    >
+                      <div className="w-[18px] h-[18px] flex items-center justify-center">
+                        <Icon icon={item.icon} className="text-lg" />
+                      </div>
+                      <span className="text-sm font-medium">{item.label}</span>
+                    </div>
+                  )
+                })}
             </>
-          ) : (
-            /* Seção Principal - apenas para não-admins */
+          )}
+
+          {/* MENU NORMAL - Exibir apenas se NÃO for admin */}
+          {!isAdmin && (
             <>
-            <>
+              {/* Seção Principal */}
               <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
                 Principal
               </div>
@@ -203,47 +245,33 @@ function Sidebar() {
                   </div>
                 )
               })}
+
+              {/* Seção Sua Conta - todos os itens para não-admins */}
+              <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
+                Sua Conta
+              </div>
+              {accountNavItems.map((item) => {
+                const active = isActive(item.path)
+                return (
+                  <div
+                    key={item.id}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                      active
+                        ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                        : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white hover:pl-4'
+                    }`}
+                    onClick={() => handleNavigation(item.path)}
+                    data-media-type="banani-button"
+                  >
+                    <div className="w-[18px] h-[18px] flex items-center justify-center">
+                      <Icon icon={item.icon} className="text-lg" />
+                    </div>
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </div>
+                )
+              })}
             </>
           )}
-
-          {/* Seção Sua Conta - apenas Perfil para admins, todos os itens para não-admins */}
-          <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
-            Sua Conta
-          </div>
-          {accountNavItems
-            .filter(item => {
-              // Para admins, mostrar apenas Perfil
-              if (isAdmin) {
-                return item.id === 'profile'
-              }
-              // Para não-admins, mostrar todos
-              return true
-            })
-            .map((item) => {
-              const active = isActive(item.path)
-              // Para admins, usar estilo dourado quando ativo, senão usar estilo padrão
-              return (
-                <div
-                  key={item.id}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
-                    active
-                      ? isAdmin
-                        ? 'bg-gradient-to-r from-[rgba(255,193,7,0.1)] to-[rgba(255,193,7,0.02)] text-[#ffc107] border border-[rgba(255,193,7,0.15)]'
-                        : 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
-                      : isAdmin
-                        ? 'text-[#ffc107] border border-transparent hover:bg-[rgba(255,193,7,0.05)] hover:text-[#ffd54f] hover:pl-4'
-                        : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white hover:pl-4'
-                  }`}
-                  onClick={() => handleNavigation(item.path)}
-                  data-media-type="banani-button"
-                >
-                  <div className="w-[18px] h-[18px] flex items-center justify-center">
-                    <Icon icon={item.icon} className="text-lg" />
-                  </div>
-                  <span className="text-sm font-medium">{item.label}</span>
-                </div>
-              )
-            })}
         </nav>
 
         {/* Footer - User Card */}
@@ -320,9 +348,10 @@ function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex flex-col gap-1 mb-8">
-          {/* Admin Section - SEMPRE mostrar se for admin, independente da rota atual */}
-          {isAdmin ? (
+          {/* MENU DE ADMIN - Exibir apenas se for admin, em TODAS as rotas */}
+          {isAdmin && (
             <>
+              {/* Seção Administração */}
               <div className="text-[10px] font-semibold text-[rgba(255,193,7,0.4)] uppercase tracking-[0.1em] mx-3 mb-3">
                 Administração
               </div>
@@ -346,11 +375,40 @@ function Sidebar() {
                   </div>
                 )
               })}
+
+              {/* Seção Sua Conta - apenas Perfil para admins */}
+              <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
+                Sua Conta
+              </div>
+              {accountNavItems
+                .filter(item => item.id === 'profile')
+                .map((item) => {
+                  const active = isActive(item.path)
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                        active
+                          ? 'bg-gradient-to-r from-[rgba(255,193,7,0.1)] to-[rgba(255,193,7,0.02)] text-[#ffc107] border border-[rgba(255,193,7,0.15)]'
+                          : 'text-[#ffc107] border border-transparent hover:bg-[rgba(255,193,7,0.05)] hover:text-[#ffd54f]'
+                      }`}
+                      onClick={() => handleNavigation(item.path)}
+                      data-media-type="banani-button"
+                    >
+                      <div className="w-[18px] h-[18px] flex items-center justify-center">
+                        <Icon icon={item.icon} className="text-lg" />
+                      </div>
+                      <span className="text-sm font-medium">{item.label}</span>
+                    </div>
+                  )
+                })}
             </>
-          ) : (
-            /* Seção Principal - apenas para não-admins */
+          )}
+
+          {/* MENU NORMAL - Exibir apenas se NÃO for admin */}
+          {!isAdmin && (
             <>
-            <>
+              {/* Seção Principal */}
               <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
                 Principal
               </div>
@@ -374,47 +432,33 @@ function Sidebar() {
                   </div>
                 )
               })}
+
+              {/* Seção Sua Conta - todos os itens para não-admins */}
+              <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
+                Sua Conta
+              </div>
+              {accountNavItems.map((item) => {
+                const active = isActive(item.path)
+                return (
+                  <div
+                    key={item.id}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                      active
+                        ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                        : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white'
+                    }`}
+                    onClick={() => handleNavigation(item.path)}
+                    data-media-type="banani-button"
+                  >
+                    <div className="w-[18px] h-[18px] flex items-center justify-center">
+                      <Icon icon={item.icon} className="text-lg" />
+                    </div>
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </div>
+                )
+              })}
             </>
           )}
-
-          <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
-            Sua Conta
-          </div>
-          {accountNavItems
-            .filter(item => {
-              // Para admins, mostrar apenas Perfil
-              if (isAdmin) {
-                return item.id === 'profile'
-              }
-              // Para não-admins, mostrar todos
-              return true
-            })
-            .map((item) => {
-              const active = isActive(item.path)
-              // Para admins, usar estilo dourado quando ativo, senão usar estilo padrão
-              return (
-                <div
-                  key={item.id}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                    active
-                      ? isAdmin
-                        ? 'bg-gradient-to-r from-[rgba(255,193,7,0.1)] to-[rgba(255,193,7,0.02)] text-[#ffc107] border border-[rgba(255,193,7,0.15)]'
-                        : 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
-                      : isAdmin
-                        ? 'text-[#ffc107] border border-transparent hover:bg-[rgba(255,193,7,0.05)] hover:text-[#ffd54f]'
-                        : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white'
-                  }`}
-                  onClick={() => handleNavigation(item.path)}
-                  data-media-type="banani-button"
-                >
-                  <div className="w-[18px] h-[18px] flex items-center justify-center">
-                    <Icon icon={item.icon} className="text-lg" />
-                  </div>
-                  <span className="text-sm font-medium">{item.label}</span>
-                </div>
-              )
-            })}
-
         </nav>
 
         {/* Footer - User Card */}

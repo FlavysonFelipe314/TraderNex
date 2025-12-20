@@ -218,8 +218,9 @@ export function AuthProvider({ children }) {
           zipCode: userData.zip_code,
           zip_code: userData.zip_code,
           complement: userData.complement,
-          is_admin: userData.is_admin || userData.isAdmin || false,
-          isAdmin: userData.is_admin || userData.isAdmin || false
+          // Preservar is_admin corretamente - verificar se é true explicitamente
+          is_admin: userData.is_admin === true || userData.isAdmin === true || false,
+          isAdmin: userData.is_admin === true || userData.isAdmin === true || false
         }
         console.log('[getProfile] Usuário normalizado:', normalizedUser)
         setUser(normalizedUser)
@@ -277,8 +278,9 @@ export function AuthProvider({ children }) {
           zipCode: userData.zip_code,
           zip_code: userData.zip_code,
           complement: userData.complement,
-          is_admin: userData.is_admin || userData.isAdmin || false,
-          isAdmin: userData.is_admin || userData.isAdmin || false
+          // Preservar is_admin corretamente - verificar se é true explicitamente
+          is_admin: userData.is_admin === true || userData.isAdmin === true || false,
+          isAdmin: userData.is_admin === true || userData.isAdmin === true || false
         }
         setUser(normalizedUser)
         localStorage.setItem('user', JSON.stringify(normalizedUser))
