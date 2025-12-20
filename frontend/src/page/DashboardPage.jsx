@@ -6,6 +6,7 @@ import { useSidebar } from '../contexts/SidebarContext'
 import { useAuth } from '../contexts/AuthContext'
 import { getDashboardData, getMT4Accounts, getPerformanceStats, getMyfxbookData } from '../services/dashboardService'
 import { formatCurrencyBR, formatPercentBR, formatNumberBR } from '../utils/format'
+import { processHistory, processDataDaily, processDailyGain } from '../utils/myfxbookParser'
 
 function DashboardPage() {
   const { isSidebarOpen } = useSidebar()
@@ -388,41 +389,44 @@ function DashboardPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#f3f4f6]">
-                          {myfxbookAccountData.history.slice(0, 10).map((trade, idx) => {
-                            const closeTime = trade.closeTime || trade.openTime
-                            const formattedDate = closeTime 
-                              ? new Date(closeTime).toLocaleString('pt-BR', { 
-                                  day: '2-digit', 
-                                  month: '2-digit', 
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })
-                              : 'N/A'
-                            
-                            return (
-                              <tr key={idx} className="hover:bg-white">
-                                <td className="px-3 py-2 text-[#6b7280]">{formattedDate}</td>
-                                <td className="px-3 py-2">
-                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                    trade.side === 'buy' 
-                                      ? 'bg-[#d1fae5] text-[#065f46]' 
-                                      : 'bg-[#fee2e2] text-[#991b1b]'
+                          {(() => {
+                            // Processar histórico corretamente
+                            const processedHistory = processHistory(myfxbookAccountData.history || [])
+                            return processedHistory.slice(0, 10).map((trade, idx) => {
+                              const formattedDate = trade.closeTimeDate
+                                ? trade.closeTimeDate.toLocaleString('pt-BR', { 
+                                    day: '2-digit', 
+                                    month: '2-digit', 
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
+                                : trade.closeTime || 'N/A'
+                              
+                              return (
+                                <tr key={idx} className="hover:bg-white">
+                                  <td className="px-3 py-2 text-[#6b7280]">{formattedDate}</td>
+                                  <td className="px-3 py-2">
+                                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                      trade.side === 'buy' 
+                                        ? 'bg-[#d1fae5] text-[#065f46]' 
+                                        : 'bg-[#fee2e2] text-[#991b1b]'
+                                    }`}>
+                                      {trade.side === 'buy' ? 'Compra' : 'Venda'}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2 font-medium text-[#111827]">{trade.symbol || 'N/A'}</td>
+                                  <td className="px-3 py-2 text-right text-[#111827]">{formatNumberBR(trade.lots, 2)}</td>
+                                  <td className="px-3 py-2 text-right text-[#111827]">{formatNumberBR(trade.closePrice || trade.openPrice || 0, 5)}</td>
+                                  <td className={`px-3 py-2 text-right font-bold ${
+                                    trade.profit >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
                                   }`}>
-                                    {trade.side === 'buy' ? 'Compra' : 'Venda'}
-                                  </span>
-                                </td>
-                                <td className="px-3 py-2 font-medium text-[#111827]">{trade.symbol || 'N/A'}</td>
-                                <td className="px-3 py-2 text-right text-[#111827]">{trade.lots || '0'}</td>
-                                <td className="px-3 py-2 text-right text-[#111827]">{trade.closePrice || trade.openPrice || 'N/A'}</td>
-                                <td className={`px-3 py-2 text-right font-bold ${
-                                  (trade.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
-                                }`}>
-                                  {trade.profit ? formatCurrencyBR(trade.profit) : formatCurrencyBR(0)}
-                                </td>
-                              </tr>
-                            )
-                          })}
+                                    {formatCurrencyBR(trade.profit)}
+                                  </td>
+                                </tr>
+                              )
+                            })
+                          })()}
                         </tbody>
                       </table>
                     </div>
@@ -466,20 +470,28 @@ function DashboardPage() {
                 let dataSource = 'performance'
                 
                 if (myfxbookConnected && myfxbookAccountData?.dataDaily && myfxbookAccountData.dataDaily.length > 0) {
-                  // Usar dados diários do MyFXBook
-                  chartData = myfxbookAccountData.dataDaily.map((item, idx) => ({
-                    date: item.date || item.time,
-                    value: parseFloat(item.equity || item.balance || 0),
+                  // Usar dados diários do MyFXBook - processar corretamente
+                  const processed = processDataDaily(myfxbookAccountData.dataDaily)
+                  chartData = processed.map((item, idx) => ({
+                    date: item.date.toISOString(),
+                    value: item.balance + item.floatingPL, // Equity = Balance + Floating P/L
                     index: idx
                   })).filter(d => d.value > 0 && !isNaN(d.value))
                   dataSource = 'myfxbook'
                 } else if (myfxbookConnected && myfxbookAccountData?.dailyGain && myfxbookAccountData.dailyGain.length > 0) {
-                  // Usar ganhos diários do MyFXBook
-                  chartData = myfxbookAccountData.dailyGain.map((item, idx) => ({
-                    date: item.date || item.time,
-                    value: parseFloat(item.gain || item.profit || 0),
-                    index: idx
-                  })).filter(d => d.value !== null && !isNaN(d.value))
+                  // Usar ganhos diários do MyFXBook - processar corretamente
+                  const processed = processDailyGain(myfxbookAccountData.dailyGain)
+                  const baseBalance = selectedMyfxbookAccount?.balance || 0
+                  let cumulative = 0
+                  
+                  chartData = processed.map((item, idx) => {
+                    cumulative += item.profit || item.value || 0
+                    return {
+                      date: item.date.toISOString(),
+                      value: baseBalance + cumulative,
+                      index: idx
+                    }
+                  }).filter(d => d.value !== null && !isNaN(d.value))
                   dataSource = 'myfxbook'
                 } else if (myfxbookConnected && myfxbookAccountData?.account) {
                   // Se tiver dados da conta mas não histórico diário, criar dados baseados no equity
