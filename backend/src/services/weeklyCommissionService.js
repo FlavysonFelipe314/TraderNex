@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 const { processReferralCommission } = require('./referralCommissionService');
-const { createPerformanceInvoice } = require('./invoiceService');
+const { generateWeeklyInvoices } = require('./invoiceService');
 
 /**
  * Processa comissões semanais para todos os usuários
@@ -100,30 +100,6 @@ async function processWeeklyCommissions() {
               });
             }
             
-            // Criar fatura de performance (usar apenas o lucro novo da semana)
-            try {
-              const invoiceResult = await createPerformanceInvoice(
-                user.id,
-                profitDifference, // Apenas o lucro novo da semana
-                amount,
-                weekStart,
-                weekEnd,
-                `Performance Fee Semanal - Investimento ${investment.id}`
-              );
-              
-              if (invoiceResult.success) {
-                results.invoices++;
-              }
-            } catch (invoiceError) {
-              console.error(`[WeeklyCommissions] Erro ao criar fatura para investimento ${investment.id}:`, invoiceError);
-              results.errors.push({
-                type: 'invoice',
-                userId: user.id,
-                investmentId: investment.id,
-                error: invoiceError.message
-              });
-            }
-            
             // Atualizar lucro processado na última semana
             await pool.query(
               `UPDATE user_investments
@@ -133,6 +109,22 @@ async function processWeeklyCommissions() {
               [currentProfit, investment.id]
             );
           }
+        }
+        
+        // Gerar fatura semanal agrupada (uma fatura por semana baseada no plano)
+        try {
+          const invoiceResult = await generateWeeklyInvoices(user.id, weekStart, weekEnd);
+          if (invoiceResult.success && invoiceResult.invoices && invoiceResult.invoices.length > 0) {
+            results.invoices += invoiceResult.invoices.length;
+            console.log(`[WeeklyCommissions] Fatura semanal gerada para usuário ${user.id}`);
+          }
+        } catch (invoiceError) {
+          console.error(`[WeeklyCommissions] Erro ao gerar fatura semanal para usuário ${user.id}:`, invoiceError);
+          results.errors.push({
+            type: 'invoice',
+            userId: user.id,
+            error: invoiceError.message
+          });
         }
         
         // Processar contas MT4 (se houver dados do MyFXBook)

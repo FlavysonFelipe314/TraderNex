@@ -318,12 +318,11 @@ export const processMT4Profit = async (mt4AccountId, profit, investmentAmount) =
   }
 }
 
-// Criar fatura de performance
-export const createPerformanceInvoice = async (profit, investmentAmount, periodStart, periodEnd, description) => {
+// Criar fatura de performance (baseado no plano do usuário)
+export const createPerformanceInvoice = async (profit, periodStart, periodEnd, description) => {
   try {
     const response = await api.post('/api/dashboard/invoices/create', {
       profit,
-      investmentAmount,
       periodStart,
       periodEnd,
       description

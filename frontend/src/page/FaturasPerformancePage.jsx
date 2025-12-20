@@ -16,6 +16,10 @@ function FaturasPerformancePage() {
     }
   }, [])
 
+  const [totals, setTotals] = useState({ total: 0, pending: 0, paid: 0, overdue: 0 })
+  const [nextDueDate, setNextDueDate] = useState(null)
+  const [weekNumber, setWeekNumber] = useState(null)
+
   // Carregar faturas do backend
   useEffect(() => {
     const loadInvoices = async () => {
@@ -23,18 +27,62 @@ function FaturasPerformancePage() {
       try {
         const result = await getInvoices()
         if (result.success && result.data) {
+          // Salvar totais
+          if (result.totals) {
+            setTotals(result.totals)
+          }
+          if (result.nextDueDate) {
+            setNextDueDate(result.nextDueDate)
+          }
+          if (result.weekNumber) {
+            setWeekNumber(result.weekNumber)
+          }
+
           // Transformar dados do backend para o formato esperado pelo frontend
           const formattedInvoices = result.data.map((inv, index) => {
             const amount = inv.amount != null && !isNaN(inv.amount) ? Number(inv.amount) : 0;
+            
+            // Usar profit_amount do banco (se disponível) ou extrair da descrição
+            let profit = inv.profit_amount != null && !isNaN(inv.profit_amount) ? Number(inv.profit_amount) : 0;
+            
+            // Se não tiver no banco, tentar extrair da descrição
+            if (profit === 0) {
+              const description = inv.description || ''
+              const profitMatch = description.match(/Lucro:\s*\$?\s*([\d,\.]+)/i) || 
+                                 description.match(/Lucro:\s*R\$?\s*([\d,\.]+)/i) ||
+                                 description.match(/Lucro:\s*([\d,\.]+)/i)
+              if (profitMatch) {
+                const profitStr = profitMatch[1].replace(/\./g, '').replace(',', '.')
+                profit = parseFloat(profitStr) || 0
+              }
+            }
+            
+            const planName = inv.plan_name || inv.planName || 'Nex Start'
+            const feePercentage = inv.fee_percentage || 0
+            
+            // Calcular período da semana (segunda a sexta)
+            const dueDate = inv.due_date ? new Date(inv.due_date) : new Date()
+            const weekStart = new Date(dueDate)
+            weekStart.setDate(dueDate.getDate() - 4) // Segunda-feira (4 dias antes da sexta)
+            
+            // Calcular número da semana
+            const startOfYear = new Date(dueDate.getFullYear(), 0, 1)
+            const days = Math.floor((dueDate - startOfYear) / (24 * 60 * 60 * 1000))
+            const weekNum = Math.ceil((days + startOfYear.getDay() + 1) / 7)
+            
             return {
-              id: inv.invoice_number || `#WK-${index + 1}-2025`,
-              week: inv.description || `Semana ${index + 1} • 2025`,
-              period: inv.due_date ? new Date(inv.due_date).toLocaleDateString('pt-BR') : 'N/A',
-              profit: amount > 0 ? `$ ${amount.toFixed(2)}` : '--',
-              value: amount > 0 ? `$ ${amount.toFixed(2)}` : '$ 0.00',
+              id: inv.invoice_number || `INV-${index + 1}`,
+              week: `${planName} - Semana ${weekNum} • ${dueDate.getFullYear()}`,
+              period: `${weekStart.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${dueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`,
+              profit: profit > 0 ? `$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '--',
+              value: amount > 0 ? `$ ${amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$ 0.00',
               dueDate: inv.due_date ? new Date(inv.due_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A',
-              status: inv.status === 'paid' ? 'paid' : inv.status === 'pending' ? 'pending' : 'exempt',
-              isCurrent: inv.status === 'pending'
+              status: inv.status === 'paid' ? 'paid' : inv.status === 'pending' ? 'pending' : inv.status === 'overdue' ? 'overdue' : 'exempt',
+              isCurrent: inv.status === 'pending' && (!inv.due_date || new Date(inv.due_date) >= new Date()),
+              planName: planName,
+              feePercentage: feePercentage,
+              rawAmount: amount,
+              rawProfit: profit
             };
           })
           setInvoices(formattedInvoices)
@@ -100,8 +148,15 @@ function FaturasPerformancePage() {
     },
   ]
 
+  // Filtrar faturas baseado nos filtros
+  const filteredInvoices = invoices.filter(inv => {
+    if (statusFilter === 'pendentes' && inv.status !== 'pending') return false
+    if (statusFilter === 'pagas' && inv.status !== 'paid') return false
+    return true
+  })
+
   // Usar dados reais ou mock
-  const displayInvoices = invoices.length > 0 ? invoices : mockInvoices
+  const displayInvoices = filteredInvoices.length > 0 ? filteredInvoices : (invoices.length > 0 ? invoices : mockInvoices)
 
   return (
     <DashboardLayout>
@@ -131,8 +186,12 @@ function FaturasPerformancePage() {
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <div className="text-[28px] font-bold text-[#111827] tracking-tight leading-tight">$ 4,892.40</div>
-              <div className="text-[13px] text-[#9ca3af] font-medium">34 semanas liquidadas</div>
+              <div className="text-[28px] font-bold text-[#111827] tracking-tight leading-tight">
+                {loading ? '...' : `$ ${totals.paid.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              </div>
+              <div className="text-[13px] text-[#9ca3af] font-medium">
+                {invoices.filter(inv => inv.status === 'paid').length} semanas liquidadas
+              </div>
             </div>
           </div>
 
@@ -145,7 +204,9 @@ function FaturasPerformancePage() {
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <div className="text-[28px] font-bold text-[#d97706] tracking-tight leading-tight">$ 84.50</div>
+              <div className="text-[28px] font-bold text-[#d97706] tracking-tight leading-tight">
+                {loading ? '...' : `$ ${totals.pending.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              </div>
               <div className="text-[13px] text-[#9ca3af] font-medium">Fecha nesta sexta-feira</div>
             </div>
           </div>
@@ -159,8 +220,12 @@ function FaturasPerformancePage() {
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <div className="text-[28px] font-bold text-[#111827] tracking-tight leading-tight">17 Out 2025</div>
-              <div className="text-[13px] text-[#9ca3af] font-medium">Sexta-feira (Semana 42)</div>
+              <div className="text-[28px] font-bold text-[#111827] tracking-tight leading-tight">
+                {loading ? '...' : (nextDueDate ? new Date(nextDueDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A')}
+              </div>
+              <div className="text-[13px] text-[#9ca3af] font-medium">
+                Sexta-feira {weekNumber ? `(Semana ${weekNumber})` : ''}
+              </div>
             </div>
           </div>
         </div>
@@ -254,64 +319,92 @@ function FaturasPerformancePage() {
             </div>
 
             {/* Table Rows */}
-            {invoices.map((invoice, index) => (
-              <div
-                key={index}
-                className={`flex items-center px-6 py-5 border-b border-[#f9fafb] transition-all hover:bg-white hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:rounded-lg hover:z-10 hover:relative ${
-                  index % 2 === 0 ? 'bg-[#fafafa]' : ''
-                } ${invoice.isCurrent ? 'bg-gradient-to-r from-[rgba(0,255,136,0.02)] to-transparent border-l-[3px] border-l-[#00ff88]' : ''} ${index === invoices.length - 1 ? 'border-b-0' : ''}`}
-              >
-                <div className="flex-[1.2] font-mono font-bold text-[#111827] tracking-tight text-sm">{invoice.id}</div>
-                <div className="flex-[2.2] flex flex-col gap-1">
-                  <div className="flex items-center">
-                    <span className="font-semibold text-[#111827] text-sm">{invoice.week}</span>
-                    {invoice.isCurrent && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#00afaa] bg-[rgba(0,175,175,0.1)] px-2 py-0.5 rounded ml-2.5">
-                        Semana atual
+            {loading ? (
+              <div className="px-6 py-8 text-center text-[#6b7280]">
+                <div className="flex items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-[#00afaa]"></div>
+                  <span>Carregando faturas...</span>
+                </div>
+              </div>
+            ) : displayInvoices.length === 0 ? (
+              <div className="px-6 py-8 text-center text-[#6b7280]">
+                Nenhuma fatura encontrada
+              </div>
+            ) : (
+              displayInvoices.map((invoice, index) => (
+                <div
+                  key={invoice.id || index}
+                  className={`flex items-center px-6 py-5 border-b border-[#f9fafb] transition-all hover:bg-white hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:rounded-lg hover:z-10 hover:relative ${
+                    index % 2 === 0 ? 'bg-[#fafafa]' : ''
+                  } ${invoice.isCurrent ? 'bg-gradient-to-r from-[rgba(0,255,136,0.02)] to-transparent border-l-[3px] border-l-[#00ff88]' : ''} ${index === displayInvoices.length - 1 ? 'border-b-0' : ''}`}
+                >
+                  <div className="flex-[1.2] font-mono font-bold text-[#111827] tracking-tight text-sm">{invoice.id}</div>
+                  <div className="flex-[2.2] flex flex-col gap-1">
+                    <div className="flex items-center">
+                      <span className="font-semibold text-[#111827] text-sm">{invoice.week}</span>
+                      {invoice.isCurrent && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#00afaa] bg-[rgba(0,175,175,0.1)] px-2 py-0.5 rounded ml-2.5">
+                          Semana atual
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center text-[13px] text-[#9ca3af]">
+                      <Icon icon="lucide:calendar" className="text-xs mr-1" />
+                      {invoice.period}
+                      {invoice.rawProfit > 0 && (
+                        <>
+                          <span className="mx-2 opacity-50">•</span>
+                          Lucro: {invoice.profit}
+                        </>
+                      )}
+                      {invoice.planName && invoice.feePercentage > 0 && (
+                        <>
+                          <span className="mx-2 opacity-50">•</span>
+                          {invoice.planName} ({invoice.feePercentage}%)
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-[1.2] font-semibold text-[#111827] text-[15px]">{invoice.value}</div>
+                  <div className="flex-[1.4] text-sm text-[#6b7280]">{invoice.dueDate}</div>
+                  <div className="flex-[1.2]">
+                    {invoice.status === 'paid' && (
+                      <span className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-full text-xs font-bold min-w-[80px] bg-[rgba(0,255,136,0.12)] text-[#059669]">
+                        Pago
+                      </span>
+                    )}
+                    {invoice.status === 'pending' && (
+                      <span className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-full text-xs font-bold min-w-[80px] bg-[#fff7ed] text-[#d97706]">
+                        Pendente
+                      </span>
+                    )}
+                    {invoice.status === 'exempt' && (
+                      <span className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-full text-xs font-bold min-w-[80px] bg-[#f3f4f6] text-[#9ca3af]">
+                        Isento
+                      </span>
+                    )}
+                    {invoice.status === 'overdue' && (
+                      <span className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-full text-xs font-bold min-w-[80px] bg-[#fee2e2] text-[#991b1b]">
+                        Vencida
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center text-[13px] text-[#9ca3af]">
-                    <Icon icon="lucide:calendar" className="text-xs mr-1" />
-                    {invoice.period}
-                    <span className="mx-2 opacity-50">•</span>
-                    Lucro: {invoice.profit}
+                  <div className="flex-1 flex justify-end">
+                    {invoice.status === 'pending' ? (
+                      <button className="bg-[#00afaa] text-white border-none px-4 py-1.5 rounded-lg text-[13px] font-semibold cursor-pointer shadow-[0_4px_12px_rgba(0,175,170,0.25)] transition-all hover:bg-[#009691] hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,175,170,0.35)]">
+                        Pagar
+                      </button>
+                    ) : invoice.status === 'paid' ? (
+                      <button className="w-8 h-8 rounded-lg border border-transparent bg-transparent flex items-center justify-center text-[#6b7280] cursor-pointer transition-all hover:bg-white hover:border-[#e5e7eb] hover:text-[#111827] hover:shadow-[0_2px_6px_rgba(0,0,0,0.05)]">
+                        <Icon icon="lucide:download" className="text-lg" />
+                      </button>
+                    ) : (
+                      <span className="text-xs text-[#9ca3af] italic">Sem lucro</span>
+                    )}
                   </div>
                 </div>
-                <div className="flex-[1.2] font-semibold text-[#111827] text-[15px]">{invoice.value}</div>
-                <div className="flex-[1.4] text-sm text-[#6b7280]">{invoice.dueDate}</div>
-                <div className="flex-[1.2]">
-                  {invoice.status === 'paid' && (
-                    <span className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-full text-xs font-bold min-w-[80px] bg-[rgba(0,255,136,0.12)] text-[#059669]">
-                      Pago
-                    </span>
-                  )}
-                  {invoice.status === 'pending' && (
-                    <span className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-full text-xs font-bold min-w-[80px] bg-[#fff7ed] text-[#d97706]">
-                      Pendente
-                    </span>
-                  )}
-                  {invoice.status === 'exempt' && (
-                    <span className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-full text-xs font-bold min-w-[80px] bg-[#f3f4f6] text-[#9ca3af]">
-                      Isento
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 flex justify-end">
-                  {invoice.status === 'pending' ? (
-                    <button className="bg-[#00afaa] text-white border-none px-4 py-1.5 rounded-lg text-[13px] font-semibold cursor-pointer shadow-[0_4px_12px_rgba(0,175,170,0.25)] transition-all hover:bg-[#009691] hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,175,170,0.35)]">
-                      Pagar
-                    </button>
-                  ) : invoice.status === 'paid' ? (
-                    <button className="w-8 h-8 rounded-lg border border-transparent bg-transparent flex items-center justify-center text-[#6b7280] cursor-pointer transition-all hover:bg-white hover:border-[#e5e7eb] hover:text-[#111827] hover:shadow-[0_2px_6px_rgba(0,0,0,0.05)]">
-                      <Icon icon="lucide:download" className="text-lg" />
-                    </button>
-                  ) : (
-                    <span className="text-xs text-[#9ca3af] italic">Sem lucro</span>
-                  )}
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* Table Footer */}

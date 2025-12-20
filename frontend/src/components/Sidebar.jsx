@@ -35,6 +35,7 @@ function Sidebar() {
     { id: 'plans', label: 'Planos', icon: 'lucide:package', path: '/admin/plans' },
     { id: 'users', label: 'Usuários', icon: 'lucide:users', path: '/admin/users' },
     { id: 'referrals', label: 'Comissões', icon: 'lucide:dollar-sign', path: '/admin/referrals' },
+    { id: 'invoices', label: 'Faturas', icon: 'lucide:receipt', path: '/admin/invoices' },
     { id: 'crypto-interested', label: 'Interessados Cripto', icon: 'lucide:rocket', path: '/admin/crypto-interested' },
   ]
 

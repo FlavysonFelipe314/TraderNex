@@ -680,9 +680,14 @@ exports.getInvoices = async (req, res) => {
     const userId = req.user.userId;
 
     const result = await pool.query(
-      `SELECT id, invoice_number, amount, status, due_date, paid_date, created_at, description
-       FROM invoices WHERE user_id = $1
-       ORDER BY created_at DESC`,
+      `SELECT i.id, i.invoice_number, i.amount, i.status, i.due_date, i.paid_date, 
+              i.created_at, i.description,
+              cp.selected_plan_id, ip.name as plan_name, ip.min_investment
+       FROM invoices i
+       LEFT JOIN client_profiles cp ON cp.user_id = i.user_id
+       LEFT JOIN investment_plans ip ON cp.selected_plan_id = ip.id
+       WHERE i.user_id = $1
+       ORDER BY i.due_date DESC, i.created_at DESC`,
       [userId]
     );
 
@@ -696,13 +701,32 @@ exports.getInvoices = async (req, res) => {
       return acc;
     }, { total: 0, pending: 0, paid: 0, overdue: 0 });
 
+    // Calcular próximo vencimento (próxima sexta-feira)
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    let daysUntilFriday = 5 - dayOfWeek;
+    if (daysUntilFriday <= 0) daysUntilFriday += 7;
+    const nextDueDate = new Date(now);
+    nextDueDate.setDate(now.getDate() + daysUntilFriday);
+    
+    // Calcular número da semana
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const days = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
+    const weekNumber = Math.ceil((days + startOfYear.getDay() + 1) / 7);
+
     res.json({
       success: true,
       data: result.rows.map(row => ({
         ...row,
-        amount: parseFloat(row.amount) || 0
+        amount: parseFloat(row.amount) || 0,
+        profit_amount: parseFloat(row.profit_amount) || 0,
+        fee_percentage: parseFloat(row.fee_percentage) || 0,
+        planName: row.plan_name || row.plan_name_from_profile || 'Nex Start',
+        minInvestment: parseFloat(row.min_investment) || 1000
       })),
-      totals
+      totals,
+      nextDueDate: nextDueDate.toISOString().split('T')[0],
+      weekNumber: weekNumber
     });
   } catch (error) {
     console.error('Erro ao buscar faturas:', error);
@@ -858,13 +882,13 @@ exports.processMT4Profit = async (req, res) => {
 // Criar fatura de performance
 exports.createPerformanceInvoice = async (req, res) => {
   try {
-    const { profit, investmentAmount, periodStart, periodEnd, description } = req.body;
+    const { profit, periodStart, periodEnd, description } = req.body;
     const userId = req.user.userId;
 
-    if (!profit || !investmentAmount) {
+    if (!profit) {
       return res.status(400).json({
         success: false,
-        message: 'profit e investmentAmount são obrigatórios'
+        message: 'profit é obrigatório'
       });
     }
 
@@ -874,7 +898,6 @@ exports.createPerformanceInvoice = async (req, res) => {
     const result = await createPerformanceInvoice(
       userId,
       parseFloat(profit),
-      parseFloat(investmentAmount),
       startDate,
       endDate,
       description

@@ -528,4 +528,69 @@ export const processWeeklyCommissions = async () => {
   }
 }
 
+// ========== Gerenciamento de Faturas (Admin) ==========
+
+// Obter todas as faturas (Admin)
+export const getAllInvoices = async (filters = {}) => {
+  try {
+    const params = new URLSearchParams()
+    if (filters.status) params.append('status', filters.status)
+    if (filters.userId) params.append('userId', filters.userId)
+    if (filters.period) params.append('period', filters.period)
+    
+    const response = await api.get(`/api/admin/invoices?${params.toString()}`)
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      stats: response.data.stats,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao buscar faturas:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao buscar faturas.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Obter estatísticas de faturas (Admin)
+export const getInvoiceStats = async () => {
+  try {
+    const response = await api.get('/api/admin/invoices/stats')
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas de faturas:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao buscar estatísticas.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Marcar fatura como paga (Admin)
+export const markInvoiceAsPaidAdmin = async (invoiceId, paidDate) => {
+  try {
+    const response = await api.post(`/api/admin/invoices/${invoiceId}/mark-paid`, { paidDate })
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao marcar fatura como paga:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao marcar fatura como paga.',
+      error: error.response?.data
+    }
+  }
+}
+
 

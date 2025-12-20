@@ -140,6 +140,9 @@ CREATE TABLE IF NOT EXISTS invoices (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     invoice_number VARCHAR(50) UNIQUE NOT NULL,
     amount DECIMAL(15, 2) NOT NULL CHECK (amount > 0),
+    profit_amount DECIMAL(15, 2),
+    fee_percentage DECIMAL(5, 2),
+    plan_name VARCHAR(100),
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'overdue', 'cancelled')),
     due_date DATE,
     paid_date DATE,
@@ -237,6 +240,7 @@ CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_a
 CREATE INDEX IF NOT EXISTS idx_invoices_user_id ON invoices(user_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
 CREATE INDEX IF NOT EXISTS idx_invoices_due_date ON invoices(due_date);
+CREATE INDEX IF NOT EXISTS idx_invoices_profit_amount ON invoices(profit_amount);
 CREATE INDEX IF NOT EXISTS idx_performance_reports_user_id ON performance_reports(user_id);
 CREATE INDEX IF NOT EXISTS idx_performance_reports_date ON performance_reports(report_date);
 CREATE INDEX IF NOT EXISTS idx_performance_reports_user_date ON performance_reports(user_id, report_date);

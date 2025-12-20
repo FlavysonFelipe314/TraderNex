@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
 const adminReferralsController = require('../controllers/adminReferralsController');
+const adminInvoicesController = require('../controllers/adminInvoicesController');
 const plansController = require('../controllers/plansController');
 const cryptoController = require('../controllers/cryptoController');
 const authMiddleware = require('../middleware/auth');
@@ -328,6 +329,11 @@ router.get('/referrals/stats', adminReferralsController.getReferralCommissionSta
 router.post('/referrals/:referralId/approve-payment', adminReferralsController.approveCommissionPayment);
 router.post('/referrals/:referralId/reject-payment', adminReferralsController.rejectCommissionPayment);
 router.post('/referrals/process-weekly', adminReferralsController.processWeeklyCommissions);
+
+// Rotas de Faturas (Admin)
+router.get('/invoices', adminInvoicesController.getAllInvoices);
+router.get('/invoices/stats', adminInvoicesController.getInvoiceStats);
+router.post('/invoices/:invoiceId/mark-paid', adminInvoicesController.markInvoiceAsPaid);
 
 module.exports = router;
 
