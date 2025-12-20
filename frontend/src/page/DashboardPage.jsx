@@ -5,6 +5,7 @@ import MobileBottomNav from '../components/MobileBottomNav'
 import { useSidebar } from '../contexts/SidebarContext'
 import { useAuth } from '../contexts/AuthContext'
 import { getDashboardData, getMT4Accounts, getPerformanceStats, getMyfxbookData } from '../services/dashboardService'
+import { formatCurrencyBR, formatPercentBR, formatNumberBR } from '../utils/format'
 
 function DashboardPage() {
   const { isSidebarOpen } = useSidebar()
@@ -102,9 +103,13 @@ function DashboardPage() {
             setMyfxbookAccountData({
               account: accountData,
               openTrades: myfxbookDataResult.data.openTrades || [],
+              openOrders: myfxbookDataResult.data.openOrders || [],
               history: myfxbookDataResult.data.history || [],
               dailyGain: myfxbookDataResult.data.dailyGain || [],
-              dataDaily: myfxbookDataResult.data.dataDaily || []
+              dataDaily: myfxbookDataResult.data.dataDaily || [],
+              gain: myfxbookDataResult.data.gain,
+              watchedAccounts: myfxbookDataResult.data.watchedAccounts || [],
+              communityOutlook: myfxbookDataResult.data.communityOutlook
             })
             setLoadingMyfxbook(false)
           } else {
@@ -165,7 +170,24 @@ function DashboardPage() {
 
         {/* KPI Grid - Dados MyFXBook */}
         {myfxbookConnected && selectedMyfxbookAccount ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 sm:gap-6">
+            <div className="group bg-white rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-4 sm:gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
+                  Balance
+                </div>
+                <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(59,130,246,0.1)] group-hover:text-[#3b82f6]">
+                  <Icon icon="lucide:wallet" className="text-base" />
+                </div>
+              </div>
+              <div>
+                <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
+                  {selectedMyfxbookAccount.balance ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(selectedMyfxbookAccount.balance)) : 'N/A'}
+                </div>
+                <div className="text-xs text-[#94A3B8] mt-1">Saldo atual</div>
+              </div>
+            </div>
+
             <div className="group bg-white rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-4 sm:gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
@@ -179,7 +201,7 @@ function DashboardPage() {
                 <div className={`text-[28px] font-bold tracking-[-0.03em] leading-none ${
                   (selectedMyfxbookAccount.gain || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
                 }`}>
-                  {selectedMyfxbookAccount.gain ? `${parseFloat(selectedMyfxbookAccount.gain).toFixed(2)}%` : 'N/A'}
+                  {selectedMyfxbookAccount.gain ? formatPercentBR(selectedMyfxbookAccount.gain) : 'N/A'}
                 </div>
               </div>
             </div>
@@ -197,7 +219,7 @@ function DashboardPage() {
                 <div className={`text-xl sm:text-2xl lg:text-[28px] font-bold tracking-[-0.03em] leading-none ${
                   (selectedMyfxbookAccount.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
                 }`}>
-                  {selectedMyfxbookAccount.profit ? `$${parseFloat(selectedMyfxbookAccount.profit).toFixed(2)}` : 'N/A'}
+                  {selectedMyfxbookAccount.profit ? formatCurrencyBR(selectedMyfxbookAccount.profit) : 'N/A'}
                 </div>
               </div>
             </div>
@@ -213,7 +235,7 @@ function DashboardPage() {
               </div>
               <div>
                 <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#dc2626] tracking-[-0.03em] leading-none">
-                  {selectedMyfxbookAccount.drawdown ? `${parseFloat(selectedMyfxbookAccount.drawdown).toFixed(2)}%` : 'N/A'}
+                  {selectedMyfxbookAccount.drawdown ? `-${formatNumberBR(Math.abs(selectedMyfxbookAccount.drawdown))}%` : 'N/A'}
                 </div>
               </div>
             </div>
@@ -229,7 +251,7 @@ function DashboardPage() {
               </div>
               <div>
                 <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
-                  {selectedMyfxbookAccount.equity ? `$${parseFloat(selectedMyfxbookAccount.equity).toFixed(2)}` : 'N/A'}
+                  {selectedMyfxbookAccount.equity ? formatCurrencyBR(selectedMyfxbookAccount.equity) : 'N/A'}
                 </div>
               </div>
             </div>
@@ -285,7 +307,7 @@ function DashboardPage() {
               </div>
               <div>
                 <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#059669] tracking-[-0.03em] leading-none">
-                  + $ {dashboardData?.profile?.totalProfit?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                  {dashboardData?.profile?.totalProfit ? formatCurrencyBR(dashboardData.profile.totalProfit) : formatCurrencyBR(0)}
                 </div>
               </div>
               <div className="text-xs text-[#94A3B8] flex items-center gap-1.5 font-medium">
@@ -396,7 +418,7 @@ function DashboardPage() {
                                 <td className={`px-3 py-2 text-right font-bold ${
                                   (trade.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
                                 }`}>
-                                  {trade.profit ? `$${parseFloat(trade.profit).toFixed(2)}` : '$0.00'}
+                                  {trade.profit ? formatCurrencyBR(trade.profit) : formatCurrencyBR(0)}
                                 </td>
                               </tr>
                             )
@@ -667,14 +689,14 @@ function DashboardPage() {
                     </div>
                   </div>
                   
-                  {/* Cards de Métricas MyFXBook */}
+                  {/* Cards de Métricas MyFXBook - Expandido */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
                       <div className="text-[10px] text-[#6b7280] font-medium mb-1">Ganho Total</div>
                       <div className={`text-base font-bold ${
                         (selectedMyfxbookAccount.gain || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
                       }`}>
-                        {selectedMyfxbookAccount.gain ? `${parseFloat(selectedMyfxbookAccount.gain).toFixed(2)}%` : 'N/A'}
+                        {selectedMyfxbookAccount.gain ? formatPercentBR(selectedMyfxbookAccount.gain) : 'N/A'}
                       </div>
                     </div>
                     <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
@@ -682,21 +704,53 @@ function DashboardPage() {
                       <div className={`text-base font-bold ${
                         (selectedMyfxbookAccount.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
                       }`}>
-                        {selectedMyfxbookAccount.profit ? `$${parseFloat(selectedMyfxbookAccount.profit).toFixed(2)}` : 'N/A'}
+                        {selectedMyfxbookAccount.profit ? formatCurrencyBR(selectedMyfxbookAccount.profit) : 'N/A'}
                       </div>
                     </div>
                     <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
                       <div className="text-[10px] text-[#6b7280] font-medium mb-1">Drawdown</div>
                       <div className="text-base font-bold text-[#dc2626]">
-                        {selectedMyfxbookAccount.drawdown ? `${parseFloat(selectedMyfxbookAccount.drawdown).toFixed(2)}%` : 'N/A'}
+                        {selectedMyfxbookAccount.drawdown ? `-${formatNumberBR(Math.abs(selectedMyfxbookAccount.drawdown))}%` : 'N/A'}
                       </div>
                     </div>
                     <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
                       <div className="text-[10px] text-[#6b7280] font-medium mb-1">Equity</div>
                       <div className="text-base font-bold text-[#111827]">
-                        {selectedMyfxbookAccount.equity ? `$${parseFloat(selectedMyfxbookAccount.equity).toFixed(2)}` : 'N/A'}
+                        {selectedMyfxbookAccount.equity ? formatCurrencyBR(selectedMyfxbookAccount.equity) : 'N/A'}
                       </div>
                     </div>
+                    {myfxbookAccountData?.account?.profitFactor && (
+                      <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
+                        <div className="text-[10px] text-[#6b7280] font-medium mb-1">Profit Factor</div>
+                        <div className="text-base font-bold text-[#111827]">
+                          {formatNumberBR(myfxbookAccountData.account.profitFactor, 2)}
+                        </div>
+                      </div>
+                    )}
+                    {myfxbookAccountData?.account?.sharpeRatio && (
+                      <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
+                        <div className="text-[10px] text-[#6b7280] font-medium mb-1">Sharpe Ratio</div>
+                        <div className="text-base font-bold text-[#111827]">
+                          {formatNumberBR(myfxbookAccountData.account.sharpeRatio, 2)}
+                        </div>
+                      </div>
+                    )}
+                    {myfxbookAccountData?.openTrades && myfxbookAccountData.openTrades.length > 0 && (
+                      <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
+                        <div className="text-[10px] text-[#6b7280] font-medium mb-1">Trades Abertos</div>
+                        <div className="text-base font-bold text-[#111827]">
+                          {myfxbookAccountData.openTrades.length}
+                        </div>
+                      </div>
+                    )}
+                    {myfxbookAccountData?.history && myfxbookAccountData.history.length > 0 && (
+                      <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
+                        <div className="text-[10px] text-[#6b7280] font-medium mb-1">Total Trades</div>
+                        <div className="text-base font-bold text-[#111827]">
+                          {myfxbookAccountData.history.length}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Dados MT4 abaixo */}

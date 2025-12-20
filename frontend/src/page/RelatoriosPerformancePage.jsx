@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
 import { getPerformanceStats, getMyfxbookData } from '../services/dashboardService'
+import { formatCurrencyBR, formatPercentBR, formatNumberBR } from '../utils/format'
 
 function RelatoriosPerformancePage() {
   const [selectedPeriod, setSelectedPeriod] = useState('este-mes')
@@ -58,11 +59,17 @@ function RelatoriosPerformancePage() {
       setLoading(true)
       try {
         const dateRange = getDateRange(selectedPeriod)
+        console.log('[Relatórios] Carregando dados para período:', selectedPeriod, 'Datas:', dateRange)
         
         // Carregar dados do MyFXBook com filtros de data
         const myfxbookResult = await getMyfxbookData(dateRange.startDate, dateRange.endDate)
+        console.log('[Relatórios] Resultado MyFXBook:', myfxbookResult)
+        
         if (myfxbookResult.success && myfxbookResult.data?.connected) {
           setMyfxbookData(myfxbookResult.data)
+        } else {
+          // Se não conectado, limpar dados anteriores
+          setMyfxbookData(null)
         }
 
         // Carregar dados de performance como fallback
@@ -70,7 +77,8 @@ function RelatoriosPerformancePage() {
           'hoje': 'day',
           '7-dias': 'week',
           'este-mes': 'month',
-          'este-ano': 'year'
+          'este-ano': 'year',
+          'custom': 'month' // Para custom, usar month como fallback
         }
         const backendPeriod = periodMap[selectedPeriod] || 'month'
         const result = await getPerformanceStats(backendPeriod)
@@ -165,13 +173,9 @@ function RelatoriosPerformancePage() {
     const history = Array.from(monthlyMap.values())
       .map(month => ({
         ...month,
-        profitFormatted: month.profit >= 0 
-          ? `$ ${month.profit.toFixed(2)}` 
-          : `-$ ${Math.abs(month.profit).toFixed(2)}`,
-        drawdownFormatted: `${month.drawdown.toFixed(2)}%`,
-        returnFormatted: month.profit >= 0 
-          ? `+${((month.profit / (kpis.netProfit || 1)) * 100).toFixed(1)}%` 
-          : `${((month.profit / (kpis.netProfit || 1)) * 100).toFixed(1)}%`,
+        profitFormatted: formatCurrencyBR(month.profit),
+        drawdownFormatted: `${formatNumberBR(month.drawdown)}%`,
+        returnFormatted: formatPercentBR((month.profit / (kpis.netProfit || 1)) * 100, 1),
         isPositive: month.profit >= 0,
         isWarning: month.drawdown > 3
       }))
@@ -384,7 +388,7 @@ function RelatoriosPerformancePage() {
             </div>
             <div>
               <div className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-[#059669] tracking-tight leading-none mb-1.5">
-                {loading ? '...' : `${kpis.totalReturn >= 0 ? '+' : ''}${kpis.totalReturn.toFixed(2)}%`}
+                {loading ? '...' : formatPercentBR(kpis.totalReturn)}
               </div>
               <div className="text-xs sm:text-[13px] text-[#9ba0aa] font-normal">Desde o início</div>
             </div>
@@ -400,7 +404,7 @@ function RelatoriosPerformancePage() {
             </div>
             <div>
               <div className="text-[32px] font-bold text-[#059669] tracking-tight leading-none mb-1.5">
-                {loading ? '...' : `$ ${kpis.netProfit.toFixed(2)}`}
+                {loading ? '...' : formatCurrencyBR(kpis.netProfit)}
               </div>
               <div className="text-[13px] text-[#9ba0aa] font-normal">Acumulado no ano</div>
             </div>
@@ -434,7 +438,7 @@ function RelatoriosPerformancePage() {
             </div>
             <div>
               <div className="text-[32px] font-bold text-[#e53935] tracking-tight leading-none mb-1.5">
-                {loading ? '...' : `-${kpis.maxDrawdown.toFixed(2)}%`}
+                {loading ? '...' : `-${formatNumberBR(kpis.maxDrawdown)}%`}
               </div>
               <div className="text-[13px] text-[#9ba0aa] font-normal">
                 {kpis.maxDrawdown < 5 ? 'Risco controlado' : kpis.maxDrawdown < 10 ? 'Risco moderado' : 'Risco elevado'}
@@ -480,7 +484,7 @@ function RelatoriosPerformancePage() {
                 <Icon icon="lucide:percent" className="text-base text-[#059669]" />
               </div>
               <div className="text-2xl sm:text-3xl font-bold text-[#059669]">
-                {loading ? '...' : kpis.gain ? `${kpis.gain >= 0 ? '+' : ''}${kpis.gain.toFixed(2)}%` : 'N/A'}
+                {loading ? '...' : kpis.gain ? formatPercentBR(kpis.gain) : 'N/A'}
               </div>
             </div>
           </div>
@@ -515,7 +519,7 @@ function RelatoriosPerformancePage() {
                       <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(trade.lots || 0).toFixed(2)}</td>
                       <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(trade.openPrice || 0).toFixed(5)}</td>
                       <td className={`py-3 px-4 text-sm text-right font-semibold ${parseFloat(trade.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#e53935]'}`}>
-                        ${parseFloat(trade.profit || 0).toFixed(2)}
+                        {formatCurrencyBR(trade.profit || 0)}
                       </td>
                     </tr>
                   ))}
