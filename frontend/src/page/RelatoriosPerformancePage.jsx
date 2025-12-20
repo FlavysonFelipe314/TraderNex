@@ -524,31 +524,178 @@ function RelatoriosPerformancePage() {
     return []
   }, [myfxbookData, performanceData])
 
-  // Exportar CSV
+  // Função para escapar valores CSV (manter compatibilidade com Excel)
+  const escapeCSV = (value) => {
+    if (value === null || value === undefined) return ''
+    const stringValue = String(value)
+    // Se contém vírgula, aspas ou quebra de linha, envolver em aspas e duplicar aspas internas
+    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+      return `"${stringValue.replace(/"/g, '""')}"`
+    }
+    return stringValue
+  }
+
+  // Função para formatar número para CSV (sem formatação de moeda)
+  const formatNumberCSV = (value) => {
+    if (value === null || value === undefined || isNaN(value)) return '0'
+    return String(parseFloat(value).toFixed(2)).replace('.', ',')
+  }
+
+  // Exportar CSV completo com todos os dados do MyFXBook
   const handleExportCSV = () => {
     if (!myfxbookData) {
       alert('Nenhum dado disponível para exportar')
       return
     }
 
-    let csvContent = 'data:text/csv;charset=utf-8,'
+    // Usar BOM UTF-8 para garantir encoding correto no Excel
+    const BOM = '\uFEFF'
+    let csvContent = BOM
     
-    // Cabeçalho
-    csvContent += 'Período,Operações,Drawdown,Lucro Líquido,Retorno\n'
-    
-    // Dados mensais
-    monthlyHistory.forEach(month => {
-      csvContent += `"${month.period}",${month.trades} trades,"${month.drawdownFormatted}","${month.profitFormatted}","${month.returnFormatted}"\n`
+    const account = myfxbookData.account || {}
+    const dateNow = new Date().toLocaleDateString('pt-BR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     })
     
-    // Criar link de download
-    const encodedUri = encodeURI(csvContent)
+    // ===== SEÇÃO 1: INFORMAÇÕES GERAIS DA CONTA =====
+    csvContent += 'RELATÓRIO DE PERFORMANCE - DADOS DO MT4\n'
+    csvContent += `Data de Geração,${dateNow}\n`
+    csvContent += `Nome da Conta,${escapeCSV(account.name || 'N/A')}\n`
+    csvContent += `ID da Conta,${escapeCSV(account.accountId || 'N/A')}\n`
+    csvContent += `Moeda,${escapeCSV(account.currency || 'USD')}\n`
+    csvContent += '\n'
+    
+    // ===== SEÇÃO 2: MÉTRICAS PRINCIPAIS =====
+    csvContent += 'MÉTRICAS PRINCIPAIS\n'
+    csvContent += 'Métrica,Valor\n'
+    csvContent += `Ganho Total (%),${formatNumberCSV(account.absGain || account.gain || 0)}\n`
+    csvContent += `Lucro Líquido (${account.currency || 'USD'}),${formatNumberCSV(account.profit || 0)}\n`
+    csvContent += `Drawdown Máximo (%),${formatNumberCSV(Math.abs(account.drawdown || 0))}\n`
+    csvContent += `Equity (${account.currency || 'USD'}),${formatNumberCSV(account.equity || 0)}\n`
+    csvContent += `Balance (${account.currency || 'USD'}),${formatNumberCSV(account.balance || 0)}\n`
+    csvContent += `Profit Factor,${formatNumberCSV(account.profitFactor || 0)}\n`
+    csvContent += `Sharpe Ratio,${formatNumberCSV(account.sharpeRatio || 0)}\n`
+    csvContent += `Sortino Ratio,${formatNumberCSV(account.sortinoRatio || 0)}\n`
+    csvContent += `Calmar Ratio,${formatNumberCSV(account.calmarRatio || 0)}\n`
+    csvContent += `Max Drawdown (${account.currency || 'USD'}),${formatNumberCSV(account.maxDrawdownValue || 0)}\n`
+    if (account.maxDrawdownDate) {
+      csvContent += `Data do Max Drawdown,${escapeCSV(account.maxDrawdownDate)}\n`
+    }
+    csvContent += `Juros (${account.currency || 'USD'}),${formatNumberCSV(account.interest || 0)}\n`
+    csvContent += `Comissão (${account.currency || 'USD'}),${formatNumberCSV(account.commission || 0)}\n`
+    csvContent += `Trades Abertos,${myfxbookData.openTrades?.length || 0}\n`
+    csvContent += `Ordens Abertas,${myfxbookData.openOrders?.length || 0}\n`
+    csvContent += `Total de Trades (últimos 50 disponíveis),${myfxbookData.history?.length || 0}\n`
+    csvContent += '\n'
+    
+    // ===== SEÇÃO 3: HISTÓRICO MENSAL =====
+    if (monthlyHistory && monthlyHistory.length > 0) {
+      csvContent += 'HISTÓRICO MENSAL\n'
+      csvContent += 'Período,Operações,Drawdown (%),Lucro Líquido,Retorno (%),Saldo Inicial,Saldo Final,Dias com Dados\n'
+      monthlyHistory.forEach(month => {
+        csvContent += `${escapeCSV(month.period)},`
+        csvContent += `${month.trades},`
+        csvContent += `${formatNumberCSV(month.drawdown)},`
+        csvContent += `${formatNumberCSV(month.profit)},`
+        // Calcular retorno percentual
+        const returnPercent = month.startBalance && month.startBalance > 0
+          ? ((month.endBalance || month.startBalance) - month.startBalance) / month.startBalance * 100
+          : 0
+        csvContent += `${formatNumberCSV(returnPercent)},`
+        csvContent += `${formatNumberCSV(month.startBalance || 0)},`
+        csvContent += `${formatNumberCSV(month.endBalance || 0)},`
+        csvContent += `${month.days || 0}\n`
+      })
+      csvContent += '\n'
+    }
+    
+    // ===== SEÇÃO 4: DADOS DIÁRIOS (Profit Diário) =====
+    if (myfxbookData.dataDaily && Array.isArray(myfxbookData.dataDaily) && myfxbookData.dataDaily.length > 0) {
+      let dataDailyArray = myfxbookData.dataDaily
+      if (dataDailyArray.length > 0 && Array.isArray(dataDailyArray[0])) {
+        dataDailyArray = dataDailyArray.flat()
+      }
+      
+      if (dataDailyArray.length > 0) {
+        csvContent += 'DADOS DIÁRIOS (Profit Diário)\n'
+        csvContent += 'Data,Profit,Balance,Equity\n'
+        dataDailyArray.forEach(day => {
+          const dateStr = day.date || day.time || ''
+          const profit = parseFloat(day.profit || 0)
+          const balance = parseFloat(day.balance || 0)
+          const equity = parseFloat(day.equity || 0)
+          
+          csvContent += `${escapeCSV(dateStr)},`
+          csvContent += `${formatNumberCSV(profit)},`
+          csvContent += `${formatNumberCSV(balance)},`
+          csvContent += `${formatNumberCSV(equity)}\n`
+        })
+        csvContent += '\n'
+      }
+    }
+    
+    // ===== SEÇÃO 5: TRADES ABERTOS =====
+    if (myfxbookData.openTrades && myfxbookData.openTrades.length > 0) {
+      csvContent += 'TRADES ABERTOS\n'
+      csvContent += 'Símbolo,Tipo,Lotes,Preço Abertura,Preço Atual,Pips,P/L\n'
+      myfxbookData.openTrades.forEach(trade => {
+        csvContent += `${escapeCSV(trade.symbol || 'N/A')},`
+        csvContent += `${escapeCSV(trade.side === 'buy' ? 'Compra' : 'Venda')},`
+        csvContent += `${formatNumberCSV(trade.lots || 0)},`
+        csvContent += `${formatNumberCSV(trade.openPrice || 0)},`
+        csvContent += `${formatNumberCSV(trade.currentPrice || 0)},`
+        csvContent += `${formatNumberCSV(trade.pips || 0)},`
+        csvContent += `${formatNumberCSV(trade.profit || 0)}\n`
+      })
+      csvContent += '\n'
+    }
+    
+    // ===== SEÇÃO 6: HISTÓRICO DE TRADES (últimos 50) =====
+    if (myfxbookData.history && myfxbookData.history.length > 0) {
+      csvContent += 'HISTÓRICO DE TRADES (Últimos 50)\n'
+      csvContent += 'Data Abertura,Data Fechamento,Símbolo,Tipo,Lotes,Preço Abertura,Preço Fechamento,Pips,P/L\n'
+      myfxbookData.history.forEach(trade => {
+        const openTime = trade.openTime || trade.time || ''
+        const closeTime = trade.closeTime || trade.time || ''
+        csvContent += `${escapeCSV(openTime)},`
+        csvContent += `${escapeCSV(closeTime)},`
+        csvContent += `${escapeCSV(trade.symbol || 'N/A')},`
+        csvContent += `${escapeCSV(trade.side === 'buy' ? 'Compra' : 'Venda')},`
+        csvContent += `${formatNumberCSV(trade.lots || 0)},`
+        csvContent += `${formatNumberCSV(trade.openPrice || 0)},`
+        csvContent += `${formatNumberCSV(trade.closePrice || 0)},`
+        csvContent += `${formatNumberCSV(trade.pips || 0)},`
+        csvContent += `${formatNumberCSV(trade.profit || 0)}\n`
+      })
+      csvContent += '\n'
+    }
+    
+    // ===== SEÇÃO 7: ORDENS ABERTAS =====
+    if (myfxbookData.openOrders && myfxbookData.openOrders.length > 0) {
+      csvContent += 'ORDENS ABERTAS\n'
+      csvContent += 'Símbolo,Tipo,Lotes,Preço\n'
+      myfxbookData.openOrders.forEach(order => {
+        csvContent += `${escapeCSV(order.symbol || 'N/A')},`
+        csvContent += `${escapeCSV(order.type || 'N/A')},`
+        csvContent += `${formatNumberCSV(order.lots || 0)},`
+        csvContent += `${formatNumberCSV(order.price || 0)}\n`
+      })
+    }
+    
+    // Criar blob com UTF-8 encoding
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `relatorio-performance-${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `relatorio-performance-mt4-${new Date().toISOString().split('T')[0]}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   const periods = [
@@ -888,7 +1035,7 @@ function RelatoriosPerformancePage() {
               <div>
                 <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em] mb-1">Relatório de Profit Diário</h3>
                 <p className="text-sm text-[#6b7280]">
-                  Dados obtidos diretamente da API do MyFXBook - {profitStats.profitByDay.length} dias registrados
+                  Dados obtidos diretamente do MT4 - {profitStats.profitByDay.length} dias registrados
                 </p>
               </div>
               <span className="text-xs font-semibold text-[#00afaa] bg-[rgba(0,175,170,0.08)] px-3 py-1 rounded-full">
