@@ -16,9 +16,9 @@ function DashboardLayout({ children, title, subtitle, customHeader, hideSidebar 
   }, [])
 
   return (
-    <div className="flex h-screen bg-[#F8F9FB] text-[#0F172A] font-sans text-sm leading-normal antialiased">
+    <div className="flex h-screen bg-[#F8F9FB] text-[#0F172A] font-sans text-sm leading-normal antialiased overflow-x-hidden">
       {!hideSidebar && <Sidebar />}
-      <div className={`flex-1 flex flex-col overflow-y-auto bg-[#F8F9FB] relative transition-all duration-300 ${showSidebar ? 'lg:ml-[240px]' : 'lg:ml-0'}`}>
+      <div className={`flex-1 flex flex-col overflow-y-auto overflow-x-hidden bg-[#F8F9FB] relative transition-all duration-300 ${showSidebar ? 'lg:ml-[240px]' : 'lg:ml-0'}`}>
         {/* Sticky Header */}
         {(title || subtitle || customHeader) && (
           <header className="sticky top-0 z-30 bg-[rgba(246,247,249,0.95)] backdrop-blur-sm py-6 px-4 lg:py-10 lg:px-10 md:py-6 md:px-6 flex justify-between items-center lg:items-end border-b border-[rgba(0,0,0,0.03)]">

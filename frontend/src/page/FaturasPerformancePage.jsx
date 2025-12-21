@@ -160,7 +160,7 @@ function FaturasPerformancePage() {
 
   return (
     <DashboardLayout>
-      <div className="px-4 sm:px-6 lg:px-16 py-6 sm:py-8 lg:py-12 pb-24 sm:pb-24 lg:pb-12">
+      <div className="px-4 sm:px-6 lg:px-16 py-6 sm:py-8 lg:py-12 pb-24 sm:pb-24 lg:pb-12 overflow-x-hidden">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 sm:mb-10 lg:mb-12 gap-4">
           <div>
@@ -231,42 +231,45 @@ function FaturasPerformancePage() {
         </div>
 
         {/* Table Section */}
-        <div className="bg-white rounded-2xl p-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.03)]">
+        <div className="bg-white rounded-2xl p-4 sm:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.03)] overflow-hidden">
           {/* Filter Toolbar */}
-          <div className="flex mb-7">
-            <div className="flex items-center gap-4">
-              <div className="flex bg-[#f3f4f6] p-1 rounded-xl">
-                <button
-                  className={`px-4 py-2 text-[13px] font-semibold rounded-[10px] cursor-pointer transition-all ${
-                    statusFilter === 'todas'
-                      ? 'bg-white text-[#111827] shadow-[0_2px_4px_rgba(0,0,0,0.05)]'
-                      : 'text-[#6b7280] hover:text-[#111827]'
-                  }`}
-                  onClick={() => setStatusFilter('todas')}
-                >
-                  Todas
-                </button>
-                <button
-                  className={`px-4 py-2 text-[13px] font-semibold rounded-[10px] cursor-pointer transition-all ${
-                    statusFilter === 'pendentes'
-                      ? 'bg-white text-[#111827] shadow-[0_2px_4px_rgba(0,0,0,0.05)]'
-                      : 'text-[#6b7280] hover:text-[#111827]'
-                  }`}
-                  onClick={() => setStatusFilter('pendentes')}
-                >
-                  Pendentes
-                </button>
-                <button
-                  className={`px-4 py-2 text-[13px] font-semibold rounded-[10px] cursor-pointer transition-all ${
-                    statusFilter === 'pagas'
-                      ? 'bg-white text-[#111827] shadow-[0_2px_4px_rgba(0,0,0,0.05)]'
-                      : 'text-[#6b7280] hover:text-[#111827]'
-                  }`}
-                  onClick={() => setStatusFilter('pagas')}
-                >
-                  Pagas
-                </button>
-              </div>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 mb-6 sm:mb-7">
+            {/* Status Filters */}
+            <div className="flex bg-[#f3f4f6] p-1 rounded-xl flex-shrink-0">
+              <button
+                className={`px-3 sm:px-4 py-2 text-xs sm:text-[13px] font-semibold rounded-[10px] cursor-pointer transition-all whitespace-nowrap ${
+                  statusFilter === 'todas'
+                    ? 'bg-white text-[#111827] shadow-[0_2px_4px_rgba(0,0,0,0.05)]'
+                    : 'text-[#6b7280] hover:text-[#111827]'
+                }`}
+                onClick={() => setStatusFilter('todas')}
+              >
+                Todas
+              </button>
+              <button
+                className={`px-3 sm:px-4 py-2 text-xs sm:text-[13px] font-semibold rounded-[10px] cursor-pointer transition-all whitespace-nowrap ${
+                  statusFilter === 'pendentes'
+                    ? 'bg-white text-[#111827] shadow-[0_2px_4px_rgba(0,0,0,0.05)]'
+                    : 'text-[#6b7280] hover:text-[#111827]'
+                }`}
+                onClick={() => setStatusFilter('pendentes')}
+              >
+                Pendentes
+              </button>
+              <button
+                className={`px-3 sm:px-4 py-2 text-xs sm:text-[13px] font-semibold rounded-[10px] cursor-pointer transition-all whitespace-nowrap ${
+                  statusFilter === 'pagas'
+                    ? 'bg-white text-[#111827] shadow-[0_2px_4px_rgba(0,0,0,0.05)]'
+                    : 'text-[#6b7280] hover:text-[#111827]'
+                }`}
+                onClick={() => setStatusFilter('pagas')}
+              >
+                Pagas
+              </button>
+            </div>
+            
+            {/* Period Filters - Desktop View */}
+            <div className="hidden sm:flex items-center gap-4">
               <div className="w-px h-6 bg-[#ebebeb]" />
               <div className="flex bg-[#f3f4f6] p-1 rounded-xl">
                 <button
@@ -291,6 +294,42 @@ function FaturasPerformancePage() {
                 </button>
                 <button
                   className={`px-4 py-2 text-[13px] font-semibold rounded-[10px] cursor-pointer transition-all ${
+                    periodFilter === 'todo-ano'
+                      ? 'bg-white text-[#111827] shadow-[0_2px_4px_rgba(0,0,0,0.05)]'
+                      : 'text-[#6b7280] hover:text-[#111827]'
+                  }`}
+                  onClick={() => setPeriodFilter('todo-ano')}
+                >
+                  Todo o ano
+                </button>
+              </div>
+            </div>
+            
+            {/* Period Filters - Mobile View */}
+            <div className="sm:hidden">
+              <div className="flex bg-[#f3f4f6] p-1 rounded-xl overflow-x-auto scrollbar-hide">
+                <button
+                  className={`px-3 py-2 text-xs font-semibold rounded-[10px] cursor-pointer transition-all whitespace-nowrap flex-shrink-0 ${
+                    periodFilter === 'ultimas-4-semanas'
+                      ? 'bg-white text-[#111827] shadow-[0_2px_4px_rgba(0,0,0,0.05)]'
+                      : 'text-[#6b7280] hover:text-[#111827]'
+                  }`}
+                  onClick={() => setPeriodFilter('ultimas-4-semanas')}
+                >
+                  4 semanas
+                </button>
+                <button
+                  className={`px-3 py-2 text-xs font-semibold rounded-[10px] cursor-pointer transition-all whitespace-nowrap flex-shrink-0 ${
+                    periodFilter === 'ultimas-12-semanas'
+                      ? 'bg-white text-[#111827] shadow-[0_2px_4px_rgba(0,0,0,0.05)]'
+                      : 'text-[#6b7280] hover:text-[#111827]'
+                  }`}
+                  onClick={() => setPeriodFilter('ultimas-12-semanas')}
+                >
+                  12 semanas
+                </button>
+                <button
+                  className={`px-3 py-2 text-xs font-semibold rounded-[10px] cursor-pointer transition-all whitespace-nowrap flex-shrink-0 ${
                     periodFilter === 'todo-ano'
                       ? 'bg-white text-[#111827] shadow-[0_2px_4px_rgba(0,0,0,0.05)]'
                       : 'text-[#6b7280] hover:text-[#111827]'
