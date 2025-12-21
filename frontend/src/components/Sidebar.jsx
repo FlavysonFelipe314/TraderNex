@@ -249,29 +249,29 @@ function Sidebar() {
               })}
 
               {/* Seção Sua Conta - todos os itens para não-admins */}
-              <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
-                Sua Conta
-              </div>
+          <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
+            Sua Conta
+          </div>
               {accountNavItems.map((item) => {
-                const active = isActive(item.path)
-                return (
-                  <div
-                    key={item.id}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
-                      active
+              const active = isActive(item.path)
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                    active
                         ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
                         : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white hover:pl-4'
-                    }`}
-                    onClick={() => handleNavigation(item.path)}
-                    data-media-type="banani-button"
-                  >
-                    <div className="w-[18px] h-[18px] flex items-center justify-center">
-                      <Icon icon={item.icon} className="text-lg" />
-                    </div>
-                    <span className="text-sm font-medium">{item.label}</span>
+                  }`}
+                  onClick={() => handleNavigation(item.path)}
+                  data-media-type="banani-button"
+                >
+                  <div className="w-[18px] h-[18px] flex items-center justify-center">
+                    <Icon icon={item.icon} className="text-lg" />
                   </div>
-                )
-              })}
+                  <span className="text-sm font-medium">{item.label}</span>
+                </div>
+              )
+            })}
             </>
           )}
         </nav>
@@ -317,7 +317,7 @@ function Sidebar() {
       </aside>
 
       {/* Mobile Drawer Sidebar - Drawer que desliza da esquerda */}
-      <aside className={`lg:hidden sidebar-custom-scroll w-[280px] max-w-[85vw] bg-gradient-to-b from-[#121316] to-[#0E0E10] text-[#9ca3af] py-6 px-4 pb-20 border-r border-[rgba(255,255,255,0.04)] flex-shrink-0 fixed left-0 top-0 h-screen z-[60] flex flex-col overflow-y-auto transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`lg:hidden sidebar-custom-scroll w-[280px] max-w-[85vw] bg-gradient-to-b from-[#121316] to-[#0E0E10] text-[#9ca3af] py-6 px-4 border-r border-[rgba(255,255,255,0.04)] flex-shrink-0 fixed left-0 top-0 z-[60] flex flex-col overflow-y-auto transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`} style={{ height: '100vh', paddingBottom: '88px' }}>
         {/* Mobile Close Button */}
         <button
           onClick={toggleSidebar}
@@ -385,25 +385,25 @@ function Sidebar() {
               {accountNavItems
                 .filter(item => item.id === 'profile')
                 .map((item) => {
-                  const active = isActive(item.path)
-                  return (
-                    <div
-                      key={item.id}
-                      className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                        active
-                          ? 'bg-gradient-to-r from-[rgba(255,193,7,0.1)] to-[rgba(255,193,7,0.02)] text-[#ffc107] border border-[rgba(255,193,7,0.15)]'
-                          : 'text-[#ffc107] border border-transparent hover:bg-[rgba(255,193,7,0.05)] hover:text-[#ffd54f]'
-                      }`}
-                      onClick={() => handleNavigation(item.path)}
-                      data-media-type="banani-button"
-                    >
-                      <div className="w-[18px] h-[18px] flex items-center justify-center">
-                        <Icon icon={item.icon} className="text-lg" />
-                      </div>
-                      <span className="text-sm font-medium">{item.label}</span>
+                const active = isActive(item.path)
+                return (
+                  <div
+                    key={item.id}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                      active
+                        ? 'bg-gradient-to-r from-[rgba(255,193,7,0.1)] to-[rgba(255,193,7,0.02)] text-[#ffc107] border border-[rgba(255,193,7,0.15)]'
+                        : 'text-[#ffc107] border border-transparent hover:bg-[rgba(255,193,7,0.05)] hover:text-[#ffd54f]'
+                    }`}
+                    onClick={() => handleNavigation(item.path)}
+                    data-media-type="banani-button"
+                  >
+                    <div className="w-[18px] h-[18px] flex items-center justify-center">
+                      <Icon icon={item.icon} className="text-lg" />
                     </div>
-                  )
-                })}
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </div>
+                )
+              })}
             </>
           )}
 
@@ -436,35 +436,35 @@ function Sidebar() {
               })}
 
               {/* Seção Sua Conta - todos os itens para não-admins */}
-              <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
-                Sua Conta
-              </div>
+          <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
+            Sua Conta
+          </div>
               {accountNavItems.map((item) => {
-                const active = isActive(item.path)
-                return (
-                  <div
-                    key={item.id}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                      active
+              const active = isActive(item.path)
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                    active
                         ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
                         : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white'
-                    }`}
-                    onClick={() => handleNavigation(item.path)}
-                    data-media-type="banani-button"
-                  >
-                    <div className="w-[18px] h-[18px] flex items-center justify-center">
-                      <Icon icon={item.icon} className="text-lg" />
-                    </div>
-                    <span className="text-sm font-medium">{item.label}</span>
+                  }`}
+                  onClick={() => handleNavigation(item.path)}
+                  data-media-type="banani-button"
+                >
+                  <div className="w-[18px] h-[18px] flex items-center justify-center">
+                    <Icon icon={item.icon} className="text-lg" />
                   </div>
-                )
-              })}
+                  <span className="text-sm font-medium">{item.label}</span>
+                </div>
+              )
+            })}
             </>
           )}
         </nav>
 
         {/* Footer - User Card */}
-        <div className="mt-auto">
+        <div className="mt-auto mb-4">
           <div 
             className="flex items-center gap-2 p-2.5 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] rounded-xl transition-all duration-300 hover:bg-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.1)]"
           >
@@ -493,11 +493,11 @@ function Sidebar() {
                   logout()
                 }
               }}
-              className="flex items-center justify-center w-7 h-7 rounded-lg text-[rgba(255,255,255,0.5)] hover:text-white hover:bg-[rgba(239,68,68,0.1)] transition-all duration-200 flex-shrink-0 ml-1"
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-[rgba(255,255,255,0.5)] hover:text-white hover:bg-[rgba(239,68,68,0.1)] transition-all duration-200 flex-shrink-0 ml-1"
               title="Sair"
               data-media-type="banani-button"
             >
-              <Icon icon="lucide:log-out" className="text-base" />
+              <Icon icon="lucide:log-out" className="text-lg" />
             </button>
           </div>
         </div>

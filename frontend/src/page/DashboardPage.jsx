@@ -247,7 +247,7 @@ function DashboardPage() {
                 </div>
               </div>
             </div>
-          </div>
+                </div>
         ) : loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-sm text-[#64748B]">Carregando dados...</div>

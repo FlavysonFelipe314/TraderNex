@@ -76,9 +76,9 @@ api.interceptors.response.use(
         // Verificar se já estamos na página de login para evitar loop
         if (!window.location.pathname.includes('/login')) {
           console.warn('[API] Token inválido/expirado, deslogando usuário')
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
-          window.location.href = '/login'
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
         }
       } else {
         // Não é erro de token, apenas logar e rejeitar sem deslogar

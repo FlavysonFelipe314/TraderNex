@@ -336,31 +336,31 @@ function ReferralProgramPage() {
                 </tr>
               ) : (
                 displayReferrals.map((ref, index) => (
-                  <tr key={index} className="hover:bg-[#f9fafb] transition-colors">
-                    <td className="px-6 py-4 text-sm font-semibold text-[#111827] border-b border-[#f3f4f6]">{ref.name}</td>
-                    <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.date}</td>
-                    <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.plan}</td>
-                    <td className="px-6 py-4 text-sm border-b border-[#f3f4f6]">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        ref.status === 'active' ? 'bg-[#dcfce7] text-[#166534]' :
-                        ref.status === 'pending' ? 'bg-[#fef3c7] text-[#b45309]' :
-                        'bg-[#f3f4f6] text-[#6b7280]'
-                      }`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                        {ref.status === 'active' ? 'Conectado' : ref.status === 'pending' ? 'Pendente' : 'Inativo'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.profit}</td>
-                    <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.fee}</td>
-                    <td className={`px-6 py-4 text-sm border-b border-[#f3f4f6] ${ref.commission.includes('+') ? 'text-[#059669] font-bold' : 'text-[#6b7280]'}`}>
-                      {ref.commission}
-                    </td>
-                    <td className="px-6 py-4 border-b border-[#f3f4f6]">
-                      <button className="w-8 h-8 rounded-lg border border-[#e5e7eb] bg-white text-[#6b7280] flex items-center justify-center cursor-pointer transition-all hover:border-[#00afaa] hover:text-[#00afaa]">
-                        <Icon icon="lucide:more-horizontal" className="text-sm" />
-                      </button>
-                    </td>
-                  </tr>
+                <tr key={index} className="hover:bg-[#f9fafb] transition-colors">
+                  <td className="px-6 py-4 text-sm font-semibold text-[#111827] border-b border-[#f3f4f6]">{ref.name}</td>
+                  <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.date}</td>
+                  <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.plan}</td>
+                  <td className="px-6 py-4 text-sm border-b border-[#f3f4f6]">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      ref.status === 'active' ? 'bg-[#dcfce7] text-[#166534]' :
+                      ref.status === 'pending' ? 'bg-[#fef3c7] text-[#b45309]' :
+                      'bg-[#f3f4f6] text-[#6b7280]'
+                    }`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                      {ref.status === 'active' ? 'Conectado' : ref.status === 'pending' ? 'Pendente' : 'Inativo'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.profit}</td>
+                  <td className="px-6 py-4 text-sm text-[#111827] border-b border-[#f3f4f6]">{ref.fee}</td>
+                  <td className={`px-6 py-4 text-sm border-b border-[#f3f4f6] ${ref.commission.includes('+') ? 'text-[#059669] font-bold' : 'text-[#6b7280]'}`}>
+                    {ref.commission}
+                  </td>
+                  <td className="px-6 py-4 border-b border-[#f3f4f6]">
+                    <button className="w-8 h-8 rounded-lg border border-[#e5e7eb] bg-white text-[#6b7280] flex items-center justify-center cursor-pointer transition-all hover:border-[#00afaa] hover:text-[#00afaa]">
+                      <Icon icon="lucide:more-horizontal" className="text-sm" />
+                    </button>
+                  </td>
+                </tr>
                 ))
               )}
             </tbody>
