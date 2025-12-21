@@ -160,7 +160,7 @@ function FaturasPerformancePage() {
 
   return (
     <DashboardLayout>
-      <div className="px-4 sm:px-6 lg:px-16 py-6 sm:py-8 lg:py-12">
+      <div className="px-4 sm:px-6 lg:px-16 py-6 sm:py-8 lg:py-12 pb-24 sm:pb-24 lg:pb-12">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 sm:mb-10 lg:mb-12 gap-4">
           <div>

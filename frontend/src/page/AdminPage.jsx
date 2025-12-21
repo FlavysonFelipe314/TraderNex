@@ -531,6 +531,34 @@ function AdminPage() {
                       {user.mt4_accounts && user.mt4_accounts.some(acc => acc.myfxbook_integration_login) ? 'Configurado' : 'Não configurado'}
                     </span>
                   </div>
+                  {user.mt4_accounts && user.mt4_accounts.length > 0 && (
+                    <div className="flex items-center justify-between text-sm pt-2 border-t border-[#e5e7eb]">
+                      <span className="text-[#6b7280]">Robô:</span>
+                      {(() => {
+                        const account = user.mt4_accounts[0]
+                        const isActive = account.status === 'active'
+                        const isAutomationEnabled = account.automation_enabled !== false
+                        const isOperating = isActive && isAutomationEnabled
+                        
+                        return (
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 ${
+                            isOperating
+                              ? 'bg-[#dcfce7] text-[#166534]'
+                              : isActive && !isAutomationEnabled
+                              ? 'bg-[#fef3c7] text-[#b45309]'
+                              : 'bg-[#fee2e2] text-[#991b1b]'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              isOperating ? 'bg-[#22c55e] animate-pulse' : 
+                              isActive && !isAutomationEnabled ? 'bg-[#f59e0b]' : 
+                              'bg-[#ef4444]'
+                            }`} />
+                            {isOperating ? 'Ativo' : isActive && !isAutomationEnabled ? 'Desativado' : 'Indisponível'}
+                          </span>
+                        )
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 {/* Botões de Ação */}
@@ -755,20 +783,65 @@ function AdminPage() {
                   <label className="text-sm font-medium text-[#111827] mb-2 block">
                     Conta: {selectedUser.mt4_accounts[0].account_number}
                   </label>
+                  {selectedUser.mt4_accounts[0].status && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-[#6b7280]">Status da Conta:</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        selectedUser.mt4_accounts[0].status === 'active' 
+                          ? 'bg-[#dcfce7] text-[#166534]' 
+                          : selectedUser.mt4_accounts[0].status === 'inactive'
+                          ? 'bg-[#fef3c7] text-[#b45309]'
+                          : 'bg-[#fee2e2] text-[#991b1b]'
+                      }`}>
+                        {selectedUser.mt4_accounts[0].status === 'active' ? 'Ativa' : 
+                         selectedUser.mt4_accounts[0].status === 'inactive' ? 'Inativa' : 'Suspensa'}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-[#111827]">
+                      Trading Automatizado (Robô)
+                    </label>
+                    {selectedUser.mt4_accounts[0].status === 'active' && editingAutomationEnabled ? (
+                      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-[#dcfce7] text-[#166534] flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />
+                        Operando
+                      </span>
+                    ) : selectedUser.mt4_accounts[0].status === 'active' && !editingAutomationEnabled ? (
+                      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-[#fef3c7] text-[#b45309] flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]" />
+                        Desativado
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-[#fee2e2] text-[#991b1b] flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#ef4444]" />
+                        Conta Inativa
+                      </span>
+                    )}
+                  </div>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={editingAutomationEnabled}
                       onChange={(e) => setEditingAutomationEnabled(e.target.checked)}
                       className="w-5 h-5 text-[#00afaa] rounded focus:ring-[#00afaa]"
-                      disabled={saving}
+                      disabled={saving || selectedUser.mt4_accounts[0].status !== 'active'}
                     />
-                    <span className="text-sm font-medium text-[#111827]">
-                      Trading Automatizado
+                    <span className={`text-sm font-medium ${
+                      selectedUser.mt4_accounts[0].status !== 'active' ? 'text-[#9ca3af]' : 'text-[#111827]'
+                    }`}>
+                      {selectedUser.mt4_accounts[0].status === 'active' 
+                        ? 'Ativar/Desativar Robô' 
+                        : 'Robô indisponível (Conta não está ativa)'}
                     </span>
                   </label>
+                  {selectedUser.mt4_accounts[0].status !== 'active' && (
+                    <p className="text-xs text-[#dc2626] mt-1 ml-8">
+                      A conta precisa estar ativa para operar o robô
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-[#111827] mb-2 block">
