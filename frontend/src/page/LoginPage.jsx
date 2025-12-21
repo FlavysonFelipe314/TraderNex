@@ -75,14 +75,11 @@ function LoginPage() {
 
         <div className="relative z-10 max-w-[520px] pt-10">
           <div className="flex items-center gap-3 mb-[60px]">
-            <div 
-              className="w-10 h-10 rounded-[10px] flex items-center justify-center text-[#002914] font-extrabold text-xl shadow-[0_0_20px_rgba(0,255,136,0.2)]"
-              style={{
-                background: 'linear-gradient(135deg, #00ff88 0%, #00afaa 100%)'
-              }}
-            >
-              TN
-            </div>
+            <img 
+              src="/logo.png"
+              alt="TraderNex"
+              className="h-10 w-auto"
+            />
             <div className="text-[22px] font-bold text-white tracking-[-0.01em]">
               TraderNex
             </div>

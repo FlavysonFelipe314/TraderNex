@@ -46,9 +46,9 @@ function Sidebar() {
 
   const navItems = [
     { id: 'overview', label: 'Visão Geral', icon: 'lucide:layout-dashboard', path: '/dashboard' },
-    { id: 'invest', label: 'Investir (Planos)', icon: 'lucide:trending-up', path: '/investir-planos' },
-    { id: 'forex', label: 'Conta Forex (MT4)', icon: 'lucide:layers', path: '/conta-forex-mt4' },
-    { id: 'crypto', label: 'Cripto (Em breve)', icon: 'lucide:bitcoin', path: '/cripto-em-breve' },
+    { id: 'invest', label: 'Planos', icon: 'lucide:trending-up', path: '/investir-planos' },
+    { id: 'forex', label: 'Conta Forex', icon: 'lucide:layers', path: '/conta-forex-mt4' },
+    { id: 'crypto', label: 'Cripto', icon: 'lucide:bitcoin', path: '/cripto-em-breve' },
     { id: 'reports', label: 'Relatórios', icon: 'lucide:file-bar-chart', path: '/relatorios-performance' },
     { id: 'invoices', label: 'Faturas', icon: 'lucide:receipt', path: '/faturas-performance' },
   ]
@@ -144,15 +144,12 @@ function Sidebar() {
       <aside className={`hidden lg:flex sidebar-custom-scroll w-[240px] bg-gradient-to-b from-[#121316] to-[#0E0E10] text-[#9ca3af] py-8 px-5 border-r border-[rgba(255,255,255,0.04)] flex-shrink-0 fixed left-0 top-0 h-screen z-50 flex-col overflow-y-auto transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-12 pl-1">
-        <div 
-          className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[#002914] font-extrabold text-lg shadow-[0_0_20px_rgba(0,255,136,0.15)] flex-shrink-0 cursor-pointer"
-            onClick={() => handleNavigation('/dashboard')}
-          style={{
-            background: 'linear-gradient(135deg, #00ff88 0%, #00afaa 100%)'
-          }}
-        >
-          TN
-        </div>
+        <img 
+          src="/logo.png"
+          alt="TraderNex"
+          className="h-9 w-auto flex-shrink-0 cursor-pointer"
+          onClick={() => handleNavigation('/dashboard')}
+        />
         <div className="flex flex-col gap-0.5 flex-1">
           <div className="text-base font-bold text-white leading-[1.1]">
             TraderNex
@@ -329,15 +326,12 @@ function Sidebar() {
         
         {/* Header */}
         <div className="flex items-center gap-3 mb-8 pl-1 mt-2">
-          <div 
-            className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[#002914] font-extrabold text-lg shadow-[0_0_20px_rgba(0,255,136,0.15)] flex-shrink-0 cursor-pointer"
+          <img 
+            src="/logo.png"
+            alt="TraderNex"
+            className="h-9 w-auto flex-shrink-0 cursor-pointer"
             onClick={() => handleNavigation('/dashboard')}
-            style={{
-              background: 'linear-gradient(135deg, #00ff88 0%, #00afaa 100%)'
-            }}
-          >
-            TN
-          </div>
+          />
           <div className="flex flex-col gap-0.5 flex-1">
             <div className="text-base font-bold text-white leading-[1.1]">
               TraderNex

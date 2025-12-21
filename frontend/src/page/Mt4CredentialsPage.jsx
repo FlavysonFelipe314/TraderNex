@@ -93,6 +93,7 @@ const AVAILABLE_BROKERS = Object.keys(BROKERS_CONFIG)
 function Mt4CredentialsPage() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
+    platform: 'MT4',
     login: '',
     password: '',
     server: '',
@@ -138,6 +139,7 @@ function Mt4CredentialsPage() {
           const server = account.server || ''
           
           setFormData({
+            platform: 'MT4',
             login: account.account_number || '',
             password: '', // Senha não é retornada por segurança
             server: server,
@@ -231,6 +233,27 @@ function Mt4CredentialsPage() {
             )}
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-semibold text-[#374151]">Plataforma</label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af] z-10">
+                    <Icon icon="lucide:monitor" />
+                  </div>
+                  <select
+                    name="platform"
+                    value={formData.platform}
+                    onChange={handleChange}
+                    required
+                    className="w-full h-11 pl-10 pr-4 bg-[#f9fafb] border border-[#e5e7eb] rounded-xl text-sm outline-none focus:border-[#00afaa] focus:ring-2 focus:ring-[#00afaa]/10 transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="MT4">MT4</option>
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] pointer-events-none">
+                    <Icon icon="lucide:chevron-down" />
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-semibold text-[#374151]">Login (Número da Conta)</label>

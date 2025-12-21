@@ -10,6 +10,7 @@
     "init-db": "node src/config/createDatabase.js && node src/config/initDB.js",
     "seed": "node src/config/seed.js",
     "migrate": "node src/config/runMigration.js",
+    "migrate:all": "node src/config/runAllMigrations.js",
     "migrate:selected-plan": "node src/config/runMigrationSelectedPlanId.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
