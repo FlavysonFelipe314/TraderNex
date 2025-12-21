@@ -317,7 +317,7 @@ function Sidebar() {
       </aside>
 
       {/* Mobile Drawer Sidebar - Drawer que desliza da esquerda */}
-      <aside className={`lg:hidden sidebar-custom-scroll w-[280px] max-w-[85vw] bg-gradient-to-b from-[#121316] to-[#0E0E10] text-[#9ca3af] py-6 px-4 border-r border-[rgba(255,255,255,0.04)] flex-shrink-0 fixed left-0 top-0 h-screen z-50 flex flex-col overflow-y-auto transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`lg:hidden sidebar-custom-scroll w-[280px] max-w-[85vw] bg-gradient-to-b from-[#121316] to-[#0E0E10] text-[#9ca3af] py-6 px-4 pb-20 border-r border-[rgba(255,255,255,0.04)] flex-shrink-0 fixed left-0 top-0 h-screen z-[60] flex flex-col overflow-y-auto transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Mobile Close Button */}
         <button
           onClick={toggleSidebar}

@@ -1231,8 +1231,8 @@ function RelatoriosPerformancePage() {
               Período
             </div>
             <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center">
-              <Icon icon="lucide:bar-chart-2" className="text-sm mr-1.5" />
-              Operações
+              <Icon icon="lucide:calendar-days" className="text-sm mr-1.5" />
+              Dias com Dados
             </div>
             <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center">
               <Icon icon="lucide:trending-down" className="text-sm mr-1.5" />
@@ -1263,7 +1263,7 @@ function RelatoriosPerformancePage() {
                 } ${index === monthlyHistory.length - 1 ? 'border-b-0' : ''}`}
               >
                 <div className="text-sm font-semibold text-[#111827]">{row.period}</div>
-                <div className="text-sm text-[#6b7280]">{row.trades} trades</div>
+                <div className="text-sm text-[#6b7280]">{row.days || 0} dias</div>
                 <div className={`text-sm ${row.isWarning ? 'text-[#f59e0b] font-semibold' : 'text-[#6b7280]'}`}>
                   {row.drawdownFormatted}
                 </div>
