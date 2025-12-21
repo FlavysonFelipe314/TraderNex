@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon --legacy-watch --polling-interval 1000 src/server.js",
-    "init-db": "node src/config/initDB.js",
+    "create-db": "node src/config/createDatabase.js",
+    "init-db": "node src/config/createDatabase.js && node src/config/initDB.js",
     "seed": "node src/config/seed.js",
     "migrate": "node src/config/runMigration.js",
     "migrate:selected-plan": "node src/config/runMigrationSelectedPlanId.js",

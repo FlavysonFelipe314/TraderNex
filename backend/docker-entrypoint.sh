@@ -1,10 +1,10 @@
 #!/bin/sh
 set -e
 
-echo "🔄 Aguardando banco de dados estar pronto..."
+echo "🔄 Aguardando PostgreSQL estar pronto..."
 
-# Função para verificar se o banco está pronto usando Node.js
-wait_for_db() {
+# Função para verificar se o PostgreSQL está pronto (conectando ao banco padrão 'postgres')
+wait_for_postgres() {
   node -e "
     const { Pool } = require('pg');
     const pool = new Pool({
@@ -12,22 +12,20 @@ wait_for_db() {
       port: parseInt(process.env.DB_PORT, 10),
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
+      database: 'postgres',  // Conecta ao banco padrão primeiro
     });
     
     async function check() {
       try {
         await pool.query('SELECT 1');
-        console.log('✅ Banco de dados está pronto!');
+        console.log('✅ PostgreSQL está pronto!');
         process.exit(0);
       } catch (err) {
-        // Mostra erro de autenticação claramente
         if (err.message && err.message.includes('password authentication failed')) {
           console.error('❌ ERRO DE AUTENTICAÇÃO: Senha incorreta para o usuário', process.env.DB_USER);
           console.error('   Verifique se DB_PASSWORD corresponde à senha do banco de dados');
-          console.error('   Se o banco foi criado com outra senha, delete o volume ou ajuste a senha');
         } else {
-          console.log('⏳ Banco de dados não está pronto ainda. Aguardando...');
+          console.log('⏳ PostgreSQL não está pronto ainda. Aguardando...');
         }
         process.exit(1);
       } finally {
@@ -39,11 +37,11 @@ wait_for_db() {
   return 0
 }
 
-# Aguarda o banco de dados estar disponível (máximo 60 tentativas = 2 minutos)
+# Aguarda o PostgreSQL estar disponível (máximo 60 tentativas = 2 minutos)
 MAX_ATTEMPTS=60
 ATTEMPT=0
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-  if wait_for_db; then
+  if wait_for_postgres; then
     break
   fi
   ATTEMPT=$((ATTEMPT + 1))
@@ -51,36 +49,95 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
 done
 
 if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-  echo "❌ Timeout aguardando banco de dados após $MAX_ATTEMPTS tentativas"
+  echo "❌ Timeout aguardando PostgreSQL após $MAX_ATTEMPTS tentativas"
   echo "   Verifique:"
   echo "   1. Se o container do banco está rodando"
-  echo "   2. Se DB_USER, DB_PASSWORD e DB_NAME estão corretos"
-  echo "   3. Se a senha corresponde à senha usada quando o banco foi criado"
+  echo "   2. Se DB_USER e DB_PASSWORD estão corretos"
+  exit 1
+fi
+
+# Função para criar o banco de dados se não existir
+echo "🔍 Verificando se o banco de dados '${DB_NAME:-tradernex}' existe..."
+create_database() {
+  node -e "
+    const { Pool } = require('pg');
+    const pool = new Pool({
+      host: process.env.DB_HOST,
+      port: parseInt(process.env.DB_PORT, 10),
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: 'postgres',  // Conecta ao banco padrão para criar o banco
+    });
+    
+    async function create() {
+      try {
+        const dbName = process.env.DB_NAME || 'tradernex';
+        // Verifica se o banco existe
+        const result = await pool.query(
+          'SELECT 1 FROM pg_database WHERE datname = \$1',
+          [dbName]
+        );
+        
+        if (result.rows.length === 0) {
+          console.log('📦 Criando banco de dados \"' + dbName + '\"...');
+          await pool.query('CREATE DATABASE \"' + dbName + '\"');
+          console.log('✅ Banco de dados criado com sucesso!');
+        } else {
+          console.log('✅ Banco de dados já existe');
+        }
+        process.exit(0);
+      } catch (err) {
+        console.error('❌ Erro ao verificar/criar banco de dados:', err.message);
+        process.exit(1);
+      } finally {
+        await pool.end();
+      }
+    }
+    create();
+  "
+}
+
+if create_database; then
+  echo "✅ Banco de dados '${DB_NAME:-tradernex}' está disponível"
+else
+  echo "❌ Erro ao criar banco de dados"
   exit 1
 fi
 
 # Verifica se o banco precisa ser inicializado
 echo "🔍 Verificando se o banco de dados precisa ser inicializado..."
 
-TABLE_EXISTS=$(node -e "
+node -e "
 const { Pool } = require('pg');
 const pool = new Pool({
   host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT, 10),
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  database: process.env.DB_NAME || 'tradernex',
 });
-pool.query(\"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')\")
+pool.query(\"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users')\")
   .then(result => {
-    process.exit(result.rows[0].exists ? 0 : 1);
+    const exists = result.rows[0].exists;
+    pool.end();
+    process.exit(exists ? 0 : 1);
   })
-  .catch(() => process.exit(1));
-" 2>/dev/null || echo "1")
+  .catch(err => {
+    console.error('Erro ao verificar tabelas:', err.message);
+    pool.end();
+    process.exit(1);
+  });
+" > /dev/null 2>&1
+
+TABLE_EXISTS=$?
 
 if [ "$TABLE_EXISTS" != "0" ]; then
   echo "🔄 Inicializando banco de dados..."
-  node src/config/initDB.js || echo "⚠️  Erro ao inicializar banco (pode já estar inicializado)"
+  if node src/config/initDB.js; then
+    echo "✅ Banco de dados inicializado com sucesso!"
+  else
+    echo "⚠️  Erro ao inicializar banco (pode já estar inicializado)"
+  fi
 else
   echo "✅ Banco de dados já está inicializado"
 fi
