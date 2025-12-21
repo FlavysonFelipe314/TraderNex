@@ -150,12 +150,36 @@ else
   fi
   
   echo "🔄 Tabelas não encontradas. Inicializando banco de dados..."
-  node src/config/initDB.js 2>&1 || {
-    INIT_ERROR=$?
-    echo "⚠️  Aviso: Inicialização retornou código $INIT_ERROR"
-    echo "    Isso pode ser normal se o banco já estava inicializado parcialmente"
-  }
-  echo "✅ Inicialização concluída"
+  
+  INIT_OUTPUT=$(node src/config/initDB.js 2>&1)
+  INIT_EXIT_CODE=$?
+  
+  echo "$INIT_OUTPUT"
+  
+  if [ "$INIT_EXIT_CODE" != "0" ]; then
+    echo ""
+    echo "❌ ERRO: Inicialização do banco de dados falhou com código $INIT_EXIT_CODE"
+    echo "   Verificando se as tabelas foram criadas mesmo assim..."
+    
+    # Verifica novamente se as tabelas existem
+    TABLE_CHECK_AFTER=$(check_tables 2>&1)
+    TABLE_EXISTS_AFTER=$?
+    
+    if [ "$TABLE_EXISTS_AFTER" = "0" ]; then
+      echo "✅ As tabelas foram criadas apesar do erro acima"
+      echo "   Continuando com o servidor..."
+    else
+      echo "❌ CRÍTICO: As tabelas AINDA não existem após tentativa de inicialização!"
+      echo "   O servidor não pode funcionar sem as tabelas do banco de dados."
+      echo "   Por favor, verifique os erros acima e tente novamente."
+      echo ""
+      echo "   Para inicializar manualmente, execute:"
+      echo "   docker-compose exec backend node src/config/initDB.js"
+      exit 1
+    fi
+  else
+    echo "✅ Inicialização concluída com sucesso!"
+  fi
 fi
 
 echo ""
