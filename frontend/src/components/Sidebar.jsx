@@ -150,14 +150,6 @@ function Sidebar() {
           className="h-9 w-auto flex-shrink-0 cursor-pointer"
           onClick={() => handleNavigation('/dashboard')}
         />
-        <div className="flex flex-col gap-0.5 flex-1">
-          <div className="text-base font-bold text-white leading-[1.1]">
-            TraderNex
-          </div>
-          <div className="text-[11px] text-[rgba(255,255,255,0.4)] font-medium">
-            Client Portal
-          </div>
-        </div>
       </div>
 
         {/* Navigation */}
