@@ -15,12 +15,12 @@
 -- Última atualização: Inclui campos de endereço, constraints e índices
 -- ============================================================================
 
--- Extensões
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Nota: Usamos gen_random_uuid() que é nativo do PostgreSQL 13+ e não requer extensão
+-- Isso evita problemas de permissões em ambientes restritos
 
 -- Tabela de Usuários
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Tabela de Perfis de Cliente
 CREATE TABLE IF NOT EXISTS client_profiles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     account_type VARCHAR(50) DEFAULT 'Basic', -- Basic, Pro, Premium
     balance DECIMAL(15, 2) DEFAULT 0.00 CHECK (balance >= 0),
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS client_profiles (
 
 -- Tabela de Contas MT4
 CREATE TABLE IF NOT EXISTS mt4_accounts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     account_number VARCHAR(50) NOT NULL,
     account_name VARCHAR(100),
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS mt4_accounts (
 
 -- Tabela de Conexões Myfxbook
 CREATE TABLE IF NOT EXISTS myfxbook_connections (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     email VARCHAR(255) NOT NULL,
     session_id VARCHAR(255),
@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS myfxbook_connections (
 
 -- Tabela de Planos de Investimento
 CREATE TABLE IF NOT EXISTS investment_plans (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) UNIQUE NOT NULL,
     description TEXT,
     min_investment DECIMAL(15, 2) NOT NULL CHECK (min_investment > 0),
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS investment_plans (
 
 -- Tabela de Investimentos do Usuário
 CREATE TABLE IF NOT EXISTS user_investments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     plan_id UUID REFERENCES investment_plans(id),
     amount DECIMAL(15, 2) NOT NULL CHECK (amount > 0),
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS user_investments (
 
 -- Tabela de Transações
 CREATE TABLE IF NOT EXISTS transactions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     type VARCHAR(50) NOT NULL CHECK (type IN ('deposit', 'withdrawal', 'profit', 'fee', 'referral_bonus')),
     amount DECIMAL(15, 2) NOT NULL CHECK (amount != 0),
@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 -- Tabela de Faturas
 CREATE TABLE IF NOT EXISTS invoices (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     invoice_number VARCHAR(50) UNIQUE NOT NULL,
     amount DECIMAL(15, 2) NOT NULL CHECK (amount > 0),
@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS invoices (
 
 -- Tabela de Relatórios de Performance
 CREATE TABLE IF NOT EXISTS performance_reports (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     report_date DATE NOT NULL,
     total_trades INTEGER DEFAULT 0 CHECK (total_trades >= 0),
@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS performance_reports (
 
 -- Tabela de Referências
 CREATE TABLE IF NOT EXISTS referrals (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     referrer_id UUID REFERENCES users(id) ON DELETE CASCADE,
     referred_id UUID REFERENCES users(id) ON DELETE CASCADE,
     commission DECIMAL(15, 2) DEFAULT 0.00 CHECK (commission >= 0),
@@ -189,7 +189,7 @@ CREATE TABLE IF NOT EXISTS referrals (
 
 -- Tabela de Tickets de Suporte
 CREATE TABLE IF NOT EXISTS support_tickets (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     subject VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
@@ -201,7 +201,7 @@ CREATE TABLE IF NOT EXISTS support_tickets (
 
 -- Tabela de Respostas de Suporte
 CREATE TABLE IF NOT EXISTS support_responses (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ticket_id UUID REFERENCES support_tickets(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id),
     message TEXT NOT NULL,
@@ -211,7 +211,7 @@ CREATE TABLE IF NOT EXISTS support_responses (
 
 -- Tabela de Tokens de Reset de Senha
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     token VARCHAR(255) UNIQUE NOT NULL,
     expires_at TIMESTAMP NOT NULL,
