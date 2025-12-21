@@ -1344,7 +1344,12 @@ function RelatoriosPerformancePage() {
                     )}
                   </div>
                   <div className="flex justify-end">
-                    <button className="w-8 h-8 rounded-lg border border-transparent bg-transparent flex items-center justify-center text-[#6b7280] cursor-pointer transition-all hover:bg-white hover:border-[#e5e7eb] hover:text-[#111827] hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
+                    <button 
+                      onClick={handleExportCSV}
+                      className="w-8 h-8 rounded-lg border border-transparent bg-transparent flex items-center justify-center text-[#6b7280] cursor-pointer transition-all hover:bg-white hover:border-[#e5e7eb] hover:text-[#111827] hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]"
+                      title="Baixar relatório CSV"
+                      data-media-type="banani-button"
+                    >
                       <Icon icon="lucide:file-text" className="text-base" />
                     </button>
                   </div>
@@ -1398,6 +1403,17 @@ function RelatoriosPerformancePage() {
                       <div className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider mb-1">Lucro Líquido</div>
                       <div className="text-sm font-semibold text-[#111827]">{row.profitFormatted}</div>
                     </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-[#e5e7eb] flex justify-end">
+                    <button 
+                      onClick={handleExportCSV}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#e5e7eb] bg-white text-[#6b7280] cursor-pointer transition-all hover:bg-[#f9fafb] hover:border-[#d1d5db] hover:text-[#111827] active:scale-95"
+                      title="Baixar relatório CSV"
+                      data-media-type="banani-button"
+                    >
+                      <Icon icon="lucide:file-text" className="text-sm" />
+                      <span className="text-xs font-medium">Relatório</span>
+                    </button>
                   </div>
                 </div>
               ))
