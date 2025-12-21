@@ -753,11 +753,11 @@ function RelatoriosPerformancePage() {
           </div>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center w-full sm:w-auto">
             {/* Filter Pills */}
-            <div className="flex bg-white rounded-xl p-1 border border-[#ebebeb] shadow-[0_2px_4px_rgba(0,0,0,0.02)] overflow-x-auto">
+            <div className="flex bg-white rounded-xl p-1 border border-[#ebebeb] shadow-[0_2px_4px_rgba(0,0,0,0.02)] overflow-x-auto scrollbar-hide">
               {periods.map((period) => (
                 <button
                   key={period.id}
-                  className={`px-4 sm:px-6 py-2 text-xs sm:text-[13px] font-medium rounded-lg transition-all whitespace-nowrap ${
+                  className={`px-3 sm:px-6 py-2 text-xs sm:text-[13px] font-medium rounded-lg transition-all whitespace-nowrap flex-shrink-0 ${
                     selectedPeriod === period.id
                       ? 'bg-white text-[#00afaa] font-bold shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#f0f0f0]'
                       : 'text-[#6b7280] hover:text-[#111827] hover:bg-[#f9fafb]'
@@ -1129,7 +1129,8 @@ function RelatoriosPerformancePage() {
             </div>
 
             {/* Tabela de Profit Diário */}
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#f3f4f6] bg-[#fafafa]">
@@ -1207,6 +1208,67 @@ function RelatoriosPerformancePage() {
               </table>
             </div>
 
+            {/* Mobile Card View for Profit Diário */}
+            <div className="lg:hidden space-y-3">
+              {profitStats.profitByDay.slice(0, 30).map((day, index) => {
+                let dataDailyArray = myfxbookData.dataDaily || []
+                if (dataDailyArray.length > 0 && Array.isArray(dataDailyArray[0])) {
+                  dataDailyArray = dataDailyArray.flat()
+                }
+                
+                const dailyData = dataDailyArray.find(d => {
+                  const dateStr = d.date || d.time || d.openTime || d.closeTime
+                  const dataDate = parseMyFXBookDate(dateStr)
+                  return dataDate && !isNaN(dataDate.getTime()) && dataDate.toDateString() === day.date.toDateString()
+                })
+                const isProfit = day.profit >= 0
+                return (
+                  <div key={index} className="bg-white rounded-xl p-4 border border-[#e5e7eb]">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="text-sm font-semibold text-[#111827] mb-1">
+                          {!isNaN(day.date.getTime()) ? day.date.toLocaleDateString('pt-BR', { 
+                            day: '2-digit', 
+                            month: 'short', 
+                            year: 'numeric',
+                            weekday: 'short'
+                          }) : 'Data inválida'}
+                        </div>
+                      </div>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        isProfit 
+                          ? 'bg-[#dcfce7] text-[#166534]' 
+                          : 'bg-[#fee2e2] text-[#991b1b]'
+                      }`}>
+                        <Icon icon={isProfit ? 'lucide:trending-up' : 'lucide:trending-down'} className="text-sm" />
+                        {isProfit ? 'Profit' : 'Loss'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[#e5e7eb]">
+                      <div>
+                        <div className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider mb-1">Profit Diário</div>
+                        <div className={`text-base font-bold ${isProfit ? 'text-[#059669]' : 'text-[#dc2626]'}`}>
+                          {isProfit ? '+' : ''}{formatCurrencyBR(day.profit)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider mb-1">Balance</div>
+                        <div className="text-sm font-semibold text-[#111827]">
+                          {day.balance ? formatCurrencyBR(day.balance) : (dailyData ? formatCurrencyBR(parseFloat(dailyData.balance || 0)) : '-')}
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider mb-1">Equity</div>
+                        <div className="text-sm font-semibold text-[#111827]">
+                          {day.equity ? formatCurrencyBR(day.equity) : (dailyData ? formatCurrencyBR(parseFloat(dailyData.equity || 0)) : '-')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
             {profitStats.profitByDay.length > 30 && (
               <div className="mt-4 text-center text-sm text-[#6b7280]">
                 Mostrando os 30 dias mais recentes de {profitStats.profitByDay.length} dias disponíveis
@@ -1216,81 +1278,135 @@ function RelatoriosPerformancePage() {
         )}
 
         {/* History Table */}
-        <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em]">Histórico Mensal</h3>
+        <div className="bg-white rounded-2xl p-4 sm:p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
+          <div className="flex justify-between items-center mb-6 sm:mb-8">
+            <h3 className="text-base sm:text-lg font-bold text-[#111827] tracking-[-0.01em]">Histórico Mensal</h3>
             <span className="text-xs font-semibold text-[#00afaa] bg-[rgba(0,175,170,0.08)] px-3 py-1 rounded-full">
               Últimos 12 meses
             </span>
           </div>
 
-          {/* Table Header */}
-          <div className="grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_1fr_0.8fr] px-6 py-4 border-b border-[#f3f4f6]">
-            <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center">
-              <Icon icon="lucide:calendar" className="text-sm mr-1.5" />
-              Período
+          {/* Desktop Table View */}
+          <div className="hidden lg:block">
+            {/* Table Header */}
+            <div className="grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_1fr_0.8fr] px-6 py-4 border-b border-[#f3f4f6]">
+              <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center">
+                <Icon icon="lucide:calendar" className="text-sm mr-1.5" />
+                Período
+              </div>
+              <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center">
+                <Icon icon="lucide:calendar-days" className="text-sm mr-1.5" />
+                Dias com Dados
+              </div>
+              <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center">
+                <Icon icon="lucide:trending-down" className="text-sm mr-1.5" />
+                Drawdown
+              </div>
+              <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center">
+                <Icon icon="lucide:dollar-sign" className="text-sm mr-1.5" />
+                Lucro Líquido
+              </div>
+              <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center">
+                <Icon icon="lucide:percent" className="text-sm mr-1.5" />
+                Retorno
+              </div>
+              <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center justify-end">
+                Relatório
+              </div>
             </div>
-            <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center">
-              <Icon icon="lucide:calendar-days" className="text-sm mr-1.5" />
-              Dias com Dados
-            </div>
-            <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center">
-              <Icon icon="lucide:trending-down" className="text-sm mr-1.5" />
-              Drawdown
-            </div>
-            <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center">
-              <Icon icon="lucide:dollar-sign" className="text-sm mr-1.5" />
-              Lucro Líquido
-            </div>
-            <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center">
-              <Icon icon="lucide:percent" className="text-sm mr-1.5" />
-              Retorno
-            </div>
-            <div className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider flex items-center justify-end">
-              Relatório
-            </div>
+
+            {/* Table Rows */}
+            {loading ? (
+              <div className="px-6 py-12 text-center text-[#6b7280]">Carregando dados...</div>
+            ) : monthlyHistory.length > 0 ? (
+              monthlyHistory.map((row, index) => (
+                <div
+                  key={index}
+                  className={`grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_1fr_0.8fr] items-center px-6 py-6 border-b border-[#f9fafb] transition-all hover:bg-[#f3f4f6] hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] ${
+                    index % 2 === 0 ? 'bg-[#fafafa]' : ''
+                  } ${index === monthlyHistory.length - 1 ? 'border-b-0' : ''}`}
+                >
+                  <div className="text-sm font-semibold text-[#111827]">{row.period}</div>
+                  <div className="text-sm text-[#6b7280]">{row.days || 0} dias</div>
+                  <div className={`text-sm ${row.isWarning ? 'text-[#f59e0b] font-semibold' : 'text-[#6b7280]'}`}>
+                    {row.drawdownFormatted}
+                  </div>
+                  <div className="text-sm text-[#6b7280]">{row.profitFormatted}</div>
+                  <div>
+                    {row.isPositive ? (
+                      <span className="inline-flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold min-w-[64px] bg-[rgba(0,255,136,0.08)] text-[#059669] border border-[rgba(0,255,136,0.15)]">
+                        {row.returnFormatted}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold min-w-[64px] bg-[#fef2f2] text-[#dc2626] border border-[#fecaca]">
+                        {row.returnFormatted}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex justify-end">
+                    <button className="w-8 h-8 rounded-lg border border-transparent bg-transparent flex items-center justify-center text-[#6b7280] cursor-pointer transition-all hover:bg-white hover:border-[#e5e7eb] hover:text-[#111827] hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
+                      <Icon icon="lucide:file-text" className="text-base" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="px-6 py-12 text-center text-[#6b7280]">
+                {myfxbookData ? 'Nenhum dado histórico disponível' : 'Conecte sua conta MT4 para ver os relatórios'}
+              </div>
+            )}
           </div>
 
-          {/* Table Rows */}
-          {loading ? (
-            <div className="px-6 py-12 text-center text-[#6b7280]">Carregando dados...</div>
-          ) : monthlyHistory.length > 0 ? (
-            monthlyHistory.map((row, index) => (
-              <div
-                key={index}
-                className={`grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_1fr_0.8fr] items-center px-6 py-6 border-b border-[#f9fafb] transition-all hover:bg-[#f3f4f6] hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] ${
-                  index % 2 === 0 ? 'bg-[#fafafa]' : ''
-                } ${index === monthlyHistory.length - 1 ? 'border-b-0' : ''}`}
-              >
-                <div className="text-sm font-semibold text-[#111827]">{row.period}</div>
-                <div className="text-sm text-[#6b7280]">{row.days || 0} dias</div>
-                <div className={`text-sm ${row.isWarning ? 'text-[#f59e0b] font-semibold' : 'text-[#6b7280]'}`}>
-                  {row.drawdownFormatted}
+          {/* Mobile Card View */}
+          <div className="lg:hidden space-y-4">
+            {loading ? (
+              <div className="py-12 text-center text-[#6b7280]">Carregando dados...</div>
+            ) : monthlyHistory.length > 0 ? (
+              monthlyHistory.map((row, index) => (
+                <div
+                  key={index}
+                  className="bg-[#fafafa] rounded-xl p-4 border border-[#f3f4f6]"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <div className="text-sm font-bold text-[#111827] mb-1">{row.period}</div>
+                      <div className="text-xs text-[#6b7280] flex items-center gap-1">
+                        <Icon icon="lucide:calendar-days" className="text-xs" />
+                        {row.days || 0} dias com dados
+                      </div>
+                    </div>
+                    <div>
+                      {row.isPositive ? (
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-bold bg-[rgba(0,255,136,0.08)] text-[#059669] border border-[rgba(0,255,136,0.15)]">
+                          {row.returnFormatted}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-bold bg-[#fef2f2] text-[#dc2626] border border-[#fecaca]">
+                          {row.returnFormatted}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[#e5e7eb]">
+                    <div>
+                      <div className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider mb-1">Drawdown</div>
+                      <div className={`text-sm font-semibold ${row.isWarning ? 'text-[#f59e0b]' : 'text-[#6b7280]'}`}>
+                        {row.drawdownFormatted}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider mb-1">Lucro Líquido</div>
+                      <div className="text-sm font-semibold text-[#111827]">{row.profitFormatted}</div>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-sm text-[#6b7280]">{row.profitFormatted}</div>
-                <div>
-                  {row.isPositive ? (
-                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold min-w-[64px] bg-[rgba(0,255,136,0.08)] text-[#059669] border border-[rgba(0,255,136,0.15)]">
-                      {row.returnFormatted}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold min-w-[64px] bg-[#fef2f2] text-[#dc2626] border border-[#fecaca]">
-                      {row.returnFormatted}
-                    </span>
-                  )}
-                </div>
-                <div className="flex justify-end">
-                  <button className="w-8 h-8 rounded-lg border border-transparent bg-transparent flex items-center justify-center text-[#6b7280] cursor-pointer transition-all hover:bg-white hover:border-[#e5e7eb] hover:text-[#111827] hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-                    <Icon icon="lucide:file-text" className="text-base" />
-                  </button>
-                </div>
+              ))
+            ) : (
+              <div className="py-12 text-center text-[#6b7280]">
+                {myfxbookData ? 'Nenhum dado histórico disponível' : 'Conecte sua conta MT4 para ver os relatórios'}
               </div>
-            ))
-          ) : (
-            <div className="px-6 py-12 text-center text-[#6b7280]">
-              {myfxbookData ? 'Nenhum dado histórico disponível' : 'Conecte sua conta MT4 para ver os relatórios'}
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </DashboardLayout>

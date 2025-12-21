@@ -303,8 +303,8 @@ function FaturasPerformancePage() {
             </div>
           </div>
 
-          {/* Table */}
-          <div className="flex flex-col w-full">
+          {/* Desktop Table View */}
+          <div className="hidden lg:flex flex-col w-full">
             {/* Table Header */}
             <div className="flex px-6 py-3 border-b border-[#ebebeb]">
               <div className="flex-[1.2] text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">ID Fatura</div>
@@ -400,6 +400,108 @@ function FaturasPerformancePage() {
                       </button>
                     ) : (
                       <span className="text-xs text-[#9ca3af] italic">Sem lucro</span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="lg:hidden space-y-4">
+            {loading ? (
+              <div className="py-8 text-center text-[#6b7280]">
+                <div className="flex items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-[#00afaa]"></div>
+                  <span>Carregando faturas...</span>
+                </div>
+              </div>
+            ) : displayInvoices.length === 0 ? (
+              <div className="py-8 text-center text-[#6b7280]">
+                Nenhuma fatura encontrada
+              </div>
+            ) : (
+              displayInvoices.map((invoice, index) => (
+                <div
+                  key={invoice.id || index}
+                  className={`bg-white rounded-xl p-4 border ${
+                    invoice.isCurrent 
+                      ? 'border-l-4 border-l-[#00ff88] bg-gradient-to-r from-[rgba(0,255,136,0.02)] to-white' 
+                      : 'border-[#e5e7eb]'
+                  } shadow-sm`}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono font-bold text-[#111827] text-sm mb-1">{invoice.id}</div>
+                      <div className="flex items-center flex-wrap gap-2 mb-2">
+                        <span className="font-semibold text-[#111827] text-sm">{invoice.week}</span>
+                        {invoice.isCurrent && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#00afaa] bg-[rgba(0,175,175,0.1)] px-2 py-0.5 rounded">
+                            Semana atual
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center text-xs text-[#6b7280] gap-1.5 flex-wrap">
+                        <Icon icon="lucide:calendar" className="text-xs flex-shrink-0" />
+                        <span>{invoice.period}</span>
+                      </div>
+                    </div>
+                    <div>
+                      {invoice.status === 'paid' && (
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold bg-[rgba(0,255,136,0.12)] text-[#059669]">
+                          Pago
+                        </span>
+                      )}
+                      {invoice.status === 'pending' && (
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold bg-[#fff7ed] text-[#d97706]">
+                          Pendente
+                        </span>
+                      )}
+                      {invoice.status === 'exempt' && (
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold bg-[#f3f4f6] text-[#9ca3af]">
+                          Isento
+                        </span>
+                      )}
+                      {invoice.status === 'overdue' && (
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold bg-[#fee2e2] text-[#991b1b]">
+                          Vencida
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[#e5e7eb]">
+                    <div>
+                      <div className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider mb-1">Valor da Taxa</div>
+                      <div className="text-base font-bold text-[#111827]">{invoice.value}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider mb-1">Vencimento</div>
+                      <div className="text-sm text-[#6b7280]">{invoice.dueDate}</div>
+                    </div>
+                  </div>
+                  {invoice.rawProfit > 0 && (
+                    <div className="mt-2 pt-2 border-t border-[#e5e7eb]">
+                      <div className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider mb-1">Lucro</div>
+                      <div className="text-sm font-semibold text-[#059669]">{invoice.profit}</div>
+                    </div>
+                  )}
+                  {invoice.planName && invoice.feePercentage > 0 && (
+                    <div className="mt-2 text-xs text-[#9ca3af]">
+                      {invoice.planName} ({invoice.feePercentage}%)
+                    </div>
+                  )}
+                  <div className="mt-3 pt-3 border-t border-[#e5e7eb] flex justify-end">
+                    {invoice.status === 'pending' ? (
+                      <button className="bg-[#00afaa] text-white border-none px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer shadow-[0_4px_12px_rgba(0,175,170,0.25)] transition-all hover:bg-[#009691] active:scale-95 w-full sm:w-auto">
+                        Pagar Agora
+                      </button>
+                    ) : invoice.status === 'paid' ? (
+                      <button className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-[#e5e7eb] bg-white text-[#6b7280] cursor-pointer transition-all hover:bg-[#f9fafb] hover:border-[#d1d5db] active:scale-95">
+                        <Icon icon="lucide:download" className="text-base" />
+                        <span className="text-sm font-medium">Baixar</span>
+                      </button>
+                    ) : (
+                      <span className="text-xs text-[#9ca3af] italic">Sem ação disponível</span>
                     )}
                   </div>
                 </div>

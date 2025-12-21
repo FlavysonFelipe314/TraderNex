@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Icon } from '@iconify/react'
+import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/DashboardLayout'
 import { 
   getMT4Accounts, 
@@ -9,6 +10,7 @@ import {
 } from '../services/dashboardService'
 
 function ContaForexMT4Page() {
+  const navigate = useNavigate()
   const [automationEnabled, setAutomationEnabled] = useState(true)
   const [riskProfile, setRiskProfile] = useState('moderado')
   const [lastUpdated, setLastUpdated] = useState('2 min')
@@ -436,7 +438,11 @@ function ContaForexMT4Page() {
                 <div className="h-px bg-[#f3f4f6] w-full my-2" />
 
                 {/* Password Update */}
-                <div className="flex justify-between items-center py-4 cursor-pointer hover:bg-[#f9fafb] rounded-lg px-2 -mx-2 transition-colors">
+                <button
+                  onClick={() => navigate('/mt4-config')}
+                  className="w-full flex justify-between items-center py-4 cursor-pointer hover:bg-[#f9fafb] rounded-lg px-2 -mx-2 transition-colors"
+                  data-media-type="banani-button"
+                >
                   <div className="flex flex-col gap-1">
                     <span className="text-sm font-semibold text-[#374151]">Senha do MT4</span>
                     <span className="text-[13px] text-[#9ca3af]">Atualize caso tenha alterado na corretora.</span>
@@ -444,7 +450,7 @@ function ContaForexMT4Page() {
                   <div className="w-9 h-9 border border-[#e5e7eb] rounded-lg flex items-center justify-center text-[#6b7280] hover:bg-[#f9fafb] hover:text-[#374151] hover:border-[#d1d5db] transition-all">
                     <Icon icon="lucide:key" className="text-base" />
                   </div>
-                </div>
+                </button>
               </div>
             </div>
           </div>
