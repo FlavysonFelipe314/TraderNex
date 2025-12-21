@@ -281,6 +281,8 @@ function RelatoriosPerformancePage() {
             trades: 0, // Será calculado do history se disponível
             profit: 0, // Soma do profit diário (valor real do MyFXBook)
             drawdown: 0,
+            maxBalance: null, // Balance máximo do mês (para calcular drawdown)
+            minBalance: null, // Balance mínimo do mês (para calcular drawdown)
             return: 0,
             startBalance: null, // Balance inicial do mês
             endBalance: null, // Balance final do mês
@@ -290,17 +292,44 @@ function RelatoriosPerformancePage() {
         
         const monthData = monthlyMap.get(monthKey)
         const profit = parseFloat(day.profit || 0)
-        const balance = parseFloat(day.balance || 0)
+        const balance = parseFloat(day.balance || day.equity || 0)
+        const equity = parseFloat(day.equity || day.balance || 0)
+        const valueToUse = equity || balance
         
         monthData.profit += profit // Soma o profit diário real
         monthData.days += 1
         
         // Armazenar balance inicial e final do mês
-        if (monthData.startBalance === null || balance < monthData.startBalance) {
-          monthData.startBalance = balance
+        if (monthData.startBalance === null) {
+          monthData.startBalance = valueToUse
         }
-        if (monthData.endBalance === null || balance > monthData.endBalance) {
-          monthData.endBalance = balance
+        if (monthData.endBalance === null || valueToUse > monthData.endBalance) {
+          monthData.endBalance = valueToUse
+        }
+        
+        // Calcular drawdown: trackear máximo e mínimo para calcular drawdown percentual
+        if (monthData.maxBalance === null || valueToUse > monthData.maxBalance) {
+          monthData.maxBalance = valueToUse
+          monthData.minBalance = valueToUse // Reset min quando há novo máximo
+        }
+        if (monthData.minBalance === null || valueToUse < monthData.minBalance) {
+          monthData.minBalance = valueToUse
+        }
+        
+        // Calcular drawdown percentual baseado no máximo e mínimo do mês
+        if (monthData.maxBalance !== null && monthData.maxBalance > 0 && monthData.minBalance !== null) {
+          const currentDrawdown = ((monthData.maxBalance - monthData.minBalance) / monthData.maxBalance) * 100
+          if (currentDrawdown > monthData.drawdown) {
+            monthData.drawdown = currentDrawdown
+          }
+        }
+        
+        // Se o drawdown vier direto dos dados, usar se for maior
+        if (day.drawdown !== undefined && day.drawdown !== null) {
+          const dayDrawdown = Math.abs(parseFloat(day.drawdown))
+          if (dayDrawdown > monthData.drawdown) {
+            monthData.drawdown = dayDrawdown
+          }
         }
       })
     }
@@ -384,13 +413,22 @@ function RelatoriosPerformancePage() {
           returnPercent = (month.profit / Math.abs(kpis.netProfit)) * 100
         }
 
+        // Se o drawdown mensal for zero mas temos drawdown geral da conta e o mês tem dados, usar o drawdown geral
+        // Isso corrige casos onde os dados diários não têm drawdown específico mas a conta tem
+        let finalDrawdown = month.drawdown
+        if (finalDrawdown === 0 && kpis.maxDrawdown > 0 && month.days > 0) {
+          // Para meses com dados mas sem drawdown específico, usar o drawdown geral da conta
+          // Especialmente útil para o mês atual ou meses recentes
+          finalDrawdown = kpis.maxDrawdown
+        }
+
         return {
           ...month,
           profitFormatted: formatCurrencyBR(month.profit),
-          drawdownFormatted: `${formatNumberBR(month.drawdown)}%`,
+          drawdownFormatted: finalDrawdown > 0 ? `${formatNumberBR(finalDrawdown)}%` : '0,00%',
           returnFormatted: formatPercentBR(returnPercent, 1),
           isPositive: month.profit >= 0,
-          isWarning: month.drawdown > 3
+          isWarning: finalDrawdown > 3
         }
       })
       .sort((a, b) => {

@@ -654,7 +654,7 @@ function DashboardPage() {
                   <div className="w-4 h-4 flex items-center justify-center text-[#00AFAA] opacity-80">
                     <Icon icon="lucide:link" className="text-base" />
                   </div>
-                  {myfxbookConnected && selectedMyfxbookAccount ? 'Dados Myfxbook' : 'Conexão MT4'}
+                  {myfxbookConnected && selectedMyfxbookAccount ? 'Dados MT4' : 'Conexão MT4'}
                 </div>
                 <div className="text-[13px] text-[#64748B] mt-1">
                   {myfxbookConnected && selectedMyfxbookAccount ? 'Estatísticas e histórico' : 'Status em tempo real'}
@@ -715,11 +715,11 @@ function DashboardPage() {
                         {selectedMyfxbookAccount.equity ? formatCurrencyBR(selectedMyfxbookAccount.equity) : 'N/A'}
                       </div>
                     </div>
-                    {myfxbookAccountData?.account?.profitFactor && (
+                    {myfxbookAccountData?.account?.withdrawals !== undefined && myfxbookAccountData.account.withdrawals !== null && (
                       <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
-                        <div className="text-[10px] text-[#6b7280] font-medium mb-1">Profit Factor</div>
+                        <div className="text-[10px] text-[#6b7280] font-medium mb-1">Retiradas: totais</div>
                         <div className="text-base font-bold text-[#111827]">
-                          {formatNumberBR(myfxbookAccountData.account.profitFactor, 2)}
+                          {formatCurrencyBR(parseFloat(myfxbookAccountData.account.withdrawals || 0))}
                         </div>
                       </div>
                     )}
@@ -736,17 +736,6 @@ function DashboardPage() {
                         <div className="text-[10px] text-[#6b7280] font-medium mb-1">Trades Abertos</div>
                         <div className="text-base font-bold text-[#111827]">
                           {myfxbookAccountData.openTrades.length}
-                        </div>
-                      </div>
-                    )}
-                    {myfxbookAccountData?.history && myfxbookAccountData.history.length > 0 && (
-                      <div className="bg-[#f9fafb] rounded-lg p-3 border border-[#f3f4f6]">
-                        <div className="text-[10px] text-[#6b7280] font-medium mb-1">Total Trades</div>
-                        <div className="text-base font-bold text-[#111827]">
-                          {myfxbookAccountData.history.length}
-                        </div>
-                        <div className="text-[9px] text-[#9ca3af] mt-0.5">
-                          * Últimos 50 da API
                         </div>
                       </div>
                     )}
