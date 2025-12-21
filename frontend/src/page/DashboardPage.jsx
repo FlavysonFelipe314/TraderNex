@@ -247,24 +247,6 @@ function DashboardPage() {
                 </div>
               </div>
             </div>
-
-            <div className="group bg-white rounded-2xl p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
-                  Equity
-                </div>
-                <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(59,130,246,0.1)] group-hover:text-[#3b82f6]">
-                  <Icon icon="lucide:wallet" className="text-base" />
-                </div>
-              </div>
-              <div>
-                <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
-                  {selectedMyfxbookAccount.equity != null && selectedMyfxbookAccount.equity !== undefined && !isNaN(parseFloat(selectedMyfxbookAccount.equity))
-                    ? formatCurrencyBR(selectedMyfxbookAccount.equity) 
-                    : 'N/A'}
-                </div>
-              </div>
-            </div>
           </div>
         ) : loading ? (
           <div className="flex items-center justify-center py-12">
