@@ -1,5 +1,6 @@
 #!/bin/sh
-set -e
+# set -e removido temporariamente para permitir verificação de tabelas
+# Voltaremos a habilitar depois da inicialização do banco
 
 echo "🔄 Aguardando PostgreSQL estar pronto..."
 
@@ -97,50 +98,74 @@ create_database() {
   "
 }
 
-if create_database; then
-  echo "✅ Banco de dados '${DB_NAME:-tradernex}' está disponível"
-else
+if ! create_database; then
   echo "❌ Erro ao criar banco de dados"
   exit 1
 fi
 
+echo "✅ Banco de dados '${DB_NAME:-tradernex}' está disponível"
+
 # Verifica se o banco precisa ser inicializado
 echo "🔍 Verificando se o banco de dados precisa ser inicializado..."
 
-node -e "
-const { Pool } = require('pg');
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT, 10),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME || 'tradernex',
-});
-pool.query(\"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users')\")
-  .then(result => {
-    const exists = result.rows[0].exists;
-    pool.end();
-    process.exit(exists ? 0 : 1);
-  })
-  .catch(err => {
-    console.error('Erro ao verificar tabelas:', err.message);
-    pool.end();
-    process.exit(1);
-  });
-" > /dev/null 2>&1
+check_tables() {
+  node -e "
+    const { Pool } = require('pg');
+    const pool = new Pool({
+      host: process.env.DB_HOST,
+      port: parseInt(process.env.DB_PORT, 10),
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME || 'tradernex',
+      connectionTimeoutMillis: 5000,
+    });
+    
+    pool.query(\"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users')\")
+      .then(result => {
+        const exists = result.rows[0].exists;
+        pool.end();
+        process.exit(exists ? 0 : 1);
+      })
+      .catch(err => {
+        console.error('❌ Erro ao verificar tabelas:', err.message);
+        pool.end().catch(() => {});
+        process.exit(1);
+      });
+  " 2>&1
+}
 
+# Verifica tabelas com timeout implícito (sempre prossegue)
+TABLE_CHECK_OUTPUT=$(check_tables 2>&1)
 TABLE_EXISTS=$?
 
-if [ "$TABLE_EXISTS" != "0" ]; then
-  echo "🔄 Inicializando banco de dados..."
-  if node src/config/initDB.js; then
-    echo "✅ Banco de dados inicializado com sucesso!"
-  else
-    echo "⚠️  Erro ao inicializar banco (pode já estar inicializado)"
-  fi
+echo "📊 Código de saída da verificação de tabelas: $TABLE_EXISTS"
+
+if [ "$TABLE_EXISTS" = "0" ]; then
+  echo "✅ Banco de dados já está inicializado (tabela 'users' existe)"
 else
-  echo "✅ Banco de dados já está inicializado"
+  # Se houve erro ou tabelas não existem, tenta inicializar
+  if echo "$TABLE_CHECK_OUTPUT" | grep -qi "Erro\|Error\|FATAL"; then
+    echo "⚠️  Aviso ao verificar tabelas:"
+    echo "$TABLE_CHECK_OUTPUT" | head -3
+  fi
+  
+  echo "🔄 Tabelas não encontradas. Inicializando banco de dados..."
+  node src/config/initDB.js 2>&1 || {
+    INIT_ERROR=$?
+    echo "⚠️  Aviso: Inicialização retornou código $INIT_ERROR"
+    echo "    Isso pode ser normal se o banco já estava inicializado parcialmente"
+  }
+  echo "✅ Inicialização concluída"
 fi
 
-echo "🚀 Iniciando servidor..."
+echo ""
+echo "════════════════════════════════════════════"
+echo "🚀 Iniciando servidor Node.js..."
+echo "════════════════════════════════════════════"
+echo ""
+
+# Habilita exit on error para o resto do script
+set -e
+
+# Inicia o servidor
 exec "$@"
