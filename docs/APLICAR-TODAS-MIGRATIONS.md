@@ -212,3 +212,4 @@ Após executar, verifique se os seguintes erros desapareceram:
 npm run init-db && npm run migrate:all && npm run seed
 ```
 
+

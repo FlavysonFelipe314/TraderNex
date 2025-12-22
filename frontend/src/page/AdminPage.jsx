@@ -494,6 +494,21 @@ function AdminPage() {
                       {user.first_name} {user.last_name}
                     </h3>
                     <p className="text-sm text-[#6b7280]">{user.email}</p>
+                    {user.phone && (
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <p className="text-sm text-[#6b7280]">WhatsApp: {user.phone}</p>
+                        <a
+                          href={`https://wa.me/${user.phone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-[#25D366] hover:bg-[#20BA5A] text-white rounded-lg text-xs font-medium transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Icon icon="lucide:message-circle" className="text-xs" />
+                          Abrir WhatsApp
+                        </a>
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     {user.plan_name && (

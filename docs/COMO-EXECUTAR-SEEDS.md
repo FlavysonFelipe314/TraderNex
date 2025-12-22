@@ -332,3 +332,4 @@ npm run init-db && npm run migrate && npm run seed
 - Schema do banco: `backend/src/config/schema.sql`
 - Documentação PostgreSQL: https://www.postgresql.org/docs/
 
+

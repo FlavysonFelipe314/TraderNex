@@ -121,3 +121,4 @@ SELECT 'Admin user' as migration,
            SELECT 1 FROM users WHERE email = 'admin@tradernex.com' AND is_admin = TRUE
        ) THEN '✅ OK' ELSE '❌ FALTANDO' END as status;
 
+

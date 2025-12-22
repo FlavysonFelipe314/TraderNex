@@ -14,6 +14,7 @@ exports.getAllUsers = async (req, res) => {
         u.email,
         u.first_name,
         u.last_name,
+        u.phone,
         u.created_at,
         u.is_active,
         u.email_verified,
