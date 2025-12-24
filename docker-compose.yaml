@@ -56,7 +56,7 @@ services:
     container_name: tradernex-backend
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      DB_HOST: db
+      DB_HOST: ${DB_HOST:-localhost}
       DB_PORT: 5432
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
@@ -74,7 +74,6 @@ services:
       CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING}
     ports:
       - "5000:5000"
-    depends_on:
       db:
         condition: service_healthy
     networks:
