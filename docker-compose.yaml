@@ -74,8 +74,6 @@ services:
       CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING}
     ports:
       - "5000:5000"
-      db:
-        condition: service_healthy
     networks:
       - tradernex-network
     restart: unless-stopped
