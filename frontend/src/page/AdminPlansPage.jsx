@@ -21,7 +21,8 @@ function AdminPlansPage() {
     expected_return: '',
     duration_days: '',
     risk_level: 'Medium',
-    is_active: true
+    is_active: true,
+    profit_fee_percentage: ''
   })
   const [saving, setSaving] = useState(false)
 
@@ -60,7 +61,8 @@ function AdminPlansPage() {
       expected_return: plan.expected_return || '',
       duration_days: plan.duration_days || '',
       risk_level: plan.risk_level || 'Medium',
-      is_active: plan.is_active !== undefined ? plan.is_active : true
+      is_active: plan.is_active !== undefined ? plan.is_active : true,
+      profit_fee_percentage: plan.profit_fee_percentage || ''
     })
     setShowForm(true)
   }
@@ -75,7 +77,8 @@ function AdminPlansPage() {
       expected_return: '',
       duration_days: '',
       risk_level: 'Medium',
-      is_active: true
+      is_active: true,
+      profit_fee_percentage: ''
     })
     setShowForm(true)
   }
@@ -331,6 +334,25 @@ function AdminPlansPage() {
                       placeholder="30"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-[#111827] mb-2 block">
+                    Taxa sobre Lucro (%) *
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.profit_fee_percentage}
+                    onChange={(e) => setFormData({ ...formData, profit_fee_percentage: e.target.value })}
+                    className="w-full px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
+                    placeholder="10.0"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                  />
+                  <p className="text-xs text-[#6b7280] mt-1">
+                    Percentual que será descontado do lucro do MyFXBook para calcular o lucro líquido
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

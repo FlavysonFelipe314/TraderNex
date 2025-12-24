@@ -24,6 +24,10 @@ ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS selected_plan_id UUID REFER
 COMMENT ON COLUMN client_profiles.selected_plan_id IS 'Plano de investimento selecionado pelo usuário';
 CREATE INDEX IF NOT EXISTS idx_client_profiles_selected_plan_id ON client_profiles(selected_plan_id);
 
+-- 4.1. Adicionar coluna profit_fee_percentage na tabela investment_plans
+ALTER TABLE investment_plans ADD COLUMN IF NOT EXISTS profit_fee_percentage DECIMAL(5, 2) DEFAULT 0.00 CHECK (profit_fee_percentage >= 0 AND profit_fee_percentage <= 100);
+COMMENT ON COLUMN investment_plans.profit_fee_percentage IS 'Percentual de taxa sobre o lucro que será descontado do lucro do MyFXBook';
+
 -- 5. Criar tabela system_myfxbook_config
 CREATE TABLE IF NOT EXISTS system_myfxbook_config (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -120,5 +124,6 @@ SELECT 'Admin user' as migration,
        CASE WHEN EXISTS (
            SELECT 1 FROM users WHERE email = 'admin@tradernex.com' AND is_admin = TRUE
        ) THEN '✅ OK' ELSE '❌ FALTANDO' END as status;
+
 
 

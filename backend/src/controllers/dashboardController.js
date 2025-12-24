@@ -8,10 +8,13 @@ exports.getDashboardData = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    // Buscar dados do perfil
+    // Buscar dados do perfil com informações do plano selecionado
     const profileResult = await pool.query(
-      `SELECT balance, total_invested, total_profit, profit_percentage, account_type
-       FROM client_profiles WHERE user_id = $1`,
+      `SELECT cp.balance, cp.total_invested, cp.total_profit, cp.profit_percentage, cp.account_type,
+              cp.selected_plan_id, ip.profit_fee_percentage, ip.name as plan_name
+       FROM client_profiles cp
+       LEFT JOIN investment_plans ip ON cp.selected_plan_id = ip.id
+       WHERE cp.user_id = $1`,
       [userId]
     );
 
@@ -58,7 +61,10 @@ exports.getDashboardData = async (req, res) => {
           total_invested: parseFloat(profile.total_invested) || 0,
           total_profit: parseFloat(profile.total_profit) || 0,
           profit_percentage: parseFloat(profile.profit_percentage) || 0,
-          account_type: profile.account_type
+          account_type: profile.account_type,
+          selected_plan_id: profile.selected_plan_id,
+          plan_name: profile.plan_name,
+          profit_fee_percentage: parseFloat(profile.profit_fee_percentage) || 0
         },
         mt4: {
           total_accounts: parseInt(mt4Result.rows[0].total_accounts) || 0,

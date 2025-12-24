@@ -28,6 +28,7 @@ import AdminUsersPage from "./page/AdminUsersPage";
 import AdminCryptoInterestedPage from "./page/AdminCryptoInterestedPage";
 import AdminReferralsPage from "./page/AdminReferralsPage";
 import AdminInvoicesPage from "./page/AdminInvoicesPage";
+import OnboardingGuard from "./components/OnboardingGuard";
 
 function App() {
   return (
@@ -43,22 +44,12 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* Rotas protegidas */}
+        {/* Rotas protegidas - Onboarding (sem verificação) */}
         <Route
-          path="/dashboard"
+          path="/investir-planos"
           element={
             <ProtectedRoute>
-              <DashboardRedirect>
-                <DashboardPage />
-              </DashboardRedirect>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/perfil-cliente"
-          element={
-            <ProtectedRoute>
-              <PerfilClientePage />
+              <InvestirPlanosPage />
             </ProtectedRoute>
           }
         />
@@ -70,11 +61,37 @@ function App() {
             </ProtectedRoute>
           }
         />
+        
+        {/* Rotas protegidas - Requer onboarding completo */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <OnboardingGuard>
+                <DashboardRedirect>
+                  <DashboardPage />
+                </DashboardRedirect>
+              </OnboardingGuard>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/perfil-cliente"
+          element={
+            <ProtectedRoute>
+              <OnboardingGuard>
+                <PerfilClientePage />
+              </OnboardingGuard>
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/mt4-config"
           element={
             <ProtectedRoute>
-              <Mt4CredentialsPage />
+              <OnboardingGuard>
+                <Mt4CredentialsPage />
+              </OnboardingGuard>
             </ProtectedRoute>
           }
         />
@@ -82,15 +99,9 @@ function App() {
           path="/referral-program"
           element={
             <ProtectedRoute>
-              <ReferralProgramPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/investir-planos"
-          element={
-            <ProtectedRoute>
-              <InvestirPlanosPage />
+              <OnboardingGuard>
+                <ReferralProgramPage />
+              </OnboardingGuard>
             </ProtectedRoute>
           }
         />
@@ -98,7 +109,9 @@ function App() {
           path="/cripto-em-breve"
           element={
             <ProtectedRoute>
-              <CriptoEmBrevePage />
+              <OnboardingGuard>
+                <CriptoEmBrevePage />
+              </OnboardingGuard>
             </ProtectedRoute>
           }
         />

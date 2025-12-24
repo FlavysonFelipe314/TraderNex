@@ -302,20 +302,38 @@ function DashboardPage() {
                 </div>
               </div>
               <div>
-                <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#059669] tracking-[-0.03em] leading-none">
-                  {dashboardData?.profile?.totalProfit ? formatCurrencyBR(dashboardData.profile.totalProfit) : formatCurrencyBR(0)}
-                </div>
+                {(() => {
+                  // Calcular lucro líquido: lucro do MyFXBook - porcentagem do plano
+                  const myfxbookProfit = selectedMyfxbookAccount?.profit || 0
+                  const profitFeePercentage = dashboardData?.profile?.profit_fee_percentage || 0
+                  const netProfit = myfxbookProfit > 0 
+                    ? myfxbookProfit * (1 - profitFeePercentage / 100)
+                    : myfxbookProfit
+                  
+                  return (
+                    <div className={`text-xl sm:text-2xl lg:text-[28px] font-bold tracking-[-0.03em] leading-none ${
+                      netProfit >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
+                    }`}>
+                      {formatCurrencyBR(netProfit)}
+                    </div>
+                  )
+                })()}
               </div>
               <div className="text-xs text-[#94A3B8] flex items-center gap-1.5 font-medium">
-                {dashboardData?.profile?.profitPercentage != null && !isNaN(dashboardData.profile.profitPercentage) && dashboardData.profile.profitPercentage > 0 && (
-                  <div className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-[rgba(16,185,129,0.08)] text-[#059669]">
-                    <div className="w-2.5 h-2.5 flex items-center justify-center">
-                      <Icon icon="lucide:arrow-up-right" className="text-[10px]" />
-                    </div>
-                    {Number(dashboardData.profile.profitPercentage).toFixed(1)}%
-                  </div>
-                )}
-                <span>no período</span>
+                {(() => {
+                  const profitFeePercentage = dashboardData?.profile?.profit_fee_percentage || 0
+                  if (profitFeePercentage > 0 && dashboardData?.profile?.plan_name) {
+                    return (
+                      <>
+                        <div className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-[rgba(16,185,129,0.08)] text-[#059669]">
+                          <span>Plano: {dashboardData.profile.plan_name}</span>
+                        </div>
+                        <span>Taxa: {profitFeePercentage.toFixed(1)}%</span>
+                      </>
+                    )
+                  }
+                  return <span>Após desconto da taxa do plano</span>
+                })()}
               </div>
             </div>
 

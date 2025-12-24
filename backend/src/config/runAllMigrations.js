@@ -53,6 +53,14 @@ async function runAllMigrations() {
         `
       },
       {
+        name: 'profit_fee_percentage',
+        sql: `
+          ALTER TABLE investment_plans 
+          ADD COLUMN IF NOT EXISTS profit_fee_percentage DECIMAL(5, 2) DEFAULT 0.00 
+          CHECK (profit_fee_percentage >= 0 AND profit_fee_percentage <= 100);
+        `
+      },
+      {
         name: 'system_myfxbook_config',
         sql: `
           CREATE TABLE IF NOT EXISTS system_myfxbook_config (
@@ -94,6 +102,11 @@ async function runAllMigrations() {
                 WHERE table_name = 'client_profiles' AND column_name = 'selected_plan_id'`
       },
       {
+        name: 'Coluna profit_fee_percentage',
+        query: `SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'investment_plans' AND column_name = 'profit_fee_percentage'`
+      },
+      {
         name: 'Tabela system_myfxbook_config',
         query: `SELECT 1 FROM information_schema.tables 
                 WHERE table_name = 'system_myfxbook_config'`
@@ -132,5 +145,6 @@ if (require.main === module) {
 }
 
 module.exports = runAllMigrations;
+
 
 

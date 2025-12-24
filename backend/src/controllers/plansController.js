@@ -9,7 +9,7 @@ exports.getAllPlans = async (req, res) => {
     const result = await pool.query(
       `SELECT id, name, description, min_investment, max_investment,
               expected_return, duration_days, risk_level, is_active,
-              created_at, updated_at
+              profit_fee_percentage, created_at, updated_at
        FROM investment_plans
        ORDER BY min_investment ASC`
     );
@@ -34,7 +34,7 @@ exports.getAllPlans = async (req, res) => {
  */
 exports.createPlan = async (req, res) => {
   try {
-    const { name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active } = req.body;
+    const { name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active, profit_fee_percentage } = req.body;
 
     if (!name || !min_investment || !expected_return) {
       return res.status(400).json({
@@ -44,10 +44,10 @@ exports.createPlan = async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO investment_plans (name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO investment_plans (name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active, profit_fee_percentage)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [name, description || null, min_investment, max_investment || null, expected_return, duration_days || null, risk_level || 'Medium', is_active !== undefined ? is_active : true]
+      [name, description || null, min_investment, max_investment || null, expected_return, duration_days || null, risk_level || 'Medium', is_active !== undefined ? is_active : true, profit_fee_percentage || 0]
     );
 
     res.json({
@@ -78,7 +78,7 @@ exports.createPlan = async (req, res) => {
 exports.updatePlan = async (req, res) => {
   try {
     const { planId } = req.params;
-    const { name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active } = req.body;
+    const { name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active, profit_fee_percentage } = req.body;
 
     const result = await pool.query(
       `UPDATE investment_plans
@@ -90,10 +90,11 @@ exports.updatePlan = async (req, res) => {
            duration_days = $6,
            risk_level = COALESCE($7, risk_level),
            is_active = COALESCE($8, is_active),
+           profit_fee_percentage = COALESCE($9, profit_fee_percentage),
            updated_at = NOW()
-       WHERE id = $9
+       WHERE id = $10
        RETURNING *`,
-      [name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active, planId]
+      [name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active, profit_fee_percentage, planId]
     );
 
     if (result.rows.length === 0) {

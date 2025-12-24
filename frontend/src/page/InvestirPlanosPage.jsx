@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
 import { getInvestmentPlans, selectInvestmentPlan } from '../services/dashboardService'
 
 function InvestirPlanosPage() {
+  const navigate = useNavigate()
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectingPlan, setSelectingPlan] = useState(null)
@@ -43,17 +45,18 @@ function InvestirPlanosPage() {
       if (result.success) {
         setSelectedPlanName(plan.name)
         setShowSuccessMessage(true)
-        // Ocultar mensagem após 5 segundos
+        // Redirecionar para conta forex após 2 segundos
         setTimeout(() => {
           setShowSuccessMessage(false)
-        }, 5000)
+          navigate('/conta-forex-mt4')
+        }, 2000)
       } else {
         alert('Erro ao selecionar plano: ' + (result.message || 'Erro desconhecido'))
+        setSelectingPlan(null)
       }
     } catch (error) {
       console.error('Erro ao selecionar plano:', error)
       alert('Erro ao selecionar plano.')
-    } finally {
       setSelectingPlan(null)
     }
   }
