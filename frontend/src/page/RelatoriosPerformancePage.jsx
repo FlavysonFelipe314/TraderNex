@@ -10,6 +10,7 @@ function RelatoriosPerformancePage() {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [performanceData, setPerformanceData] = useState(null)
   const [myfxbookData, setMyfxbookData] = useState(null)
+  const [dashboardData, setDashboardData] = useState(null)
   const [loading, setLoading] = useState(true)
   
   // Refs para controlar requisições e debounce
