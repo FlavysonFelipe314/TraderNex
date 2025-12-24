@@ -182,19 +182,32 @@ function Mt4CredentialsPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setSuccess(false)
+    
+    // Validação dos campos obrigatórios
+    if (!formData.login || !formData.broker || !formData.server || !formData.password) {
+      setError('Por favor, preencha todos os campos obrigatórios.')
+      setLoading(false)
+      return
+    }
     
     try {
       const result = await addMT4Account(formData)
       if (result.success) {
         setSuccess(true)
+        setError('')
         setTimeout(() => {
           navigate('/conta-forex-mt4')
         }, 2000)
       } else {
         setError(result.message || 'Erro ao conectar conta MT4.')
+        setSuccess(false)
       }
     } catch (err) {
-      setError('Erro de conexão. Tente novamente mais tarde.')
+      const errorMessage = err.response?.data?.message || err.message || 'Erro de conexão. Tente novamente mais tarde.'
+      setError(errorMessage)
+      setSuccess(false)
+      console.error('Erro ao adicionar conta MT4:', err)
     } finally {
       setLoading(false)
     }

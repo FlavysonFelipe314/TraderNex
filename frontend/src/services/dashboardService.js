@@ -73,6 +73,16 @@ export const addMT4Account = async (accountData) => {
       currency: accountData.currency || 'USD'
     }
     
+    console.log('[addMT4Account] Enviando payload:', payload)
+    
+    // Validação antes de enviar
+    if (!payload.account_number || !payload.broker || !payload.server) {
+      return {
+        success: false,
+        message: 'Por favor, preencha todos os campos obrigatórios: Login, Corretora e Servidor.'
+      }
+    }
+    
     const response = await api.post('/api/dashboard/mt4-accounts', payload)
     return {
       success: response.data.success,

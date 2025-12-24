@@ -328,9 +328,6 @@ function Sidebar() {
             <div className="text-base font-bold text-white leading-[1.1]">
               TraderNex
             </div>
-            <div className="text-[11px] text-[rgba(255,255,255,0.4)] font-medium">
-              Client Portal
-            </div>
           </div>
         </div>
 

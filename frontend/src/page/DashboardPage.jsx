@@ -46,6 +46,9 @@ function DashboardPage() {
 
         if (dashboardResult.success) {
           setDashboardData(dashboardResult.data)
+          console.log('[Dashboard] Dados do perfil:', dashboardResult.data?.profile)
+          console.log('[Dashboard] Plano selecionado:', dashboardResult.data?.profile?.selected_plan_id)
+          console.log('[Dashboard] Taxa do plano:', dashboardResult.data?.profile?.profit_fee_percentage)
         }
         
         // Carregar dados de performance (período fixo de 30 dias)
@@ -170,7 +173,9 @@ function DashboardPage() {
 
         {/* KPI Grid - Dados MyFXBook */}
         {!loading && myfxbookConnected && selectedMyfxbookAccount ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 ${
+            dashboardData?.profile?.selected_plan_id ? 'xl:grid-cols-5' : 'xl:grid-cols-4'
+          }`}>
             <div className="group bg-white rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-4 sm:gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
@@ -247,13 +252,63 @@ function DashboardPage() {
                 </div>
               </div>
             </div>
+
+            {/* Card de Lucro Líquido - Aparece quando tem plano selecionado */}
+            {dashboardData?.profile?.selected_plan_id && (
+              <div className="group bg-white rounded-2xl p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
+                    Lucro Líquido
+                  </div>
+                  <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(0,255,136,0.1)] group-hover:text-[#059669]">
+                    <Icon icon="lucide:trending-up" className="text-base" />
+                  </div>
+                </div>
+                <div>
+                  {(() => {
+                    // Calcular lucro líquido: lucro do MyFXBook - porcentagem do plano
+                    const myfxbookProfit = selectedMyfxbookAccount?.profit || 0
+                    const profitFeePercentage = dashboardData?.profile?.profit_fee_percentage || 0
+                    const netProfit = myfxbookProfit > 0 
+                      ? myfxbookProfit * (1 - profitFeePercentage / 100)
+                      : myfxbookProfit
+                    
+                    return (
+                      <div className={`text-xl sm:text-2xl lg:text-[28px] font-bold tracking-[-0.03em] leading-none ${
+                        netProfit >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
+                      }`}>
+                        {formatCurrencyBR(netProfit)}
+                      </div>
+                    )
+                  })()}
+                </div>
+                <div className="text-xs text-[#94A3B8] flex items-center gap-1.5 font-medium">
+                  {(() => {
+                    const profitFeePercentage = dashboardData?.profile?.profit_fee_percentage || 0
+                    if (profitFeePercentage > 0 && dashboardData?.profile?.plan_name) {
+                      return (
+                        <>
+                          <div className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-[rgba(16,185,129,0.08)] text-[#059669]">
+                            <span>Plano: {dashboardData.profile.plan_name}</span>
+                          </div>
+                          <span>Taxa: {profitFeePercentage.toFixed(1)}%</span>
+                        </>
+                      )
+                    }
+                    return <span>Após desconto da taxa do plano</span>
+                  })()}
+                </div>
+              </div>
+            )}
                 </div>
         ) : loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-sm text-[#64748B]">Carregando dados...</div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 ${
+            dashboardData?.profile?.selected_plan_id ? 'xl:grid-cols-4' : 'xl:grid-cols-3'
+          }`}>
             <div className="group bg-white rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-4 sm:gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
@@ -292,50 +347,53 @@ function DashboardPage() {
               </div>
             </div>
 
-            <div className="group bg-white rounded-2xl p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
-                  Lucro Líquido
+            {/* Card de Lucro Líquido - Aparece quando tem plano selecionado (sem MyFXBook) */}
+            {dashboardData?.profile?.selected_plan_id && (
+              <div className="group bg-white rounded-2xl p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
+                    Lucro Líquido
+                  </div>
+                  <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(0,255,136,0.1)] group-hover:text-[#059669]">
+                    <Icon icon="lucide:trending-up" className="text-base" />
+                  </div>
                 </div>
-                <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(0,255,136,0.1)] group-hover:text-[#059669]">
-                  <Icon icon="lucide:trending-up" className="text-base" />
-                </div>
-              </div>
-              <div>
-                {(() => {
-                  // Calcular lucro líquido: lucro do MyFXBook - porcentagem do plano
-                  const myfxbookProfit = selectedMyfxbookAccount?.profit || 0
-                  const profitFeePercentage = dashboardData?.profile?.profit_fee_percentage || 0
-                  const netProfit = myfxbookProfit > 0 
-                    ? myfxbookProfit * (1 - profitFeePercentage / 100)
-                    : myfxbookProfit
-                  
-                  return (
-                    <div className={`text-xl sm:text-2xl lg:text-[28px] font-bold tracking-[-0.03em] leading-none ${
-                      netProfit >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
-                    }`}>
-                      {formatCurrencyBR(netProfit)}
-                    </div>
-                  )
-                })()}
-              </div>
-              <div className="text-xs text-[#94A3B8] flex items-center gap-1.5 font-medium">
-                {(() => {
-                  const profitFeePercentage = dashboardData?.profile?.profit_fee_percentage || 0
-                  if (profitFeePercentage > 0 && dashboardData?.profile?.plan_name) {
+                <div>
+                  {(() => {
+                    // Calcular lucro líquido: lucro do dashboard - porcentagem do plano
+                    const dashboardProfit = dashboardData?.profile?.total_profit || 0
+                    const profitFeePercentage = dashboardData?.profile?.profit_fee_percentage || 0
+                    const netProfit = dashboardProfit > 0 
+                      ? dashboardProfit * (1 - profitFeePercentage / 100)
+                      : dashboardProfit
+                    
                     return (
-                      <>
-                        <div className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-[rgba(16,185,129,0.08)] text-[#059669]">
-                          <span>Plano: {dashboardData.profile.plan_name}</span>
-                        </div>
-                        <span>Taxa: {profitFeePercentage.toFixed(1)}%</span>
-                      </>
+                      <div className={`text-xl sm:text-2xl lg:text-[28px] font-bold tracking-[-0.03em] leading-none ${
+                        netProfit >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
+                      }`}>
+                        {formatCurrencyBR(netProfit)}
+                      </div>
                     )
-                  }
-                  return <span>Após desconto da taxa do plano</span>
-                })()}
+                  })()}
+                </div>
+                <div className="text-xs text-[#94A3B8] flex items-center gap-1.5 font-medium">
+                  {(() => {
+                    const profitFeePercentage = dashboardData?.profile?.profit_fee_percentage || 0
+                    if (profitFeePercentage > 0 && dashboardData?.profile?.plan_name) {
+                      return (
+                        <>
+                          <div className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-[rgba(16,185,129,0.08)] text-[#059669]">
+                            <span>Plano: {dashboardData.profile.plan_name}</span>
+                          </div>
+                          <span>Taxa: {profitFeePercentage.toFixed(1)}%</span>
+                        </>
+                      )
+                    }
+                    return <span>Após desconto da taxa do plano</span>
+                  })()}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="group bg-white rounded-2xl p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
               <div className="flex items-center justify-between">
