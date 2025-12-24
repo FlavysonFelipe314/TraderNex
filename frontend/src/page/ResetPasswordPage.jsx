@@ -135,9 +135,6 @@ function ResetPasswordPage() {
                 alt="TraderNex"
                 className="h-10 w-auto"
               />
-              <div className="text-[22px] font-bold text-white tracking-[-0.01em]">
-                TraderNex
-              </div>
             </div>
 
             <h1 className="text-5xl font-bold leading-[1.1] mb-6 tracking-[-0.02em] text-white">

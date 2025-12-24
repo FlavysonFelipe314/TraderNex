@@ -376,7 +376,6 @@ function AccountCreatedPage() {
 
           <div className="logo-container">
             <div className="logo-dot"></div>
-            <div className="logo-text">TraderNex</div>
           </div>
 
           <div className="hero-content">

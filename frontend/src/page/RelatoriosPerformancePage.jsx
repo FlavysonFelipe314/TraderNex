@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
-import { getPerformanceStats, getMyfxbookData } from '../services/dashboardService'
+import { getPerformanceStats, getMyfxbookData, getDashboardData } from '../services/dashboardService'
 import { formatCurrencyBR, formatPercentBR, formatNumberBR } from '../utils/format'
 
 function RelatoriosPerformancePage() {
@@ -76,6 +76,9 @@ function RelatoriosPerformancePage() {
       // Carregar dados do MyFXBook com filtros de data
       const myfxbookPromise = getMyfxbookData(dateRange.startDate, dateRange.endDate)
       
+      // Carregar dados do dashboard para obter informações do plano
+      const dashboardPromise = getDashboardData()
+      
       // Carregar dados de performance como fallback
       const periodMap = {
         'hoje': 'day',
@@ -87,9 +90,10 @@ function RelatoriosPerformancePage() {
       const backendPeriod = periodMap[period] || 'month'
       const performancePromise = getPerformanceStats(backendPeriod)
       
-      // Aguardar ambas as requisições com tratamento de erros
-      const [myfxbookResult, performanceResult] = await Promise.allSettled([
+      // Aguardar todas as requisições com tratamento de erros
+      const [myfxbookResult, dashboardResult, performanceResult] = await Promise.allSettled([
         myfxbookPromise,
+        dashboardPromise,
         performancePromise
       ])
       
@@ -121,6 +125,19 @@ function RelatoriosPerformancePage() {
         }
       }
 
+      // Processar resultado Dashboard
+      if (dashboardResult.status === 'fulfilled') {
+        const result = dashboardResult.value
+        if (result.success) {
+          setDashboardData(result.data)
+        }
+      } else {
+        const error = dashboardResult.reason
+        if (error.response?.status !== 401 && error.response?.status !== 429) {
+          console.error('[Relatórios] Erro ao carregar dashboard:', error)
+        }
+      }
+
       // Processar resultado Performance
       if (performanceResult.status === 'fulfilled') {
         const result = performanceResult.value
@@ -149,6 +166,21 @@ function RelatoriosPerformancePage() {
       isLoadingRef.current = false
       setLoading(false)
     }
+  }, [])
+
+  // Carregar dados do dashboard na montagem inicial
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        const result = await getDashboardData()
+        if (result.success) {
+          setDashboardData(result.data)
+        }
+      } catch (error) {
+        console.error('[Relatórios] Erro ao carregar dashboard:', error)
+      }
+    }
+    loadDashboard()
   }, [])
 
   // Carregar dados de performance e MyFXBook com debounce
@@ -240,9 +272,17 @@ function RelatoriosPerformancePage() {
     // Para obter o total completo (ex: 7970), seria necessário usar outra fonte de dados
     // Este valor representa apenas os trades do período filtrado disponíveis via API
     
+    // Calcular lucro líquido: lucro bruto - porcentagem do plano
+    const grossProfit = parseFloat(account.profit || 0)
+    const profitFeePercentage = dashboardData?.profile?.profit_fee_percentage || 0
+    const netProfit = grossProfit > 0 
+      ? grossProfit * (1 - profitFeePercentage / 100)
+      : grossProfit
+    
     return {
       totalReturn: parseFloat(account.absGain || account.gain || 0),
-      netProfit: parseFloat(account.profit || 0),
+      netProfit: netProfit, // Lucro líquido (já descontado a taxa do plano)
+      grossProfit: grossProfit, // Lucro bruto (para referência)
       profitFactor: parseFloat(account.profitFactor || 0),
       maxDrawdown: Math.abs(parseFloat(account.drawdown || 0)),
       gain: parseFloat(myfxbookData.gain || account.gain || 0),
@@ -250,7 +290,7 @@ function RelatoriosPerformancePage() {
       openOrders: myfxbookData.openOrders?.length || 0,
       totalTrades: totalTrades
     }
-  }, [myfxbookData, parseMyFXBookDate])
+  }, [myfxbookData, dashboardData, parseMyFXBookDate])
 
   // Processar histórico mensal dos dados do MyFXBook
   // Usando dataDaily para obter números reais e validados do MyFXBook

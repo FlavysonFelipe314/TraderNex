@@ -317,18 +317,13 @@ function Sidebar() {
         </button>
         
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8 pl-1 mt-2">
+        <div className="flex items-center mb-8 pl-1 mt-2">
           <img 
             src="/logo.png"
             alt="TraderNex"
             className="h-9 w-auto flex-shrink-0 cursor-pointer"
             onClick={() => handleNavigation('/dashboard')}
           />
-          <div className="flex flex-col gap-0.5 flex-1">
-            <div className="text-base font-bold text-white leading-[1.1]">
-              TraderNex
-            </div>
-          </div>
         </div>
 
         {/* Navigation */}
