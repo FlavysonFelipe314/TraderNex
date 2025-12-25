@@ -10,6 +10,19 @@ const MYFXBOOK_API_BASE = 'https://www.myfxbook.com/api';
  */
 async function loginMyfxbook(email, password) {
   try {
+    // Validações iniciais
+    if (!email || !password) {
+      console.error(`[Myfxbook] Email ou senha não fornecidos:`, {
+        hasEmail: !!email,
+        hasPassword: !!password
+      });
+      return {
+        success: false,
+        message: 'Email e senha são obrigatórios',
+        error: 'Missing credentials'
+      };
+    }
+
     console.log(`[Myfxbook] Tentando fazer login para: ${email}`);
     console.log(`[Myfxbook] Senha (tamanho): ${password ? password.length : 0} caracteres`);
     
@@ -31,28 +44,71 @@ async function loginMyfxbook(email, password) {
       }
     });
 
-    console.log(`[Myfxbook] Resposta recebida:`, {
-      status: response.status,
-      hasError: response.data.error,
-      hasSession: !!response.data.session,
-      message: response.data.message,
-      fullResponse: response.data
-    });
-
-    if (response.data.error) {
-      console.error(`[Myfxbook] Erro na resposta:`, response.data);
+    // Verificar status HTTP de erro
+    if (response.status >= 400 && response.status < 500) {
+      console.error(`[Myfxbook] Status HTTP de erro: ${response.status} ${response.statusText}`);
       return {
         success: false,
-        message: response.data.message || 'Erro ao fazer login no Myfxbook',
+        message: `Erro HTTP ${response.status}: ${response.statusText || 'Erro de autenticação ou requisição inválida'}`,
         error: response.data
       };
     }
 
-    if (!response.data.session) {
-      console.error(`[Myfxbook] Resposta sem session:`, response.data);
+    console.log(`[Myfxbook] Resposta recebida:`, {
+      status: response.status,
+      statusText: response.statusText,
+      hasError: response.data?.error,
+      hasSession: !!response.data?.session,
+      message: response.data?.message,
+      dataKeys: response.data ? Object.keys(response.data) : [],
+      fullResponse: JSON.stringify(response.data).substring(0, 500) // Limitar tamanho do log
+    });
+
+    // Verificar se a resposta é válida
+    if (!response.data || typeof response.data !== 'object') {
+      console.error(`[Myfxbook] Resposta inválida ou não é um objeto:`, {
+        type: typeof response.data,
+        data: response.data
+      });
       return {
         success: false,
-        message: 'Resposta inválida do Myfxbook: session não encontrada',
+        message: 'Resposta inválida do Myfxbook: formato de resposta não reconhecido',
+        error: response.data
+      };
+    }
+
+    // Verificar se há erro na resposta
+    if (response.data.error) {
+      console.error(`[Myfxbook] Erro na resposta:`, response.data);
+      const errorMessage = response.data.message || 'Erro ao fazer login no Myfxbook';
+      return {
+        success: false,
+        message: errorMessage,
+        error: response.data
+      };
+    }
+
+    // Verificar se há session na resposta
+    if (!response.data.session) {
+      console.error(`[Myfxbook] Resposta sem session:`, {
+        status: response.status,
+        statusText: response.statusText,
+        dataKeys: Object.keys(response.data),
+        data: JSON.stringify(response.data).substring(0, 500)
+      });
+      
+      // Verificar se há mensagem de erro não capturada
+      if (response.data.message && !response.data.error) {
+        return {
+          success: false,
+          message: `Erro do Myfxbook: ${response.data.message}`,
+          error: response.data
+        };
+      }
+      
+      return {
+        success: false,
+        message: 'Resposta inválida do Myfxbook: session não encontrada. Verifique se as credenciais estão corretas.',
         error: response.data
       };
     }
