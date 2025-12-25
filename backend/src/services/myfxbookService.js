@@ -295,7 +295,9 @@ async function getMyAccounts(session) {
     console.log(`[Myfxbook] Buscando contas - Session: ${session ? session.substring(0, 50) + '...' : 'null'}`);
     
     const url = `${MYFXBOOK_API_BASE}/get-my-accounts.json`;
-    const fullUrl = `${url}?session=${encodeURIComponent(session)}`;
+    // IMPORTANTE: A session já vem URL-encoded do MyFXBook, não codificar novamente!
+    // Se codificar novamente, %2B vira %252B e a session fica inválida
+    const fullUrl = `${url}?session=${session}`;
     
     console.log(`[Myfxbook] URL completa (primeiros 150 chars): ${fullUrl.substring(0, 150)}...`);
     
@@ -438,7 +440,9 @@ async function getMyAccountsWithPuppeteer(session) {
     
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
-    const url = `${MYFXBOOK_API_BASE}/get-my-accounts.json?session=${encodeURIComponent(session)}`;
+    // IMPORTANTE: A session já vem URL-encoded do MyFXBook, não codificar novamente!
+    // Se codificar novamente, %2B vira %252B e a session fica inválida
+    const url = `${MYFXBOOK_API_BASE}/get-my-accounts.json?session=${session}`;
     
     console.log('[Myfxbook Puppeteer] Navegando para URL...');
     
