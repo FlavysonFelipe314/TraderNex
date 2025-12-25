@@ -2,20 +2,6 @@ const axios = require('axios');
 
 const MYFXBOOK_API_BASE = 'https://www.myfxbook.com/api';
 
-// Puppeteer será carregado dinamicamente apenas quando necessário
-let puppeteer = null;
-async function getPuppeteer() {
-  if (!puppeteer) {
-    try {
-      puppeteer = require('puppeteer');
-    } catch (error) {
-      console.warn('[Myfxbook] Puppeteer não está instalado. Execute: npm install puppeteer');
-      return null;
-    }
-  }
-  return puppeteer;
-}
-
 /**
  * Faz login na API do Myfxbook
  * @param {string} email - Email do usuário Myfxbook
@@ -58,14 +44,11 @@ async function loginMyfxbook(email, password, initialDelay = 0) {
     const passwordParam = encodeURIComponent(password);
     const url = `${MYFXBOOK_API_BASE}/login.json`;
     
-    // Headers mais completos para parecer com um navegador real
+    // Headers mínimos como um REST client simples
+    // Não usar muitos headers para não parecer suspeito
     const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Referer': 'https://www.myfxbook.com/',
-      'Origin': 'https://www.myfxbook.com',
-      'Connection': 'keep-alive'
+      'Accept': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     };
 
     // Tentar fazer login com retry para erro 403
@@ -95,20 +78,13 @@ async function loginMyfxbook(email, password, initialDelay = 0) {
               email: email,
               password: password
             },
-            timeout: 15000,
+            timeout: 30000, // Aumentar timeout
             headers: headers,
-            responseType: 'text', // Receber como texto para detectar HTML do Cloudflare
-            transformResponse: [(data) => {
-              // Tentar fazer parse de JSON, se falhar, retornar como string
-              try {
-                return JSON.parse(data);
-              } catch (e) {
-                return data; // Retornar como string se não for JSON válido
-              }
-            }],
             validateStatus: function (status) {
               return status < 500;
-            }
+            },
+            maxRedirects: 5,
+            decompress: true
           });
         } else {
           // Método GET padrão
@@ -116,20 +92,16 @@ async function loginMyfxbook(email, password, initialDelay = 0) {
           console.log(`[Myfxbook] Tentativa ${attempt} - URL (primeiros 150 chars): ${getUrl.substring(0, 150)}...`);
           
           response = await axios.get(getUrl, {
-            timeout: 15000,
+            timeout: 30000, // Aumentar timeout
             headers: headers,
-            responseType: 'text', // Receber como texto para detectar HTML do Cloudflare
-            transformResponse: [(data) => {
-              // Tentar fazer parse de JSON, se falhar, retornar como string
-              try {
-                return JSON.parse(data);
-              } catch (e) {
-                return data; // Retornar como string se não for JSON válido
-              }
-            }],
+            // Não usar responseType: 'text' - deixar axios fazer parse automático
+            // Se for JSON, será parseado automaticamente
+            // Se for HTML, será detectado como string
             validateStatus: function (status) {
-              return status < 500;
-            }
+              return status < 500; // Aceitar qualquer status < 500
+            },
+            maxRedirects: 5, // Permitir redirects
+            decompress: true // Descomprimir automaticamente
           });
         }
         
@@ -190,35 +162,23 @@ async function loginMyfxbook(email, password, initialDelay = 0) {
       };
     }
 
-    // Verificar se a resposta é um desafio do Cloudflare
-    const responseDataType = typeof response.data;
-    const responseDataString = responseDataType === 'string' ? response.data : String(response.data || '');
-    const isCloudflareChallenge = response.data && 
-      (responseDataString.includes('Just a moment') || 
-       responseDataString.includes('Enable JavaScript') ||
-       responseDataString.includes('cf-challenge') ||
-       responseDataString.includes('challenge-platform'));
-
-    console.log('[Myfxbook] Verificando desafio Cloudflare:', {
+    console.log('[Myfxbook] Verificando resposta:', {
       status: response.status,
-      dataType: responseDataType,
-      isCloudflareChallenge: isCloudflareChallenge,
-      hasJustAMoment: responseDataString.includes('Just a moment'),
-      dataPreview: responseDataString.substring(0, 100)
+      dataType: typeof response.data,
+      contentType: response.headers['content-type'],
+      isJSON: typeof response.data === 'object' && response.data && !response.data.error,
+      hasSession: response.data?.session ? true : false,
+      hasError: response.data?.error ? true : false
     });
 
-    // Se for desafio do Cloudflare, tentar com Puppeteer
-    if (isCloudflareChallenge && response.status === 403) {
-      console.log('[Myfxbook] Desafio do Cloudflare detectado. Tentando com Puppeteer...');
-      const puppeteerResult = await loginMyfxbookWithPuppeteer(email, password);
-      if (puppeteerResult.success) {
-        console.log('[Myfxbook] Puppeteer conseguiu fazer login com sucesso!');
-        return puppeteerResult;
-      }
-      // Se Puppeteer também falhar, continuar com o erro original
-      console.warn('[Myfxbook] Puppeteer falhou:', puppeteerResult.message);
-    } else if (response.status === 403) {
-      console.warn('[Myfxbook] Erro 403 mas não foi detectado como desafio Cloudflare');
+    // Se a resposta for JSON válido com session, sucesso!
+    if (response.status === 200 && response.data && typeof response.data === 'object' && response.data.session) {
+      console.log('[Myfxbook] Login bem-sucedido via REST!');
+      return {
+        success: true,
+        session: response.data.session,
+        message: 'Login realizado com sucesso'
+      };
     }
 
     // Verificar status HTTP de erro
@@ -233,8 +193,8 @@ async function loginMyfxbook(email, password, initialDelay = 0) {
       
       if (response.status === 403) {
         const isCloudflare = response.headers?.['server'] === 'cloudflare' || response.headers?.['cf-ray'];
-        if (isCloudflare || isCloudflareChallenge) {
-          errorMessage = 'Acesso negado pelo Cloudflare (403 Forbidden). O MyFXBook está usando proteção Cloudflare que bloqueia requisições automatizadas. O sistema tentou usar Puppeteer mas falhou. Possíveis soluções: 1) Instalar Puppeteer: npm install puppeteer, 2) Aguardar alguns minutos e tentar novamente, 3) Contatar o suporte do MyFXBook sobre acesso via API.';
+        if (isCloudflare) {
+          errorMessage = 'Acesso negado pelo Cloudflare (403 Forbidden). O MyFXBook está usando proteção Cloudflare que pode estar bloqueando requisições do servidor. Possíveis soluções: 1) Aguardar alguns minutos e tentar novamente, 2) Verificar se o IP do servidor não está bloqueado, 3) Contatar o suporte do MyFXBook sobre acesso via API.';
         } else {
           errorMessage = 'Acesso negado pela API do MyFXBook (403 Forbidden). Isso pode ocorrer por: rate limiting, IP bloqueado, ou credenciais inválidas. Tente novamente em alguns minutos.';
         }
@@ -333,162 +293,6 @@ async function loginMyfxbook(email, password, initialDelay = 0) {
       message: error.response?.data?.message || error.message || 'Erro de conexão com Myfxbook',
       error: error.message
     };
-  }
-}
-
-/**
- * Faz login usando Puppeteer para contornar desafio do Cloudflare
- * @param {string} email - Email do usuário Myfxbook
- * @param {string} password - Senha do usuário Myfxbook
- * @returns {Promise<Object>} Objeto com session ID ou erro
- */
-async function loginMyfxbookWithPuppeteer(email, password) {
-  let browser = null;
-  try {
-    const puppeteerLib = await getPuppeteer();
-    if (!puppeteerLib) {
-      return {
-        success: false,
-        message: 'Puppeteer não está instalado. Execute: npm install puppeteer'
-      };
-    }
-
-    console.log('[Myfxbook Puppeteer] Iniciando navegador...');
-    
-    // Configuração para Alpine Linux (produção)
-    // Tentar diferentes caminhos possíveis do Chromium no Alpine
-    const possiblePaths = [
-      process.env.PUPPETEER_EXECUTABLE_PATH,
-      '/usr/bin/chromium-browser',
-      '/usr/bin/chromium',
-      '/usr/bin/google-chrome',
-      '/usr/bin/google-chrome-stable'
-    ];
-    
-    let executablePath = undefined;
-    const fs = require('fs');
-    for (const path of possiblePaths) {
-      if (path && fs.existsSync(path)) {
-        executablePath = path;
-        console.log(`[Myfxbook Puppeteer] Chromium encontrado em: ${path}`);
-        break;
-      }
-    }
-    
-    if (!executablePath) {
-      console.warn('[Myfxbook Puppeteer] Chromium não encontrado, tentando sem executablePath...');
-    }
-    
-    browser = await puppeteerLib.launch({
-      headless: true,
-      executablePath: executablePath, // Usa Chromium do sistema se disponível
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu',
-        '--disable-software-rasterizer',
-        '--disable-extensions',
-        '--single-process' // Necessário para alguns ambientes Docker
-      ]
-    });
-
-    const page = await browser.newPage();
-    
-    // Configurar user agent
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    
-    // Construir URL de login
-    const emailParam = encodeURIComponent(email);
-    const passwordParam = encodeURIComponent(password);
-    const loginUrl = `${MYFXBOOK_API_BASE}/login.json?email=${emailParam}&password=${passwordParam}`;
-    
-    console.log('[Myfxbook Puppeteer] Acessando URL de login...');
-    
-    // Navegar para a URL e aguardar o desafio do Cloudflare ser resolvido
-    await page.goto(loginUrl, {
-      waitUntil: 'networkidle2',
-      timeout: 30000
-    });
-
-    // Aguardar um pouco para garantir que o JavaScript do Cloudflare foi executado
-    await page.waitForTimeout(5000);
-
-    // Tentar obter a resposta JSON
-    const content = await page.content();
-    
-    // Verificar se ainda está no desafio
-    if (content.includes('Just a moment') || content.includes('Enable JavaScript')) {
-      console.warn('[Myfxbook Puppeteer] Ainda no desafio do Cloudflare após 5 segundos');
-      // Aguardar mais um pouco
-      await page.waitForTimeout(10000);
-    }
-
-    // Tentar obter a resposta via avaliação de JavaScript
-    const responseText = await page.evaluate(() => {
-      return document.body.innerText;
-    });
-
-    // Tentar fazer uma requisição fetch para obter o JSON
-    const jsonResponse = await page.evaluate(async (url) => {
-      try {
-        const response = await fetch(url);
-        return await response.text();
-      } catch (error) {
-        return null;
-      }
-    }, loginUrl);
-
-    if (jsonResponse) {
-      try {
-        const data = JSON.parse(jsonResponse);
-        if (data.session) {
-          console.log('[Myfxbook Puppeteer] Login bem-sucedido!');
-          return {
-            success: true,
-            session: data.session,
-            message: 'Login realizado com sucesso via Puppeteer'
-          };
-        }
-        if (data.error) {
-          return {
-            success: false,
-            message: data.message || 'Erro ao fazer login no Myfxbook',
-            error: data
-          };
-        }
-      } catch (parseError) {
-        console.warn('[Myfxbook Puppeteer] Erro ao parsear JSON:', parseError);
-      }
-    }
-
-    // Se não conseguiu obter JSON, verificar se há erro na página
-    if (responseText.includes('error') || responseText.includes('Invalid')) {
-      return {
-        success: false,
-        message: 'Credenciais inválidas ou erro no login',
-        error: responseText
-      };
-    }
-
-    return {
-      success: false,
-      message: 'Não foi possível obter resposta do login via Puppeteer',
-      error: 'Timeout ou desafio não resolvido'
-    };
-
-  } catch (error) {
-    console.error('[Myfxbook Puppeteer] Erro:', error);
-    return {
-      success: false,
-      message: 'Erro ao fazer login com Puppeteer: ' + error.message,
-      error: error.message
-    };
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
   }
 }
 
