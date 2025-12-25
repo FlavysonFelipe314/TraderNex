@@ -308,17 +308,37 @@ async function getMyAccounts(session) {
         }
       });
 
-      console.log(`[Myfxbook] Resposta - Status: ${response.status}, Contas: ${response.data?.accounts ? response.data.accounts.length : 0}`);
+      console.log(`[Myfxbook] Resposta - Status: ${response.status}`);
+      console.log(`[Myfxbook] Resposta completa:`, JSON.stringify(response.data, null, 2));
+      console.log(`[Myfxbook] Chaves da resposta:`, Object.keys(response.data || {}));
+      console.log(`[Myfxbook] Contas (accounts): ${response.data?.accounts ? response.data.accounts.length : 'não existe'}`);
+      console.log(`[Myfxbook] Tipo de accounts:`, typeof response.data?.accounts);
 
       if (response.status === 200 && response.data && !response.data.error) {
-        const accounts = response.data.accounts || [];
-        console.log(`[Myfxbook] Contas obtidas: ${accounts.length}`);
+        // Verificar diferentes possíveis campos
+        let accounts = response.data.accounts || response.data.Accounts || response.data.data || [];
+        
+        // Se accounts não é array, tentar converter
+        if (accounts && !Array.isArray(accounts)) {
+          if (typeof accounts === 'object') {
+            // Pode ser um objeto com contas dentro
+            accounts = Object.values(accounts).find(v => Array.isArray(v)) || [];
+          } else {
+            accounts = [];
+          }
+        }
+        
+        console.log(`[Myfxbook] Contas processadas: ${accounts.length}`);
+        console.log(`[Myfxbook] Todas as contas:`, JSON.stringify(accounts, null, 2));
         
         if (accounts.length > 0) {
           console.log(`[Myfxbook] Primeira conta:`, {
             id: accounts[0].id,
             name: accounts[0].name,
-            accountId: accounts[0].accountId
+            accountId: accounts[0].accountId,
+            accountNumber: accounts[0].accountNumber,
+            broker: accounts[0].broker,
+            todasChaves: Object.keys(accounts[0] || {})
           });
         }
         
@@ -497,29 +517,55 @@ async function getMyAccountsWithPuppeteer(session) {
     // Processar resposta antes de fechar navegador
     let result = null;
     
-    if (responseData && responseData.accounts) {
-      const accounts = responseData.accounts || [];
-      console.log(`[Myfxbook Puppeteer] Contas obtidas: ${accounts.length}`);
+    console.log(`[Myfxbook Puppeteer] ResponseData completo:`, JSON.stringify(responseData, null, 2));
+    console.log(`[Myfxbook Puppeteer] Chaves do responseData:`, responseData ? Object.keys(responseData) : 'null');
+    
+    if (responseData) {
+      // Verificar diferentes possíveis campos
+      let accounts = responseData.accounts || responseData.Accounts || responseData.data || [];
+      
+      // Se accounts não é array, tentar converter
+      if (accounts && !Array.isArray(accounts)) {
+        if (typeof accounts === 'object') {
+          // Pode ser um objeto com contas dentro
+          accounts = Object.values(accounts).find(v => Array.isArray(v)) || [];
+        } else {
+          accounts = [];
+        }
+      }
       
       if (accounts.length > 0) {
+        console.log(`[Myfxbook Puppeteer] Contas obtidas: ${accounts.length}`);
+        console.log(`[Myfxbook Puppeteer] Todas as contas:`, JSON.stringify(accounts, null, 2));
         console.log(`[Myfxbook Puppeteer] Primeira conta:`, {
           id: accounts[0].id,
           name: accounts[0].name,
-          accountId: accounts[0].accountId
+          accountId: accounts[0].accountId,
+          accountNumber: accounts[0].accountNumber,
+          broker: accounts[0].broker,
+          todasChaves: Object.keys(accounts[0] || {})
         });
+        
+        result = {
+          success: true,
+          accounts: accounts,
+          message: 'Contas obtidas com sucesso via Puppeteer'
+        };
+      } else if (responseData.error) {
+        result = {
+          success: false,
+          message: responseData.message || 'Erro ao buscar contas',
+          error: responseData
+        };
+      } else {
+        // Se não tem accounts mas também não tem error, pode ser que esteja em outro formato
+        console.warn(`[Myfxbook Puppeteer] Resposta sem accounts e sem error:`, responseData);
+        result = {
+          success: false,
+          message: 'Resposta recebida mas sem contas encontradas',
+          error: responseData
+        };
       }
-      
-      result = {
-        success: true,
-        accounts: accounts,
-        message: 'Contas obtidas com sucesso via Puppeteer'
-      };
-    } else if (responseData && responseData.error) {
-      result = {
-        success: false,
-        message: responseData.message || 'Erro ao buscar contas',
-        error: responseData
-      };
     }
     
     // Fechar navegador
