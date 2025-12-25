@@ -19,6 +19,8 @@ function DashboardPage() {
   const [selectedMyfxbookAccount, setSelectedMyfxbookAccount] = useState(null)
   const [myfxbookAccountData, setMyfxbookAccountData] = useState(null)
   const [loadingMyfxbook, setLoadingMyfxbook] = useState(false)
+  const [myfxbookFromCache, setMyfxbookFromCache] = useState(false)
+  const [refreshingMyfxbook, setRefreshingMyfxbook] = useState(false)
 
   // Adicionar animação pulse
   const pulseStyle = {
@@ -63,6 +65,9 @@ function DashboardPage() {
 
         // Carregar dados do MyFXBook usando credenciais padrão e accountId configurado
         if (myfxbookDataResult.success && myfxbookDataResult.data) {
+          // Verificar se veio do cache
+          setMyfxbookFromCache(myfxbookDataResult.fromCache || false)
+          
           const isConnected = myfxbookDataResult.data.connected
           setMyfxbookConnected(isConnected)
           
@@ -433,9 +438,68 @@ function DashboardPage() {
                   </div>
                 </div>
               </div>
+              <button
+                onClick={async () => {
+                  setRefreshingMyfxbook(true)
+                  try {
+                    const result = await getMyfxbookData(null, null, true) // forceRefresh = true
+                    if (result.success && result.data) {
+                      setMyfxbookFromCache(false)
+                      const isConnected = result.data.connected
+                      setMyfxbookConnected(isConnected)
+                      if (isConnected && result.data.account) {
+                        const accountData = result.data.account
+                        setSelectedMyfxbookAccount({
+                          id: accountData.id,
+                          accountId: accountData.accountId,
+                          name: accountData.name,
+                          gain: accountData.gain,
+                          profit: accountData.profit,
+                          drawdown: accountData.drawdown,
+                          equity: accountData.equity,
+                          balance: accountData.balance,
+                          absGain: accountData.absGain,
+                          daily: accountData.daily,
+                          monthly: accountData.monthly
+                        })
+                        setMyfxbookAccountData({
+                          account: accountData,
+                          openTrades: result.data.openTrades || [],
+                          openOrders: result.data.openOrders || [],
+                          history: result.data.history || [],
+                          dailyGain: result.data.dailyGain || [],
+                          dataDaily: result.data.dataDaily || [],
+                          gain: result.data.gain,
+                          watchedAccounts: result.data.watchedAccounts || [],
+                          communityOutlook: result.data.communityOutlook
+                        })
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Erro ao atualizar dados MyFXBook:', error)
+                  } finally {
+                    setRefreshingMyfxbook(false)
+                  }
+                }}
+                disabled={refreshingMyfxbook}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#00afaa] bg-white border border-[#00afaa] rounded-lg hover:bg-[#f0fdfa] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Icon 
+                  icon="lucide:refresh-cw" 
+                  className={`text-sm ${refreshingMyfxbook ? 'animate-spin' : ''}`} 
+                />
+                {refreshingMyfxbook ? 'Atualizando...' : 'Atualizar'}
+              </button>
             </div>
             
             <div className="p-4 sm:p-6 lg:p-8">
+              {/* Indicador de cache */}
+              {myfxbookFromCache && (
+                <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700 flex items-center gap-2">
+                  <Icon icon="lucide:database" className="text-sm" />
+                  <span>Dados do cache - Atualização automática à meia-noite</span>
+                </div>
+              )}
 
               {/* Histórico Recente */}
               {myfxbookAccountData?.history && myfxbookAccountData.history.length > 0 && (

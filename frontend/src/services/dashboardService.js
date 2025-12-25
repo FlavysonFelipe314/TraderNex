@@ -176,21 +176,75 @@ export const getUserInvestments = async () => {
 }
 
 // Obter dados MyFXBook usando accountId configurado pelo admin
-// Parâmetros opcionais: startDate (yyyy-mm-dd), endDate (yyyy-mm-dd)
-export const getMyfxbookData = async (startDate = null, endDate = null) => {
+// Parâmetros opcionais: startDate (yyyy-mm-dd), endDate (yyyy-mm-dd), forceRefresh (boolean)
+export const getMyfxbookData = async (startDate = null, endDate = null, forceRefresh = false) => {
   try {
+    // Importar funções de cache
+    const { getCachedData, setCachedData, setupMidnightReset, clearCache } = await import('../utils/myfxbookCache')
+    
+    // Configurar reset automático à meia-noite (apenas uma vez)
+    if (typeof window !== 'undefined' && !window.myfxbookCacheSetup) {
+      setupMidnightReset()
+      window.myfxbookCacheSetup = true
+    }
+    
+    // Se não for refresh forçado, tentar obter do cache primeiro
+    if (!forceRefresh) {
+      const cached = getCachedData()
+      if (cached) {
+        console.log('[MyFXBook] Usando dados do cache')
+        return {
+          success: true,
+          data: cached,
+          message: 'Dados do cache',
+          fromCache: true
+        }
+      }
+    } else {
+      // Se for refresh forçado, limpar cache
+      clearCache()
+    }
+    
+    // Se não tem cache ou é refresh, buscar da API
+    console.log('[MyFXBook] Buscando dados da API...')
     const params = {}
     if (startDate) params.startDate = startDate
     if (endDate) params.endDate = endDate
     
     const response = await api.get('/api/dashboard/myfxbook-data', { params })
+    
+    if (response.data.success && response.data.data) {
+      // Salvar no cache (válido por 24 horas)
+      setCachedData(response.data.data, 24)
+    }
+    
     return {
       success: response.data.success,
       data: response.data.data,
-      message: response.data.message
+      message: response.data.message,
+      fromCache: false
     }
   } catch (error) {
     console.error('Erro ao buscar dados MyFXBook:', error)
+    
+    // Se der erro, tentar usar cache mesmo expirado como fallback
+    try {
+      const { getCachedData } = await import('../utils/myfxbookCache')
+      const cached = getCachedData()
+      if (cached) {
+        console.log('[MyFXBook] Erro na API, usando cache como fallback')
+        return {
+          success: true,
+          data: cached,
+          message: 'Dados do cache (API indisponível)',
+          fromCache: true,
+          error: error.message
+        }
+      }
+    } catch (cacheError) {
+      console.error('Erro ao obter cache:', cacheError)
+    }
+    
     return {
       success: false,
       message: error.response?.data?.message || 'Erro ao buscar dados MyFXBook.',
