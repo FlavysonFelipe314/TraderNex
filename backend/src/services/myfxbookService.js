@@ -708,26 +708,38 @@ async function getHistory(session, accountId) {
     console.log(`[Myfxbook] URL get-history (primeiros 100 chars): ${url.substring(0, 100)}...`);
     
     const response = await axios.get(url, {
-      timeout: 15000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json'
-      },
+      timeout: 30000,
       validateStatus: function (status) {
         return status < 500;
       }
     });
 
-    console.log(`[Myfxbook] Resposta get-history:`, {
-      status: response.status,
-      hasError: response.data.error,
-      hasHistory: !!response.data.history,
-      historyLength: response.data.history ? response.data.history.length : 0,
-      message: response.data.message
-    });
+    console.log(`[Myfxbook] Resposta get-history - Status: ${response.status}`);
+    console.log(`[Myfxbook] Resposta completa:`, JSON.stringify(response.data, null, 2));
 
-    if (response.data.error) {
-      console.error(`[Myfxbook] Erro na resposta get-history:`, response.data);
+    if (response.status === 200 && response.data && !response.data.error) {
+      const historyData = response.data.history || [];
+      console.log(`[Myfxbook] Histórico obtido: ${historyData.length} registros`);
+      
+      if (historyData.length > 0) {
+        console.log(`[Myfxbook] Primeiro registro:`, {
+          symbol: historyData[0].symbol,
+          side: historyData[0].side,
+          profit: historyData[0].profit,
+          openTime: historyData[0].openTime,
+          closeTime: historyData[0].closeTime
+        });
+      }
+      
+      return {
+        success: true,
+        history: historyData,
+        message: 'Histórico obtido com sucesso'
+      };
+    }
+
+    if (response.data?.error) {
+      console.error(`[Myfxbook] Erro na resposta:`, response.data);
       return {
         success: false,
         message: response.data.message || 'Erro ao buscar histórico',
@@ -735,17 +747,21 @@ async function getHistory(session, accountId) {
       };
     }
 
-    const historyData = response.data.history || [];
-    console.log(`[Myfxbook] Histórico obtido com sucesso! Total de registros: ${historyData.length}`);
-    if (historyData.length > 0) {
-      console.log(`[Myfxbook] Primeiro registro do histórico:`, {
-        symbol: historyData[0].symbol,
-        side: historyData[0].side,
-        profit: historyData[0].profit,
-        openTime: historyData[0].openTime,
-        closeTime: historyData[0].closeTime
-      });
+    // Se status 403, pode ser Cloudflare
+    if (response.status === 403) {
+      console.warn('[Myfxbook] Erro 403 ao buscar histórico');
+      return {
+        success: false,
+        message: 'Acesso negado ao buscar histórico',
+        error: response.data
+      };
     }
+
+    return {
+      success: false,
+      message: 'Resposta inválida ao buscar histórico',
+      error: response.data
+    };
 
     return {
       success: true,

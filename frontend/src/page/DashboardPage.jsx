@@ -98,10 +98,13 @@ function DashboardPage() {
             })
             
             // Dados completos já vêm na resposta
-            console.log('[Dashboard] Histórico recebido:', {
+            console.log('[Dashboard] Dados completos recebidos:', {
               hasHistory: !!myfxbookDataResult.data.history,
               historyLength: myfxbookDataResult.data.history ? myfxbookDataResult.data.history.length : 0,
-              history: myfxbookDataResult.data.history
+              historyType: typeof myfxbookDataResult.data.history,
+              historyIsArray: Array.isArray(myfxbookDataResult.data.history),
+              history: myfxbookDataResult.data.history,
+              allKeys: Object.keys(myfxbookDataResult.data || {})
             })
             console.log('[Dashboard] Open Trades recebidos:', {
               hasOpenTrades: !!myfxbookDataResult.data.openTrades,
@@ -493,14 +496,6 @@ function DashboardPage() {
             </div>
             
             <div className="p-4 sm:p-6 lg:p-8">
-              {/* Indicador de cache */}
-              {myfxbookFromCache && (
-                <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700 flex items-center gap-2">
-                  <Icon icon="lucide:database" className="text-sm" />
-                  <span>Dados do cache - Atualização automática à meia-noite</span>
-                </div>
-              )}
-
               {/* Histórico Recente */}
               {myfxbookAccountData?.history && myfxbookAccountData.history.length > 0 && (
                 <div>

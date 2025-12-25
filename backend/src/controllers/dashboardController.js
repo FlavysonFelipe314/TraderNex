@@ -473,11 +473,29 @@ exports.getMyfxbookData = async (req, res) => {
       openTrades: openTradesResult.success ? (openTradesResult.openTrades?.length || 0) : 0,
       openOrders: openOrdersResult.success ? (openOrdersResult.openOrders?.length || 0) : 0,
       history: historyResult.success ? (historyResult.history?.length || 0) : 0,
+      historySuccess: historyResult.success,
+      historyMessage: historyResult.message,
+      historyError: historyResult.error,
       dailyGain: dailyGainResult.success ? (dailyGainResult.dailyGain?.length || 0) : 0,
       dataDaily: dataDailyResult.success ? (dataDailyResult.dataDaily?.length || 0) : 0,
       gain: gainResult.success ? gainResult.value : null,
       period: { startDate: finalStartDate, endDate: finalEndDate }
     });
+    
+    // Log detalhado do histórico
+    if (historyResult.success && historyResult.history) {
+      console.log('[getMyfxbookData] Histórico detalhado:', {
+        total: historyResult.history.length,
+        primeiro: historyResult.history[0],
+        ultimo: historyResult.history[historyResult.history.length - 1]
+      });
+    } else {
+      console.warn('[getMyfxbookData] Histórico não obtido:', {
+        success: historyResult.success,
+        message: historyResult.message,
+        error: historyResult.error
+      });
+    }
 
     res.json({
       success: true,
