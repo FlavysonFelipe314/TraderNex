@@ -97,6 +97,15 @@ async function loginMyfxbook(email, password, initialDelay = 0) {
             },
             timeout: 15000,
             headers: headers,
+            responseType: 'text', // Receber como texto para detectar HTML do Cloudflare
+            transformResponse: [(data) => {
+              // Tentar fazer parse de JSON, se falhar, retornar como string
+              try {
+                return JSON.parse(data);
+              } catch (e) {
+                return data; // Retornar como string se não for JSON válido
+              }
+            }],
             validateStatus: function (status) {
               return status < 500;
             }
@@ -109,6 +118,15 @@ async function loginMyfxbook(email, password, initialDelay = 0) {
           response = await axios.get(getUrl, {
             timeout: 15000,
             headers: headers,
+            responseType: 'text', // Receber como texto para detectar HTML do Cloudflare
+            transformResponse: [(data) => {
+              // Tentar fazer parse de JSON, se falhar, retornar como string
+              try {
+                return JSON.parse(data);
+              } catch (e) {
+                return data; // Retornar como string se não for JSON válido
+              }
+            }],
             validateStatus: function (status) {
               return status < 500;
             }
