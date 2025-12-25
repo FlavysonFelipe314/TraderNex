@@ -33,24 +33,105 @@ async function loginMyfxbook(email, password) {
     
     console.log(`[Myfxbook] URL completa (primeiros 100 chars): ${url.substring(0, 100)}...`);
     
-    const response = await axios.get(url, {
-      timeout: 15000, // 15 segundos de timeout
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json'
-      },
-      validateStatus: function (status) {
-        return status < 500; // Aceitar qualquer status < 500 para ver a resposta
+    // Headers mais completos para parecer com um navegador real
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Referer': 'https://www.myfxbook.com/',
+      'Origin': 'https://www.myfxbook.com',
+      'Connection': 'keep-alive',
+      'Sec-Fetch-Dest': 'empty',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Site': 'same-origin'
+    };
+
+    // Tentar fazer login com retry para erro 403
+    let response = null;
+    let lastError = null;
+    const maxRetries = 3;
+    const retryDelay = 2000; // 2 segundos entre tentativas
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 1) {
+          console.log(`[Myfxbook] Tentativa ${attempt}/${maxRetries} após ${retryDelay * attempt}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay * attempt)); // Backoff exponencial
+        }
+
+        response = await axios.get(url, {
+          timeout: 15000, // 15 segundos de timeout
+          headers: headers,
+          validateStatus: function (status) {
+            return status < 500; // Aceitar qualquer status < 500 para ver a resposta
+          }
+        });
+
+        // Se não for 403, sair do loop
+        if (response.status !== 403) {
+          break;
+        }
+
+        // Se for 403 e não for a última tentativa, continuar
+        if (attempt < maxRetries) {
+          console.warn(`[Myfxbook] Erro 403 na tentativa ${attempt}, tentando novamente...`);
+          lastError = {
+            status: response.status,
+            statusText: response.statusText,
+            data: response.data
+          };
+          continue;
+        }
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxRetries) {
+          console.warn(`[Myfxbook] Erro na tentativa ${attempt}, tentando novamente...`, error.message);
+          await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+          continue;
+        }
+        // Se for a última tentativa e ainda houver erro, usar o erro
+        if (error.response) {
+          response = error.response;
+        } else {
+          throw error;
+        }
       }
-    });
+    }
+
+    // Se não houver resposta após todas as tentativas, retornar erro
+    if (!response) {
+      console.error('[Myfxbook] Nenhuma resposta recebida após todas as tentativas');
+      return {
+        success: false,
+        message: 'Erro ao conectar com a API do MyFXBook. Tente novamente em alguns minutos.',
+        error: lastError
+      };
+    }
 
     // Verificar status HTTP de erro
     if (response.status >= 400 && response.status < 500) {
-      console.error(`[Myfxbook] Status HTTP de erro: ${response.status} ${response.statusText}`);
+      console.error(`[Myfxbook] Status HTTP de erro: ${response.status} ${response.statusText}`, {
+        data: response.data,
+        headers: response.headers
+      });
+      
+      // Mensagens específicas para diferentes códigos de erro
+      let errorMessage = `Erro HTTP ${response.status}: ${response.statusText || 'Erro de requisição'}`;
+      
+      if (response.status === 403) {
+        errorMessage = 'Acesso negado pela API do MyFXBook (403 Forbidden). Isso pode ocorrer por: rate limiting, IP bloqueado, ou credenciais inválidas. Tente novamente em alguns minutos.';
+      } else if (response.status === 401) {
+        errorMessage = 'Credenciais inválidas ou expiradas. Verifique email e senha.';
+      } else if (response.status === 429) {
+        errorMessage = 'Muitas requisições. Aguarde alguns minutos antes de tentar novamente.';
+      }
+      
       return {
         success: false,
-        message: `Erro HTTP ${response.status}: ${response.statusText || 'Erro de autenticação ou requisição inválida'}`,
-        error: response.data
+        message: errorMessage,
+        error: response.data,
+        status: response.status
       };
     }
 
