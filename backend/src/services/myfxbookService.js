@@ -2,6 +2,20 @@ const axios = require('axios');
 
 const MYFXBOOK_API_BASE = 'https://www.myfxbook.com/api';
 
+// Puppeteer será carregado dinamicamente apenas quando necessário
+let puppeteer = null;
+async function getPuppeteer() {
+  if (!puppeteer) {
+    try {
+      puppeteer = require('puppeteer');
+    } catch (error) {
+      console.warn('[Myfxbook] Puppeteer não está instalado. Execute: npm install puppeteer');
+      return null;
+    }
+  }
+  return puppeteer;
+}
+
 /**
  * Faz login na API do Myfxbook
  * @param {string} email - Email do usuário Myfxbook
@@ -34,64 +48,72 @@ async function loginMyfxbook(email, password, initialDelay = 0) {
     
     console.log(`[Myfxbook] Login: ${email}`);
     
-    const response = await axios.get(url, {
-      timeout: 30000,
-      validateStatus: function (status) {
-        return status < 500;
-      }
-    });
-    
-    console.log(`[Myfxbook] Resposta - Status: ${response.status}, Session: ${response.data?.session ? response.data.session.substring(0, 50) + '...' : 'NÃO'}`);
-    
-    if (response.status === 200 && response.data && response.data.session) {
-      console.log(`[Myfxbook] Login OK! Session: ${response.data.session.substring(0, 50)}...`);
-      return {
-        success: true,
-        session: response.data.session,
-        message: 'Login realizado com sucesso'
-      };
-    }
-
-    if (response.status >= 400 && response.status < 500) {
-      let errorMessage = `Erro HTTP ${response.status}`;
+    // Tentar primeiro com axios (REST simples)
+    try {
+      const response = await axios.get(url, {
+        timeout: 30000,
+        validateStatus: function (status) {
+          return status < 500;
+        }
+      });
       
+      console.log(`[Myfxbook] Resposta - Status: ${response.status}, Session: ${response.data?.session ? response.data.session.substring(0, 50) + '...' : 'NÃO'}`);
+      
+      if (response.status === 200 && response.data && response.data.session) {
+        console.log(`[Myfxbook] Login OK! Session: ${response.data.session.substring(0, 50)}...`);
+        return {
+          success: true,
+          session: response.data.session,
+          message: 'Login realizado com sucesso'
+        };
+      }
+
+      // Se for 403, tentar com Puppeteer
       if (response.status === 403) {
-        errorMessage = 'Acesso negado (403 Forbidden). Verifique credenciais ou aguarde alguns minutos.';
-      } else if (response.status === 401) {
-        errorMessage = 'Credenciais inválidas. Verifique email e senha.';
-      } else if (response.status === 429) {
-        errorMessage = 'Muitas requisições. Aguarde alguns minutos.';
+        console.log('[Myfxbook] Erro 403 detectado, tentando com Puppeteer...');
+        return await loginMyfxbookWithPuppeteer(email, password);
       }
-      
-      return {
-        success: false,
-        message: errorMessage,
-        error: response.data,
-        status: response.status
-      };
-    }
 
-    if (response.data?.error) {
-      return {
-        success: false,
-        message: response.data.message || 'Erro ao fazer login',
-        error: response.data
-      };
-    }
+      if (response.status >= 400 && response.status < 500) {
+        let errorMessage = `Erro HTTP ${response.status}`;
+        
+        if (response.status === 401) {
+          errorMessage = 'Credenciais inválidas. Verifique email e senha.';
+        } else if (response.status === 429) {
+          errorMessage = 'Muitas requisições. Aguarde alguns minutos.';
+        }
+        
+        return {
+          success: false,
+          message: errorMessage,
+          error: response.data,
+          status: response.status
+        };
+      }
 
-    if (!response.data?.session) {
-      return {
-        success: false,
-        message: 'Session não encontrada na resposta. Verifique credenciais.',
-        error: response.data
-      };
-    }
+      if (response.data?.error) {
+        return {
+          success: false,
+          message: response.data.message || 'Erro ao fazer login',
+          error: response.data
+        };
+      }
 
-    return {
-      success: true,
-      session: response.data.session,
-      message: 'Login realizado com sucesso'
-    };
+      if (!response.data?.session) {
+        return {
+          success: false,
+          message: 'Session não encontrada na resposta. Verifique credenciais.',
+          error: response.data
+        };
+      }
+    } catch (error) {
+      // Se axios falhar, tentar com Puppeteer
+      if (error.response?.status === 403 || error.code === 'ECONNREFUSED') {
+        console.log('[Myfxbook] Erro no axios, tentando com Puppeteer...');
+        return await loginMyfxbookWithPuppeteer(email, password);
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('[Myfxbook] Erro:', error.message);
     return {
@@ -99,6 +121,142 @@ async function loginMyfxbook(email, password, initialDelay = 0) {
       message: error.response?.data?.message || error.message || 'Erro de conexão',
       error: error.message
     };
+  }
+}
+
+/**
+ * Faz login usando Puppeteer para contornar desafio do Cloudflare
+ */
+async function loginMyfxbookWithPuppeteer(email, password) {
+  let browser = null;
+  try {
+    const puppeteerLib = await getPuppeteer();
+    if (!puppeteerLib) {
+      return {
+        success: false,
+        message: 'Puppeteer não está instalado. Execute: npm install puppeteer'
+      };
+    }
+
+    console.log('[Myfxbook Puppeteer] Iniciando navegador...');
+    
+    // Configuração para Alpine Linux (produção)
+    const possiblePaths = [
+      process.env.PUPPETEER_EXECUTABLE_PATH,
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium',
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable'
+    ];
+    
+    let executablePath = undefined;
+    const fs = require('fs');
+    for (const path of possiblePaths) {
+      if (path && fs.existsSync(path)) {
+        executablePath = path;
+        console.log(`[Myfxbook Puppeteer] Chromium encontrado em: ${path}`);
+        break;
+      }
+    }
+    
+    browser = await puppeteerLib.launch({
+      headless: true,
+      executablePath: executablePath,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--disable-extensions',
+        '--single-process'
+      ]
+    });
+
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    
+    const emailParam = encodeURIComponent(email);
+    const passwordParam = encodeURIComponent(password);
+    const loginUrl = `${MYFXBOOK_API_BASE}/login.json?email=${emailParam}&password=${passwordParam}`;
+    
+    console.log('[Myfxbook Puppeteer] Acessando URL de login...');
+    
+    // Navegar e aguardar resposta JSON
+    await page.goto(loginUrl, {
+      waitUntil: 'networkidle2',
+      timeout: 30000
+    });
+
+    // Aguardar um pouco para garantir que o JavaScript foi executado
+    await page.waitForTimeout(3000);
+
+    // Obter o conteúdo da página
+    const content = await page.content();
+    
+    // Tentar extrair JSON da resposta
+    let jsonData = null;
+    try {
+      // Tentar fazer fetch via JavaScript na página
+      const responseText = await page.evaluate(async (url) => {
+        try {
+          const response = await fetch(url);
+          return await response.text();
+        } catch (e) {
+          return null;
+        }
+      }, loginUrl);
+      
+      if (responseText) {
+        jsonData = JSON.parse(responseText);
+      }
+    } catch (e) {
+      // Se falhar, tentar extrair do body
+      try {
+        const bodyText = await page.evaluate(() => document.body.innerText);
+        if (bodyText && bodyText.trim().startsWith('{')) {
+          jsonData = JSON.parse(bodyText);
+        }
+      } catch (e2) {
+        console.warn('[Myfxbook Puppeteer] Não foi possível parsear JSON da página');
+      }
+    }
+
+    if (jsonData && jsonData.session) {
+      console.log(`[Myfxbook Puppeteer] Login OK! Session: ${jsonData.session.substring(0, 50)}...`);
+      return {
+        success: true,
+        session: jsonData.session,
+        message: 'Login realizado com sucesso via Puppeteer'
+      };
+    }
+
+    if (jsonData && jsonData.error) {
+      return {
+        success: false,
+        message: jsonData.message || 'Erro ao fazer login',
+        error: jsonData
+      };
+    }
+
+    return {
+      success: false,
+      message: 'Não foi possível obter session do MyFXBook via Puppeteer',
+      error: 'Resposta inválida'
+    };
+
+  } catch (error) {
+    console.error('[Myfxbook Puppeteer] Erro:', error.message);
+    return {
+      success: false,
+      message: 'Erro ao fazer login com Puppeteer: ' + error.message,
+      error: error.message
+    };
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
   }
 }
 
@@ -134,70 +292,200 @@ async function logoutMyfxbook(session) {
  */
 async function getMyAccounts(session) {
   try {
-    console.log(`[Myfxbook] Buscando contas com session: ${session ? session.substring(0, 30) + '...' : 'null'}`);
-    console.log(`[Myfxbook] Session completa (primeiros 50 chars): ${session ? session.substring(0, 50) : 'null'}`);
-    console.log(`[Myfxbook] Session length: ${session ? session.length : 0}`);
+    console.log(`[Myfxbook] Buscando contas - Session: ${session ? session.substring(0, 50) + '...' : 'null'}`);
     
     const url = `${MYFXBOOK_API_BASE}/get-my-accounts.json`;
-    console.log(`[Myfxbook] URL: ${url}`);
+    const fullUrl = `${url}?session=${encodeURIComponent(session)}`;
     
-    // IMPORTANTE: A sessão já vem URL-encoded da API do MyFXBook
-    // Não devemos codificar novamente, apenas usar diretamente
-    // Se a sessão contiver caracteres codificados (%2F, %3D, etc), eles já estão corretos
-    const fullUrl = `${url}?session=${session}`;
-    console.log(`[Myfxbook] Full URL (primeiros 100 chars): ${fullUrl.substring(0, 100)}...`);
+    console.log(`[Myfxbook] URL completa (primeiros 150 chars): ${fullUrl.substring(0, 150)}...`);
     
-    const response = await axios.get(fullUrl, {
-      timeout: 15000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json'
-      },
-      // Não usar params, já que construímos a URL manualmente
-      validateStatus: function (status) {
-        return status < 500; // Aceitar qualquer status < 500 para ver a resposta
+    // Tentar primeiro com axios
+    try {
+      const response = await axios.get(fullUrl, {
+        timeout: 30000,
+        validateStatus: function (status) {
+          return status < 500;
+        }
+      });
+
+      console.log(`[Myfxbook] Resposta - Status: ${response.status}, Contas: ${response.data?.accounts ? response.data.accounts.length : 0}`);
+
+      if (response.status === 200 && response.data && !response.data.error) {
+        const accounts = response.data.accounts || [];
+        console.log(`[Myfxbook] Contas obtidas: ${accounts.length}`);
+        
+        if (accounts.length > 0) {
+          console.log(`[Myfxbook] Primeira conta:`, {
+            id: accounts[0].id,
+            name: accounts[0].name,
+            accountId: accounts[0].accountId
+          });
+        }
+        
+        return {
+          success: true,
+          accounts: accounts,
+          message: 'Contas obtidas com sucesso'
+        };
       }
-    });
 
-    console.log(`[Myfxbook] Resposta get-my-accounts:`, {
-      status: response.status,
-      hasError: response.data.error,
-      hasAccounts: !!response.data.accounts,
-      accountsCount: response.data.accounts ? response.data.accounts.length : 0,
-      message: response.data.message
-    });
+      if (response.data?.error) {
+        console.error(`[Myfxbook] Erro na resposta:`, response.data);
+        return {
+          success: false,
+          message: response.data.message || 'Erro ao buscar contas',
+          error: response.data
+        };
+      }
 
-    if (response.data.error) {
-      console.error(`[Myfxbook] Erro na resposta get-my-accounts:`, response.data);
+      // Se status 403, tentar com Puppeteer
+      if (response.status === 403) {
+        console.log('[Myfxbook] Erro 403, tentando com Puppeteer...');
+        return await getMyAccountsWithPuppeteer(session);
+      }
+
       return {
         success: false,
-        message: response.data.message || 'Erro ao buscar contas',
+        message: 'Resposta inválida ao buscar contas',
         error: response.data
       };
+    } catch (error) {
+      if (error.response?.status === 403) {
+        console.log('[Myfxbook] Erro 403 no axios, tentando com Puppeteer...');
+        return await getMyAccountsWithPuppeteer(session);
+      }
+      throw error;
     }
-
-    const accounts = response.data.accounts || [];
-    console.log(`[Myfxbook] Contas obtidas com sucesso! Total: ${accounts.length}`);
-    
-    return {
-      success: true,
-      accounts: accounts,
-      message: 'Contas obtidas com sucesso'
-    };
   } catch (error) {
-    console.error('[Myfxbook] Erro ao buscar contas:', {
-      message: error.message,
-      code: error.code,
-      response: error.response ? {
-        status: error.response.status,
-        data: error.response.data
-      } : null
-    });
+    console.error('[Myfxbook] Erro ao buscar contas:', error.message);
     return {
       success: false,
       message: error.response?.data?.message || error.message || 'Erro ao buscar contas do Myfxbook',
       error: error.message
     };
+  }
+}
+
+/**
+ * Busca contas usando Puppeteer
+ */
+async function getMyAccountsWithPuppeteer(session) {
+  let browser = null;
+  try {
+    const puppeteerLib = await getPuppeteer();
+    if (!puppeteerLib) {
+      return {
+        success: false,
+        message: 'Puppeteer não está instalado'
+      };
+    }
+
+    console.log('[Myfxbook Puppeteer] Buscando contas...');
+    
+    const possiblePaths = [
+      process.env.PUPPETEER_EXECUTABLE_PATH,
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium'
+    ];
+    
+    let executablePath = undefined;
+    const fs = require('fs');
+    for (const path of possiblePaths) {
+      if (path && fs.existsSync(path)) {
+        executablePath = path;
+        break;
+      }
+    }
+    
+    browser = await puppeteerLib.launch({
+      headless: true,
+      executablePath: executablePath,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--single-process'
+      ]
+    });
+
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    
+    const url = `${MYFXBOOK_API_BASE}/get-my-accounts.json?session=${encodeURIComponent(session)}`;
+    
+    await page.goto(url, {
+      waitUntil: 'networkidle2',
+      timeout: 30000
+    });
+
+    await page.waitForTimeout(3000);
+
+    // Obter JSON da resposta
+    let jsonData = null;
+    try {
+      const responseText = await page.evaluate(async (url) => {
+        try {
+          const response = await fetch(url);
+          return await response.text();
+        } catch (e) {
+          return null;
+        }
+      }, url);
+      
+      if (responseText) {
+        jsonData = JSON.parse(responseText);
+      }
+    } catch (e) {
+      const bodyText = await page.evaluate(() => document.body.innerText);
+      if (bodyText && bodyText.trim().startsWith('{')) {
+        jsonData = JSON.parse(bodyText);
+      }
+    }
+
+    if (jsonData && jsonData.accounts) {
+      const accounts = jsonData.accounts || [];
+      console.log(`[Myfxbook Puppeteer] Contas obtidas: ${accounts.length}`);
+      
+      if (accounts.length > 0) {
+        console.log(`[Myfxbook Puppeteer] Primeira conta:`, {
+          id: accounts[0].id,
+          name: accounts[0].name,
+          accountId: accounts[0].accountId
+        });
+      }
+      
+      return {
+        success: true,
+        accounts: accounts,
+        message: 'Contas obtidas com sucesso via Puppeteer'
+      };
+    }
+
+    if (jsonData && jsonData.error) {
+      return {
+        success: false,
+        message: jsonData.message || 'Erro ao buscar contas',
+        error: jsonData
+      };
+    }
+
+    return {
+      success: false,
+      message: 'Não foi possível obter contas via Puppeteer',
+      error: 'Resposta inválida'
+    };
+
+  } catch (error) {
+    console.error('[Myfxbook Puppeteer] Erro ao buscar contas:', error.message);
+    return {
+      success: false,
+      message: 'Erro ao buscar contas com Puppeteer: ' + error.message,
+      error: error.message
+    };
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
   }
 }
 
