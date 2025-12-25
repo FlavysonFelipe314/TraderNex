@@ -715,7 +715,24 @@ async function getHistory(session, accountId) {
     });
 
     console.log(`[Myfxbook] Resposta get-history - Status: ${response.status}`);
-    console.log(`[Myfxbook] Resposta completa:`, JSON.stringify(response.data, null, 2));
+
+    // Se status 403, tentar com Puppeteer imediatamente (Cloudflare bloqueando)
+    if (response.status === 403) {
+      console.log('[Myfxbook] Erro 403 ao buscar histórico, tentando com Puppeteer...');
+      return await getHistoryWithPuppeteer(session, accountId);
+    }
+
+    // Verificar se a resposta é HTML (Cloudflare challenge)
+    const isHTML = typeof response.data === 'string' && (
+      response.data.includes('Just a moment') ||
+      response.data.includes('Enable JavaScript') ||
+      response.data.includes('cf-challenge')
+    );
+
+    if (isHTML) {
+      console.log('[Myfxbook] Resposta é HTML (Cloudflare), tentando com Puppeteer...');
+      return await getHistoryWithPuppeteer(session, accountId);
+    }
 
     if (response.status === 200 && response.data && !response.data.error) {
       const historyData = response.data.history || [];
@@ -747,41 +764,221 @@ async function getHistory(session, accountId) {
       };
     }
 
-    // Se status 403, pode ser Cloudflare
-    if (response.status === 403) {
-      console.warn('[Myfxbook] Erro 403 ao buscar histórico');
-      return {
-        success: false,
-        message: 'Acesso negado ao buscar histórico',
-        error: response.data
-      };
-    }
-
     return {
       success: false,
       message: 'Resposta inválida ao buscar histórico',
       error: response.data
     };
-
-    return {
-      success: true,
-      history: historyData,
-      message: 'Histórico obtido com sucesso'
-    };
   } catch (error) {
-    console.error('[Myfxbook] Erro ao buscar histórico:', {
-      message: error.message,
-      code: error.code,
-      response: error.response ? {
-        status: error.response.status,
-        data: error.response.data
-      } : null
-    });
+    // Se axios falhar com 403, tentar com Puppeteer
+    if (error.response?.status === 403) {
+      console.log('[Myfxbook] Erro 403 no axios, tentando com Puppeteer...');
+      return await getHistoryWithPuppeteer(session, accountId);
+    }
+    
+    console.error('[Myfxbook] Erro ao buscar histórico:', error.message);
     return {
       success: false,
-      message: 'Erro ao buscar histórico',
+      message: error.response?.data?.message || error.message || 'Erro ao buscar histórico',
       error: error.message
     };
+  }
+}
+
+/**
+ * Busca histórico usando Puppeteer
+ */
+async function getHistoryWithPuppeteer(session, accountId) {
+  let browser = null;
+  let page = null;
+  try {
+    const puppeteerLib = await getPuppeteer();
+    if (!puppeteerLib) {
+      return {
+        success: false,
+        message: 'Puppeteer não está instalado'
+      };
+    }
+
+    console.log('[Myfxbook Puppeteer] Buscando histórico...');
+    
+    const possiblePaths = [
+      process.env.PUPPETEER_EXECUTABLE_PATH,
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium'
+    ];
+    
+    let executablePath = undefined;
+    const fs = require('fs');
+    for (const path of possiblePaths) {
+      if (path && fs.existsSync(path)) {
+        executablePath = path;
+        break;
+      }
+    }
+    
+    browser = await puppeteerLib.launch({
+      headless: 'new',
+      executablePath: executablePath,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--disable-images',
+        '--disable-javascript-harmony-shipping',
+        '--disable-background-networking'
+      ]
+    });
+
+    page = await browser.newPage();
+    page.setDefaultTimeout(20000);
+    page.setDefaultNavigationTimeout(20000);
+    
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    
+    const accountParam = encodeURIComponent(accountId);
+    const url = `${MYFXBOOK_API_BASE}/get-history.json?session=${session}&id=${accountParam}`;
+    
+    console.log('[Myfxbook Puppeteer] Navegando para URL...');
+    
+    // Interceptar resposta da requisição
+    let responseData = null;
+    
+    const responseHandler = async (response) => {
+      const url_response = response.url();
+      if (url_response.includes('get-history.json')) {
+        try {
+          const text = await response.text();
+          if (text) {
+            responseData = JSON.parse(text);
+            console.log('[Myfxbook Puppeteer] Resposta interceptada:', {
+              hasHistory: !!responseData.history,
+              historyCount: responseData.history ? responseData.history.length : 0
+            });
+          }
+        } catch (e) {
+          console.warn('[Myfxbook Puppeteer] Erro ao parsear resposta interceptada:', e.message);
+        }
+      }
+    };
+    
+    page.on('response', responseHandler);
+    
+    await page.goto(url, {
+      waitUntil: 'domcontentloaded',
+      timeout: 20000
+    });
+    
+    await page.waitForTimeout(1000);
+
+    // Se não pegou pela interceptação, tentar obter do body
+    if (!responseData) {
+      try {
+        const bodyText = await page.evaluate(() => {
+          return document.body ? document.body.innerText : null;
+        });
+        
+        if (bodyText && bodyText.trim().startsWith('{')) {
+          responseData = JSON.parse(bodyText);
+          console.log('[Myfxbook Puppeteer] Dados obtidos do body');
+        }
+      } catch (e) {
+        console.warn('[Myfxbook Puppeteer] Erro ao obter do body:', e.message);
+      }
+    }
+
+    // Se ainda não tem, tentar fazer fetch
+    if (!responseData) {
+      try {
+        const fetchResult = await page.evaluate(async (url) => {
+          try {
+            const response = await fetch(url);
+            const text = await response.text();
+            return text;
+          } catch (e) {
+            return null;
+          }
+        }, url);
+        
+        if (fetchResult) {
+          responseData = JSON.parse(fetchResult);
+          console.log('[Myfxbook Puppeteer] Dados obtidos via fetch');
+        }
+      } catch (e) {
+        console.warn('[Myfxbook Puppeteer] Erro no fetch:', e.message);
+      }
+    }
+
+    // Processar resposta antes de fechar navegador
+    let result = null;
+    
+    if (responseData && responseData.history) {
+      const history = responseData.history || [];
+      console.log(`[Myfxbook Puppeteer] Histórico obtido: ${history.length} registros`);
+      
+      if (history.length > 0) {
+        console.log(`[Myfxbook Puppeteer] Primeiro registro:`, {
+          symbol: history[0].symbol,
+          side: history[0].side,
+          profit: history[0].profit
+        });
+      }
+      
+      result = {
+        success: true,
+        history: history,
+        message: 'Histórico obtido com sucesso via Puppeteer'
+      };
+    } else if (responseData && responseData.error) {
+      result = {
+        success: false,
+        message: responseData.message || 'Erro ao buscar histórico',
+        error: responseData
+      };
+    } else {
+      result = {
+        success: false,
+        message: 'Não foi possível obter histórico via Puppeteer',
+        error: 'Resposta inválida'
+      };
+    }
+    
+    // Fechar navegador
+    if (browser) {
+      try {
+        if (page) {
+          await page.close().catch(() => {});
+        }
+        await browser.close();
+      } catch (e) {
+        console.warn('[Myfxbook Puppeteer] Erro ao fechar navegador:', e.message);
+      }
+      browser = null;
+      page = null;
+    }
+    
+    return result;
+
+  } catch (error) {
+    console.error('[Myfxbook Puppeteer] Erro ao buscar histórico:', error.message);
+    return {
+      success: false,
+      message: 'Erro ao buscar histórico com Puppeteer: ' + error.message,
+      error: error.message
+    };
+  } finally {
+    if (browser) {
+      try {
+        if (page) {
+          await page.close().catch(() => {});
+        }
+        await browser.close();
+      } catch (e) {
+        console.warn('[Myfxbook Puppeteer] Erro ao fechar navegador:', e.message);
+      }
+    }
   }
 }
 
