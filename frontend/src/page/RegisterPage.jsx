@@ -102,7 +102,7 @@ function RegisterPage() {
   }
 
   return (
-    <div className="flex w-full h-full">
+    <div className="flex w-full h-full min-h-screen lg:min-h-0">
       {/* Left Visual Side */}
       <div className="hidden lg:flex flex-1 bg-[#0e0e10] relative flex-col justify-between p-16 overflow-hidden text-white">
         {/* Background Pattern */}
@@ -222,8 +222,8 @@ function RegisterPage() {
       </div>
 
       {/* Right Form Side */}
-      <div className="w-full lg:w-[600px] bg-white flex flex-col justify-center p-6 sm:p-8 md:p-12 lg:p-16 overflow-y-auto relative">
-        <div className="max-w-[440px] mx-auto w-full">
+      <div className="w-full lg:w-[600px] bg-white flex flex-col justify-center p-6 sm:p-8 md:p-12 lg:p-16 overflow-y-auto relative min-h-screen lg:min-h-0 lg:h-full">
+        <div className="max-w-[440px] mx-auto w-full py-4 lg:py-0">
           <div className="text-xs sm:text-sm text-[#6b7280] mb-2 block text-center lg:text-left">
             Já tem uma conta?
             <span 

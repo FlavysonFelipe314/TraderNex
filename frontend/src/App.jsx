@@ -89,9 +89,7 @@ function App() {
           path="/mt4-config"
           element={
             <ProtectedRoute>
-              <OnboardingGuard>
-                <Mt4CredentialsPage />
-              </OnboardingGuard>
+              <Mt4CredentialsPage />
             </ProtectedRoute>
           }
         />

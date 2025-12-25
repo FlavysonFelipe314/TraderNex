@@ -274,3 +274,4 @@ Use este checklist para garantir que todas as migrations foram aplicadas:
 - Scripts de migration: `backend/src/config/runMigration*.js`
 
 
+

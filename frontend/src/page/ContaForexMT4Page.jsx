@@ -303,7 +303,7 @@ function ContaForexMT4Page() {
 
               <div className="flex flex-col gap-3">
                 <button 
-                  onClick={() => window.location.href = '/mt4-config'}
+                  onClick={() => navigate('/mt4-config')}
                   className="w-full h-11 sm:h-12 border border-[#00afaa] bg-white rounded-xl text-[#007979] font-semibold text-xs sm:text-sm cursor-pointer flex items-center justify-center gap-2.5 hover:bg-[#f0fdfa] hover:shadow-[0_0_15px_rgba(0,175,175,0.15)] transition-all"
                 >
                   <Icon icon="lucide:settings-2" className="text-base" />

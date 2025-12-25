@@ -333,3 +333,4 @@ npm run init-db && npm run migrate && npm run seed
 - Documentação PostgreSQL: https://www.postgresql.org/docs/
 
 
+
