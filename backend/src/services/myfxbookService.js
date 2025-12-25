@@ -324,14 +324,22 @@ async function loginMyfxbookWithPuppeteer(email, password) {
     }
 
     console.log('[Myfxbook Puppeteer] Iniciando navegador...');
+    
+    // Configuração para Alpine Linux (produção)
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
+    
     browser = await puppeteerLib.launch({
       headless: true,
+      executablePath: executablePath, // Usa Chromium do sistema se disponível
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-accelerated-2d-canvas',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--disable-extensions',
+        '--single-process' // Necessário para alguns ambientes Docker
       ]
     });
 

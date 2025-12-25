@@ -3,6 +3,21 @@
 # ============================================================================
 FROM node:18-alpine
 
+# Instale dependências do sistema necessárias para Puppeteer
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    && rm -rf /var/cache/apk/*
+
+# Defina variáveis de ambiente para Puppeteer usar o Chromium do sistema
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 # Defina o diretório de trabalho no container
 WORKDIR /usr/src/app
 
@@ -26,6 +41,11 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 && \
     chown -R nodejs:nodejs /usr/src/app && \
     chown nodejs:nodejs /usr/local/bin/docker-entrypoint.sh
+
+# Permissões para Chromium (Puppeteer)
+RUN chmod 755 /usr/bin/chromium-browser && \
+    mkdir -p /home/nodejs/.cache && \
+    chown -R nodejs:nodejs /home/nodejs
 
 USER nodejs
 
