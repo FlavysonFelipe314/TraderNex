@@ -371,6 +371,7 @@ async function getMyAccounts(session) {
  */
 async function getMyAccountsWithPuppeteer(session) {
   let browser = null;
+  let page = null;
   try {
     const puppeteerLib = await getPuppeteer();
     if (!puppeteerLib) {
@@ -404,46 +405,143 @@ async function getMyAccountsWithPuppeteer(session) {
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--single-process'
+        '--disable-gpu',
+        '--disable-software-rasterizer'
       ]
     });
 
-    const page = await browser.newPage();
+    page = await browser.newPage();
+    
+    // Configurar timeout maior
+    page.setDefaultTimeout(60000);
+    page.setDefaultNavigationTimeout(60000);
+    
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
     const url = `${MYFXBOOK_API_BASE}/get-my-accounts.json?session=${encodeURIComponent(session)}`;
     
+    console.log('[Myfxbook Puppeteer] Navegando para URL...');
+    
+    // Interceptar resposta da requisição
+    let responseData = null;
+    
+    const responseHandler = async (response) => {
+      const url_response = response.url();
+      if (url_response.includes('get-my-accounts.json')) {
+        try {
+          const text = await response.text();
+          if (text) {
+            responseData = JSON.parse(text);
+            console.log('[Myfxbook Puppeteer] Resposta interceptada:', {
+              hasAccounts: !!responseData.accounts,
+              accountsCount: responseData.accounts ? responseData.accounts.length : 0
+            });
+          }
+        } catch (e) {
+          console.warn('[Myfxbook Puppeteer] Erro ao parsear resposta interceptada:', e.message);
+        }
+      }
+    };
+    
+    page.on('response', responseHandler);
+    
+    // Aguardar a navegação
     await page.goto(url, {
-      waitUntil: 'networkidle2',
-      timeout: 30000
+      waitUntil: 'networkidle0',
+      timeout: 60000
     });
-
+    
+    // Aguardar um pouco para garantir que a resposta foi processada
     await page.waitForTimeout(3000);
 
-    // Obter JSON da resposta
-    let jsonData = null;
-    try {
-      const responseText = await page.evaluate(async (url) => {
-        try {
-          const response = await fetch(url);
-          return await response.text();
-        } catch (e) {
-          return null;
+    // Se não pegou pela interceptação, tentar obter do body
+    if (!responseData) {
+      console.log('[Myfxbook Puppeteer] Tentando obter dados do body...');
+      try {
+        const bodyText = await page.evaluate(() => {
+          return document.body ? document.body.innerText : null;
+        });
+        
+        if (bodyText && bodyText.trim().startsWith('{')) {
+          responseData = JSON.parse(bodyText);
+          console.log('[Myfxbook Puppeteer] Dados obtidos do body');
         }
-      }, url);
-      
-      if (responseText) {
-        jsonData = JSON.parse(responseText);
-      }
-    } catch (e) {
-      const bodyText = await page.evaluate(() => document.body.innerText);
-      if (bodyText && bodyText.trim().startsWith('{')) {
-        jsonData = JSON.parse(bodyText);
+      } catch (e) {
+        console.warn('[Myfxbook Puppeteer] Erro ao obter do body:', e.message);
       }
     }
 
-    if (jsonData && jsonData.accounts) {
-      const accounts = jsonData.accounts || [];
+    // Se ainda não tem, tentar fazer fetch
+    if (!responseData) {
+      console.log('[Myfxbook Puppeteer] Tentando fazer fetch...');
+      try {
+        const fetchResult = await page.evaluate(async (url) => {
+          try {
+            const response = await fetch(url);
+            const text = await response.text();
+            return text;
+          } catch (e) {
+            return null;
+          }
+        }, url);
+        
+        if (fetchResult) {
+          responseData = JSON.parse(fetchResult);
+          console.log('[Myfxbook Puppeteer] Dados obtidos via fetch');
+        }
+      } catch (e) {
+        console.warn('[Myfxbook Puppeteer] Erro no fetch:', e.message);
+      }
+    }
+
+    // Processar resposta antes de fechar navegador
+    let result = null;
+    
+    if (responseData && responseData.accounts) {
+      const accounts = responseData.accounts || [];
+      console.log(`[Myfxbook Puppeteer] Contas obtidas: ${accounts.length}`);
+      
+      if (accounts.length > 0) {
+        console.log(`[Myfxbook Puppeteer] Primeira conta:`, {
+          id: accounts[0].id,
+          name: accounts[0].name,
+          accountId: accounts[0].accountId
+        });
+      }
+      
+      result = {
+        success: true,
+        accounts: accounts,
+        message: 'Contas obtidas com sucesso via Puppeteer'
+      };
+    } else if (responseData && responseData.error) {
+      result = {
+        success: false,
+        message: responseData.message || 'Erro ao buscar contas',
+        error: responseData
+      };
+    }
+    
+    // Fechar navegador
+    if (browser) {
+      try {
+        if (page) {
+          await page.close().catch(() => {});
+        }
+        await browser.close();
+      } catch (e) {
+        console.warn('[Myfxbook Puppeteer] Erro ao fechar navegador:', e.message);
+      }
+      browser = null;
+      page = null;
+    }
+    
+    if (result) {
+      return result;
+    }
+
+    if (responseData && responseData.accounts) {
+      const accounts = responseData.accounts || [];
       console.log(`[Myfxbook Puppeteer] Contas obtidas: ${accounts.length}`);
       
       if (accounts.length > 0) {
@@ -461,11 +559,11 @@ async function getMyAccountsWithPuppeteer(session) {
       };
     }
 
-    if (jsonData && jsonData.error) {
+    if (responseData && responseData.error) {
       return {
         success: false,
-        message: jsonData.message || 'Erro ao buscar contas',
-        error: jsonData
+        message: responseData.message || 'Erro ao buscar contas',
+        error: responseData
       };
     }
 
@@ -483,8 +581,13 @@ async function getMyAccountsWithPuppeteer(session) {
       error: error.message
     };
   } finally {
+    // Garantir que o navegador seja fechado
     if (browser) {
-      await browser.close();
+      try {
+        await browser.close();
+      } catch (e) {
+        console.warn('[Myfxbook Puppeteer] Erro ao fechar navegador:', e.message);
+      }
     }
   }
 }
@@ -958,4 +1061,5 @@ module.exports = {
   getCommunityOutlook,
   getCommunityOutlookByCountry
 };
+
 
