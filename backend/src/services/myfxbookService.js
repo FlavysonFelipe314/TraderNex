@@ -160,17 +160,18 @@ async function loginMyfxbookWithPuppeteer(email, password) {
     }
     
     browser = await puppeteerLib.launch({
-      headless: true,
+      headless: 'new', // Usar novo modo headless que é mais rápido
       executablePath: executablePath,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
         '--disable-gpu',
         '--disable-software-rasterizer',
         '--disable-extensions',
-        '--single-process'
+        '--disable-images', // Não carregar imagens para ser mais rápido
+        '--disable-javascript-harmony-shipping',
+        '--disable-background-networking'
       ]
     });
 
@@ -183,14 +184,14 @@ async function loginMyfxbookWithPuppeteer(email, password) {
     
     console.log('[Myfxbook Puppeteer] Acessando URL de login...');
     
-    // Navegar e aguardar resposta JSON
+    // Navegar e aguardar resposta JSON (usar domcontentloaded que é mais rápido)
     await page.goto(loginUrl, {
-      waitUntil: 'networkidle2',
-      timeout: 30000
+      waitUntil: 'domcontentloaded',
+      timeout: 15000
     });
 
-    // Aguardar um pouco para garantir que o JavaScript foi executado
-    await page.waitForTimeout(3000);
+    // Aguardar um pouco para garantir que o JavaScript foi executado (reduzido de 3s para 1s)
+    await page.waitForTimeout(1000);
 
     // Obter o conteúdo da página
     const content = await page.content();
@@ -421,22 +422,25 @@ async function getMyAccountsWithPuppeteer(session) {
     }
     
     browser = await puppeteerLib.launch({
-      headless: true,
+      headless: 'new', // Usar novo modo headless que é mais rápido
       executablePath: executablePath,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
-        '--disable-software-rasterizer'
+        '--disable-software-rasterizer',
+        '--disable-images', // Não carregar imagens para ser mais rápido
+        '--disable-javascript-harmony-shipping',
+        '--disable-background-networking'
       ]
     });
 
     page = await browser.newPage();
     
-    // Configurar timeout maior
-    page.setDefaultTimeout(60000);
-    page.setDefaultNavigationTimeout(60000);
+    // Configurar timeout menor para ser mais rápido
+    page.setDefaultTimeout(20000);
+    page.setDefaultNavigationTimeout(20000);
     
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
@@ -469,14 +473,14 @@ async function getMyAccountsWithPuppeteer(session) {
     
     page.on('response', responseHandler);
     
-    // Aguardar a navegação
+    // Aguardar a navegação (usar domcontentloaded que é mais rápido)
     await page.goto(url, {
-      waitUntil: 'networkidle0',
-      timeout: 60000
+      waitUntil: 'domcontentloaded',
+      timeout: 20000
     });
     
-    // Aguardar um pouco para garantir que a resposta foi processada
-    await page.waitForTimeout(3000);
+    // Aguardar um pouco para garantir que a resposta foi processada (reduzido de 3s para 1s)
+    await page.waitForTimeout(1000);
 
     // Se não pegou pela interceptação, tentar obter do body
     if (!responseData) {
