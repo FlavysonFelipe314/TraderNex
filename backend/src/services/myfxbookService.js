@@ -173,22 +173,34 @@ async function loginMyfxbook(email, password, initialDelay = 0) {
     }
 
     // Verificar se a resposta é um desafio do Cloudflare
+    const responseDataType = typeof response.data;
+    const responseDataString = responseDataType === 'string' ? response.data : String(response.data || '');
     const isCloudflareChallenge = response.data && 
-      typeof response.data === 'string' && 
-      (response.data.includes('Just a moment') || 
-       response.data.includes('Enable JavaScript') ||
-       response.data.includes('cf-challenge') ||
-       response.data.includes('challenge-platform'));
+      (responseDataString.includes('Just a moment') || 
+       responseDataString.includes('Enable JavaScript') ||
+       responseDataString.includes('cf-challenge') ||
+       responseDataString.includes('challenge-platform'));
+
+    console.log('[Myfxbook] Verificando desafio Cloudflare:', {
+      status: response.status,
+      dataType: responseDataType,
+      isCloudflareChallenge: isCloudflareChallenge,
+      hasJustAMoment: responseDataString.includes('Just a moment'),
+      dataPreview: responseDataString.substring(0, 100)
+    });
 
     // Se for desafio do Cloudflare, tentar com Puppeteer
     if (isCloudflareChallenge && response.status === 403) {
       console.log('[Myfxbook] Desafio do Cloudflare detectado. Tentando com Puppeteer...');
       const puppeteerResult = await loginMyfxbookWithPuppeteer(email, password);
       if (puppeteerResult.success) {
+        console.log('[Myfxbook] Puppeteer conseguiu fazer login com sucesso!');
         return puppeteerResult;
       }
       // Se Puppeteer também falhar, continuar com o erro original
-      console.warn('[Myfxbook] Puppeteer falhou, retornando erro original do Cloudflare');
+      console.warn('[Myfxbook] Puppeteer falhou:', puppeteerResult.message);
+    } else if (response.status === 403) {
+      console.warn('[Myfxbook] Erro 403 mas não foi detectado como desafio Cloudflare');
     }
 
     // Verificar status HTTP de erro
@@ -326,7 +338,28 @@ async function loginMyfxbookWithPuppeteer(email, password) {
     console.log('[Myfxbook Puppeteer] Iniciando navegador...');
     
     // Configuração para Alpine Linux (produção)
-    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
+    // Tentar diferentes caminhos possíveis do Chromium no Alpine
+    const possiblePaths = [
+      process.env.PUPPETEER_EXECUTABLE_PATH,
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium',
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable'
+    ];
+    
+    let executablePath = undefined;
+    const fs = require('fs');
+    for (const path of possiblePaths) {
+      if (path && fs.existsSync(path)) {
+        executablePath = path;
+        console.log(`[Myfxbook Puppeteer] Chromium encontrado em: ${path}`);
+        break;
+      }
+    }
+    
+    if (!executablePath) {
+      console.warn('[Myfxbook Puppeteer] Chromium não encontrado, tentando sem executablePath...');
+    }
     
     browser = await puppeteerLib.launch({
       headless: true,
