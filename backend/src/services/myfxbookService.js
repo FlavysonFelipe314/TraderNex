@@ -17,163 +17,34 @@ const MYFXBOOK_API_BASE = 'https://www.myfxbook.com/api';
  */
 async function loginMyfxbook(email, password, initialDelay = 0) {
   try {
-    // Validações iniciais
     if (!email || !password) {
-      console.error(`[Myfxbook] Email ou senha não fornecidos:`, {
-        hasEmail: !!email,
-        hasPassword: !!password
-      });
       return {
         success: false,
-        message: 'Email e senha são obrigatórios',
-        error: 'Missing credentials'
+        message: 'Email e senha são obrigatórios'
       };
     }
 
-    // Delay inicial opcional para evitar rate limiting
     if (initialDelay > 0) {
-      console.log(`[Myfxbook] Aguardando ${initialDelay}ms antes da primeira tentativa...`);
       await new Promise(resolve => setTimeout(resolve, initialDelay));
     }
-
-    console.log(`[Myfxbook] Tentando fazer login para: ${email}`);
-    console.log(`[Myfxbook] Senha (tamanho): ${password ? password.length : 0} caracteres`);
     
-    // Construir URL e parâmetros
     const emailParam = encodeURIComponent(email);
     const passwordParam = encodeURIComponent(password);
-    const url = `${MYFXBOOK_API_BASE}/login.json`;
+    const url = `${MYFXBOOK_API_BASE}/login.json?email=${emailParam}&password=${passwordParam}`;
     
-    // Headers mínimos como um REST client simples
-    // Não usar muitos headers para não parecer suspeito
-    const headers = {
-      'Accept': 'application/json',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    };
-
-    // Tentar fazer login com retry para erro 403
-    // Tentar primeiro com GET (método padrão da API)
-    // Se falhar com 403, tentar com POST
-    let response = null;
-    let lastError = null;
-    const maxRetries = 3;
-    const retryDelay = 3000; // 3 segundos entre tentativas (aumentado)
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        if (attempt > 1) {
-          const delay = retryDelay * attempt;
-          console.log(`[Myfxbook] Tentativa ${attempt}/${maxRetries} após ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay)); // Backoff exponencial
-        }
-
-        // Primeira tentativa: GET (método padrão)
-        // Se falhar com 403, tentar POST na próxima tentativa
-        const usePost = attempt > 1 && lastError?.status === 403;
-        
-        if (usePost) {
-          console.log(`[Myfxbook] Tentando com método POST na tentativa ${attempt}...`);
-          response = await axios.post(url, null, {
-            params: {
-              email: email,
-              password: password
-            },
-            timeout: 30000, // Aumentar timeout
-            headers: headers,
-            validateStatus: function (status) {
-              return status < 500;
-            },
-            maxRedirects: 5,
-            decompress: true
-          });
-        } else {
-          // Método GET padrão
-          const getUrl = `${url}?email=${emailParam}&password=${passwordParam}`;
-          console.log(`[Myfxbook] Tentativa ${attempt} - URL (primeiros 150 chars): ${getUrl.substring(0, 150)}...`);
-          
-          response = await axios.get(getUrl, {
-            timeout: 30000, // Aumentar timeout
-            headers: headers,
-            // Não usar responseType: 'text' - deixar axios fazer parse automático
-            // Se for JSON, será parseado automaticamente
-            // Se for HTML, será detectado como string
-            validateStatus: function (status) {
-              return status < 500; // Aceitar qualquer status < 500
-            },
-            maxRedirects: 5, // Permitir redirects
-            decompress: true // Descomprimir automaticamente
-          });
-        }
-        
-        console.log(`[Myfxbook] Resposta recebida - Status: ${response.status}`, {
-          'cf-ray': response.headers['cf-ray'],
-          'server': response.headers['server'],
-          'content-type': response.headers['content-type'],
-          'cf-cache-status': response.headers['cf-cache-status'],
-          'response-data-preview': response.data ? JSON.stringify(response.data).substring(0, 200) : 'no data'
-        });
-
-        // Se for 403, verificar se é Cloudflare bloqueando
-        if (response.status === 403) {
-          const isCloudflare = response.headers['server'] === 'cloudflare' || response.headers['cf-ray'];
-          console.error(`[Myfxbook] Erro 403 detectado. Cloudflare: ${isCloudflare}`, {
-            headers: Object.keys(response.headers),
-            data: response.data
-          });
-          
-          // Se não for a última tentativa, continuar
-          if (attempt < maxRetries) {
-            console.warn(`[Myfxbook] Erro 403 na tentativa ${attempt}, tentando novamente com método alternativo...`);
-            lastError = {
-              status: response.status,
-              statusText: response.statusText,
-              data: response.data,
-              isCloudflare: isCloudflare
-            };
-            continue;
-          }
-        } else {
-          // Se não for 403, sair do loop
-          break;
-        }
-      } catch (error) {
-        lastError = error;
-        if (attempt < maxRetries) {
-          console.warn(`[Myfxbook] Erro na tentativa ${attempt}, tentando novamente...`, error.message);
-          await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
-          continue;
-        }
-        // Se for a última tentativa e ainda houver erro, usar o erro
-        if (error.response) {
-          response = error.response;
-        } else {
-          throw error;
-        }
+    console.log(`[Myfxbook] Login: ${email}`);
+    
+    const response = await axios.get(url, {
+      timeout: 30000,
+      validateStatus: function (status) {
+        return status < 500;
       }
-    }
-
-    // Se não houver resposta após todas as tentativas, retornar erro
-    if (!response) {
-      console.error('[Myfxbook] Nenhuma resposta recebida após todas as tentativas');
-      return {
-        success: false,
-        message: 'Erro ao conectar com a API do MyFXBook. Tente novamente em alguns minutos.',
-        error: lastError
-      };
-    }
-
-    console.log('[Myfxbook] Verificando resposta:', {
-      status: response.status,
-      dataType: typeof response.data,
-      contentType: response.headers['content-type'],
-      isJSON: typeof response.data === 'object' && response.data && !response.data.error,
-      hasSession: response.data?.session ? true : false,
-      hasError: response.data?.error ? true : false
     });
-
-    // Se a resposta for JSON válido com session, sucesso!
-    if (response.status === 200 && response.data && typeof response.data === 'object' && response.data.session) {
-      console.log('[Myfxbook] Login bem-sucedido via REST!');
+    
+    console.log(`[Myfxbook] Resposta - Status: ${response.status}, Session: ${response.data?.session ? response.data.session.substring(0, 50) + '...' : 'NÃO'}`);
+    
+    if (response.status === 200 && response.data && response.data.session) {
+      console.log(`[Myfxbook] Login OK! Session: ${response.data.session.substring(0, 50)}...`);
       return {
         success: true,
         session: response.data.session,
@@ -181,27 +52,15 @@ async function loginMyfxbook(email, password, initialDelay = 0) {
       };
     }
 
-    // Verificar status HTTP de erro
     if (response.status >= 400 && response.status < 500) {
-      console.error(`[Myfxbook] Status HTTP de erro: ${response.status} ${response.statusText}`, {
-        data: response.data,
-        headers: response.headers
-      });
-      
-      // Mensagens específicas para diferentes códigos de erro
-      let errorMessage = `Erro HTTP ${response.status}: ${response.statusText || 'Erro de requisição'}`;
+      let errorMessage = `Erro HTTP ${response.status}`;
       
       if (response.status === 403) {
-        const isCloudflare = response.headers?.['server'] === 'cloudflare' || response.headers?.['cf-ray'];
-        if (isCloudflare) {
-          errorMessage = 'Acesso negado pelo Cloudflare (403 Forbidden). O MyFXBook está usando proteção Cloudflare que pode estar bloqueando requisições do servidor. Possíveis soluções: 1) Aguardar alguns minutos e tentar novamente, 2) Verificar se o IP do servidor não está bloqueado, 3) Contatar o suporte do MyFXBook sobre acesso via API.';
-        } else {
-          errorMessage = 'Acesso negado pela API do MyFXBook (403 Forbidden). Isso pode ocorrer por: rate limiting, IP bloqueado, ou credenciais inválidas. Tente novamente em alguns minutos.';
-        }
+        errorMessage = 'Acesso negado (403 Forbidden). Verifique credenciais ou aguarde alguns minutos.';
       } else if (response.status === 401) {
-        errorMessage = 'Credenciais inválidas ou expiradas. Verifique email e senha.';
+        errorMessage = 'Credenciais inválidas. Verifique email e senha.';
       } else if (response.status === 429) {
-        errorMessage = 'Muitas requisições. Aguarde alguns minutos antes de tentar novamente.';
+        errorMessage = 'Muitas requisições. Aguarde alguns minutos.';
       }
       
       return {
@@ -212,85 +71,32 @@ async function loginMyfxbook(email, password, initialDelay = 0) {
       };
     }
 
-    console.log(`[Myfxbook] Resposta recebida:`, {
-      status: response.status,
-      statusText: response.statusText,
-      hasError: response.data?.error,
-      hasSession: !!response.data?.session,
-      message: response.data?.message,
-      dataKeys: response.data ? Object.keys(response.data) : [],
-      fullResponse: JSON.stringify(response.data).substring(0, 500) // Limitar tamanho do log
-    });
-
-    // Verificar se a resposta é válida
-    if (!response.data || typeof response.data !== 'object') {
-      console.error(`[Myfxbook] Resposta inválida ou não é um objeto:`, {
-        type: typeof response.data,
-        data: response.data
-      });
+    if (response.data?.error) {
       return {
         success: false,
-        message: 'Resposta inválida do Myfxbook: formato de resposta não reconhecido',
+        message: response.data.message || 'Erro ao fazer login',
         error: response.data
       };
     }
 
-    // Verificar se há erro na resposta
-    if (response.data.error) {
-      console.error(`[Myfxbook] Erro na resposta:`, response.data);
-      const errorMessage = response.data.message || 'Erro ao fazer login no Myfxbook';
+    if (!response.data?.session) {
       return {
         success: false,
-        message: errorMessage,
+        message: 'Session não encontrada na resposta. Verifique credenciais.',
         error: response.data
       };
     }
 
-    // Verificar se há session na resposta
-    if (!response.data.session) {
-      console.error(`[Myfxbook] Resposta sem session:`, {
-        status: response.status,
-        statusText: response.statusText,
-        dataKeys: Object.keys(response.data),
-        data: JSON.stringify(response.data).substring(0, 500)
-      });
-      
-      // Verificar se há mensagem de erro não capturada
-      if (response.data.message && !response.data.error) {
-        return {
-          success: false,
-          message: `Erro do Myfxbook: ${response.data.message}`,
-          error: response.data
-        };
-      }
-      
-      return {
-        success: false,
-        message: 'Resposta inválida do Myfxbook: session não encontrada. Verifique se as credenciais estão corretas.',
-        error: response.data
-      };
-    }
-
-    console.log(`[Myfxbook] Login bem-sucedido! Session: ${response.data.session.substring(0, 20)}...`);
-    console.log(`[Myfxbook] Session completa (length): ${response.data.session.length}`);
     return {
       success: true,
       session: response.data.session,
       message: 'Login realizado com sucesso'
     };
   } catch (error) {
-    console.error('[Myfxbook] Erro ao fazer login:', {
-      message: error.message,
-      code: error.code,
-      response: error.response ? {
-        status: error.response.status,
-        data: error.response.data
-      } : null,
-      stack: error.stack
-    });
+    console.error('[Myfxbook] Erro:', error.message);
     return {
       success: false,
-      message: error.response?.data?.message || error.message || 'Erro de conexão com Myfxbook',
+      message: error.response?.data?.message || error.message || 'Erro de conexão',
       error: error.message
     };
   }

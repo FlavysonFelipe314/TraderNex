@@ -601,15 +601,11 @@ exports.getSystemMyfxbookConfig = async (req, res) => {
  */
 exports.testMyfxbookHealth = async (req, res) => {
   try {
-    console.log('[Health Check] Iniciando teste de saúde MyFXBook...');
-    
-    // Buscar credenciais padrão do sistema
     const configResult = await pool.query(
       'SELECT email, encrypted_password FROM system_myfxbook_config LIMIT 1'
     );
 
     if (configResult.rows.length === 0) {
-      console.log('[Health Check] Credenciais não configuradas');
       return res.json({
         success: false,
         connected: false,
@@ -618,18 +614,11 @@ exports.testMyfxbookHealth = async (req, res) => {
     }
 
     const { email, encrypted_password } = configResult.rows[0];
-    console.log(`[Health Check] Email encontrado: ${email}`);
-    console.log(`[Health Check] Senha criptografada existe: ${!!encrypted_password}`);
-    
     const { decrypt } = require('../utils/encryption');
     let password;
     try {
       password = decrypt(encrypted_password);
-      console.log(`[Health Check] Senha descriptografada com sucesso. Tamanho: ${password.length} caracteres`);
-      // Não logar a senha completa por segurança, apenas os primeiros e últimos caracteres
-      console.log(`[Health Check] Senha (mascarada): ${password.substring(0, 3)}...${password.substring(password.length - 2)}`);
     } catch (decryptError) {
-      console.error('[Health Check] Erro ao descriptografar senha:', decryptError);
       return res.json({
         success: false,
         connected: false,
@@ -637,20 +626,10 @@ exports.testMyfxbookHealth = async (req, res) => {
       });
     }
 
-    // Fazer login no MyFXBook
     const { loginMyfxbook, getMyAccounts } = require('../services/myfxbookService');
-    console.log('[Health Check] Tentando fazer login no MyFXBook...');
     const loginResult = await loginMyfxbook(email, password);
 
-    console.log('[Health Check] Resultado do login:', {
-      success: loginResult.success,
-      hasSession: !!loginResult.session,
-      message: loginResult.message,
-      sessionLength: loginResult.session ? loginResult.session.length : 0
-    });
-
     if (!loginResult.success) {
-      console.error('[Health Check] Login falhou:', loginResult);
       return res.json({
         success: false,
         connected: false,
@@ -659,7 +638,6 @@ exports.testMyfxbookHealth = async (req, res) => {
     }
 
     if (!loginResult.session) {
-      console.error('[Health Check] Login retornou success mas sem session');
       return res.json({
         success: false,
         connected: false,
@@ -667,26 +645,15 @@ exports.testMyfxbookHealth = async (req, res) => {
       });
     }
 
-    // Buscar contas para verificar se a conexão está funcionando
-    console.log('[Health Check] Tentando buscar contas com session...');
     const accountsResult = await getMyAccounts(loginResult.session);
 
-    console.log('[Health Check] Resultado da busca de contas:', {
-      success: accountsResult.success,
-      accountsCount: accountsResult.accounts ? accountsResult.accounts.length : 0,
-      message: accountsResult.message
-    });
-
     if (!accountsResult.success) {
-      console.error('[Health Check] Erro ao buscar contas:', accountsResult);
       return res.json({
         success: false,
         connected: false,
         message: 'Erro ao buscar contas: ' + accountsResult.message
       });
     }
-
-    console.log('[Health Check] Teste de saúde concluído com sucesso!');
     res.json({
       success: true,
       connected: true,
@@ -695,8 +662,6 @@ exports.testMyfxbookHealth = async (req, res) => {
       accounts: accountsResult.accounts || []
     });
   } catch (error) {
-    console.error('[Health Check] Erro ao testar saúde MyFXBook:', error);
-    console.error('[Health Check] Stack trace:', error.stack);
     res.status(500).json({
       success: false,
       connected: false,
