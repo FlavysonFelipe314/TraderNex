@@ -124,65 +124,23 @@ function FaturasPerformancePage() {
     loadInvoices()
   }, [])
 
-  // Dados mock como fallback
-  const mockInvoices = [
-    { 
-      id: '#WK-42-2025', 
-      week: 'Semana 42 • 2025', 
-      period: '13 a 17 Out', 
-      profit: '$ 281.66', 
-      value: '$ 84.50', 
-      dueDate: '17 Out 2025', 
-      status: 'pending', 
-      isCurrent: true 
-    },
-    { 
-      id: '#WK-41-2025', 
-      week: 'Semana 41 • 2025', 
-      period: '06 a 10 Out', 
-      profit: '$ 312.40', 
-      value: '$ 93.72', 
-      dueDate: '10 Out 2025', 
-      status: 'paid' 
-    },
-    { 
-      id: '#WK-40-2025', 
-      week: 'Semana 40 • 2025', 
-      period: '29 Set a 03 Out', 
-      profit: '$ 198.00', 
-      value: '$ 59.40', 
-      dueDate: '03 Out 2025', 
-      status: 'paid' 
-    },
-    { 
-      id: '#WK-39-2025', 
-      week: 'Semana 39 • 2025', 
-      period: '22 a 26 Set', 
-      profit: '--', 
-      value: '$ 0.00', 
-      dueDate: '26 Set 2025', 
-      status: 'exempt' 
-    },
-    { 
-      id: '#WK-38-2025', 
-      week: 'Semana 38 • 2025', 
-      period: '15 a 19 Set', 
-      profit: '$ 420.00', 
-      value: '$ 126.00', 
-      dueDate: '19 Set 2025', 
-      status: 'paid' 
-    },
-  ]
-
-  // Filtrar faturas baseado nos filtros
+  // Filtrar faturas baseado nos filtros - APENAS dados reais, sem mock
   const filteredInvoices = invoices.filter(inv => {
     if (statusFilter === 'pendentes' && inv.status !== 'pending') return false
     if (statusFilter === 'pagas' && inv.status !== 'paid') return false
     return true
   })
 
-  // Usar dados reais ou mock
-  const displayInvoices = filteredInvoices.length > 0 ? filteredInvoices : (invoices.length > 0 ? invoices : mockInvoices)
+  // Usar APENAS dados reais - nunca usar mock
+  const displayInvoices = filteredInvoices
+  
+  // Log para debug
+  console.log('[FaturasPerformancePage] Estado atual:', {
+    invoicesLength: invoices.length,
+    filteredInvoicesLength: filteredInvoices.length,
+    displayInvoicesLength: displayInvoices.length,
+    loading
+  })
 
   return (
     <DashboardLayout>
