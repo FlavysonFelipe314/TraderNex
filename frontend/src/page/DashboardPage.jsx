@@ -571,7 +571,8 @@ function DashboardPage() {
           </div>
         )}
 
-        {/* Dashboard Grid */}
+        {/* Dashboard Grid - Só mostrar se tiver MyFXBook configurado */}
+        {myfxbookConnected && myfxbookAccountData && (
         <div className="grid grid-cols-1 xl:grid-cols-[2.2fr_1.3fr] gap-4 sm:gap-6 items-stretch">
           {/* Chart Card */}
           <div className="bg-white rounded-xl sm:rounded-2xl border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden">
@@ -900,8 +901,12 @@ function DashboardPage() {
               ) : (
                 // Mostrar apenas dados MT4 quando não houver MyFXBook
                 <>
-                  {/* Status de Conexão */}
-                  {mt4Accounts.length > 0 ? (
+                  {/* Status de Conexão - Só mostrar "Conectada e Operando" se estiver ativa e conectada ao MyFXBook */}
+                  {mt4Accounts.length > 0 && mt4Accounts.some(acc => 
+                    acc.status === 'active' && 
+                    acc.myfxbook_integration_login && 
+                    acc.myfxbook_integration_login.trim() !== ''
+                  ) ? (
                     <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 bg-[rgba(240,253,244,0.6)] border border-[rgba(34,197,94,0.15)] rounded-xl sm:rounded-[14px]">
                       <span className="flex items-center gap-3 font-bold text-[#15803D] text-[13px]">
                         <div 
@@ -963,6 +968,7 @@ function DashboardPage() {
             </div>
           </div>
         </div>
+        )}
       </div>
       </div>
       
