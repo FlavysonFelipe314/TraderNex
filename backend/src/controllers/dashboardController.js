@@ -733,6 +733,9 @@ exports.getTransactions = async (req, res) => {
 exports.getInvoices = async (req, res) => {
   try {
     const userId = req.user.userId;
+    
+    // Log para debug
+    console.log(`[getInvoices] Buscando faturas para userId: ${userId}`);
 
     // Verificar se o usuário tem conta MT4 ativa e conectada ao MyFXBook
     const mt4Check = await pool.query(
@@ -746,8 +749,11 @@ exports.getInvoices = async (req, res) => {
       [userId]
     );
 
+    console.log(`[getInvoices] Verificação MT4 - Contas encontradas: ${mt4Check.rows.length}`);
+
     // Se não tiver conta ativa e conectada, retornar vazio
     if (mt4Check.rows.length === 0) {
+      console.log(`[getInvoices] Usuário ${userId} não tem conta MT4 ativa e conectada. Retornando array vazio.`);
       return res.json({
         success: true,
         data: [],
@@ -758,9 +764,9 @@ exports.getInvoices = async (req, res) => {
       });
     }
 
-    // Garantir que só retorna faturas do usuário logado
+    // Garantir que só retorna faturas do usuário logado - validação dupla
     const result = await pool.query(
-      `SELECT i.id, i.invoice_number, i.amount, i.profit_amount, i.fee_percentage, i.status, i.due_date, i.paid_date, 
+      `SELECT i.id, i.user_id, i.invoice_number, i.amount, i.profit_amount, i.fee_percentage, i.status, i.due_date, i.paid_date, 
               i.created_at, i.description, i.plan_name,
               cp.selected_plan_id, ip.name as plan_name_from_profile, ip.min_investment
        FROM invoices i
@@ -771,11 +777,23 @@ exports.getInvoices = async (req, res) => {
       [userId]
     );
     
+    console.log(`[getInvoices] Faturas encontradas no banco: ${result.rows.length}`);
+    
     // Validação adicional de segurança: garantir que todas as faturas pertencem ao usuário
     const userInvoices = result.rows.filter(row => {
-      // Verificar se o user_id da fatura corresponde ao userId do token
-      return true; // Já filtrado pela query, mas manter para documentação
+      // Verificar explicitamente se o user_id da fatura corresponde ao userId do token
+      const belongsToUser = row.user_id === userId;
+      if (!belongsToUser) {
+        console.error(`[getInvoices] ERRO DE SEGURANÇA: Fatura ${row.invoice_number} pertence ao userId ${row.user_id}, mas foi solicitada pelo userId ${userId}`);
+      }
+      return belongsToUser;
     });
+    
+    console.log(`[getInvoices] Faturas após validação: ${userInvoices.length}`);
+    
+    if (userInvoices.length !== result.rows.length) {
+      console.error(`[getInvoices] ALERTA: ${result.rows.length - userInvoices.length} faturas foram filtradas por não pertencerem ao usuário!`);
+    }
 
     // Calcular totais usando apenas faturas do usuário
     const totals = userInvoices.reduce((acc, row) => {

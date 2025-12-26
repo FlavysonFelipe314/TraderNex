@@ -26,20 +26,33 @@ function FaturasPerformancePage() {
       setLoading(true)
       try {
         const result = await getInvoices()
-        if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
-          // Salvar totais
-          if (result.totals) {
-            setTotals(result.totals)
+        console.log('[FaturasPerformancePage] Resultado da API:', result)
+        
+        // Validação: só mostrar faturas se a resposta for válida e tiver dados
+        if (result.success && result.data && Array.isArray(result.data)) {
+          // Se tiver mensagem indicando que não há conta ativa, não mostrar faturas
+          if (result.message && result.message.includes('conta precisa estar ativa')) {
+            console.log('[FaturasPerformancePage] Conta não está ativa/conectada. Não mostrando faturas.')
+            setInvoices([])
+            setTotals({ total: 0, pending: 0, paid: 0, overdue: 0 })
+            setLoading(false)
+            return
           }
-          if (result.nextDueDate) {
-            setNextDueDate(result.nextDueDate)
-          }
-          if (result.weekNumber) {
-            setWeekNumber(result.weekNumber)
-          }
+          
+          if (result.data.length > 0) {
+            // Salvar totais
+            if (result.totals) {
+              setTotals(result.totals)
+            }
+            if (result.nextDueDate) {
+              setNextDueDate(result.nextDueDate)
+            }
+            if (result.weekNumber) {
+              setWeekNumber(result.weekNumber)
+            }
 
-          // Transformar dados do backend para o formato esperado pelo frontend
-          const formattedInvoices = result.data.map((inv, index) => {
+            // Transformar dados do backend para o formato esperado pelo frontend
+            const formattedInvoices = result.data.map((inv, index) => {
             const amount = inv.amount != null && !isNaN(inv.amount) ? Number(inv.amount) : 0;
             
             // Usar profit_amount do banco (se disponível) ou extrair da descrição
@@ -84,12 +97,25 @@ function FaturasPerformancePage() {
               rawAmount: amount,
               rawProfit: profit
             };
-          })
-          setInvoices(formattedInvoices)
+            })
+            setInvoices(formattedInvoices)
+          } else {
+            // Se não tiver faturas, limpar estado
+            console.log('[FaturasPerformancePage] Nenhuma fatura encontrada')
+            setInvoices([])
+            setTotals({ total: 0, pending: 0, paid: 0, overdue: 0 })
+          }
+        } else {
+          // Se não tiver dados válidos, limpar estado
+          console.log('[FaturasPerformancePage] Resposta inválida ou sem dados')
+          setInvoices([])
+          setTotals({ total: 0, pending: 0, paid: 0, overdue: 0 })
         }
       } catch (error) {
         console.error('Erro ao carregar faturas:', error)
-        // Manter dados mock em caso de erro
+        // Em caso de erro, limpar estado para não mostrar dados incorretos
+        setInvoices([])
+        setTotals({ total: 0, pending: 0, paid: 0, overdue: 0 })
       } finally {
         setLoading(false)
       }

@@ -335,15 +335,34 @@ export const getTransactions = async (filters = {}) => {
 export const getInvoices = async () => {
   try {
     const response = await api.get('/api/dashboard/invoices')
-    return {
+    
+    // Validação: garantir que os dados são válidos
+    const data = response.data.data || []
+    const isValidData = Array.isArray(data)
+    
+    console.log('[getInvoices] Resposta da API:', {
       success: response.data.success,
-      data: response.data.data,
-      message: response.data.message
+      dataLength: isValidData ? data.length : 0,
+      message: response.data.message,
+      hasTotals: !!response.data.totals
+    })
+    
+    return {
+      success: response.data.success && isValidData,
+      data: isValidData ? data : [],
+      totals: response.data.totals || { total: 0, pending: 0, paid: 0, overdue: 0 },
+      nextDueDate: response.data.nextDueDate || null,
+      weekNumber: response.data.weekNumber || null,
+      message: response.data.message || null
     }
   } catch (error) {
     console.error('Erro ao buscar faturas:', error)
     return {
       success: false,
+      data: [],
+      totals: { total: 0, pending: 0, paid: 0, overdue: 0 },
+      nextDueDate: null,
+      weekNumber: null,
       message: error.response?.data?.message || 'Erro ao buscar faturas.',
       error: error.response?.data
     }
