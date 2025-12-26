@@ -160,7 +160,7 @@ exports.getMT4Accounts = async (req, res) => {
     const userId = req.user.userId;
 
     const result = await pool.query(
-      `SELECT id, account_number, account_name, broker, server, balance, equity, currency, status, connected_at, last_sync, automation_enabled, risk_profile, created_at
+      `SELECT id, account_number, account_name, broker, server, balance, equity, currency, status, connected_at, last_sync, automation_enabled, risk_profile, myfxbook_integration_login, created_at
        FROM mt4_accounts
        WHERE user_id = $1
        ORDER BY created_at DESC`,

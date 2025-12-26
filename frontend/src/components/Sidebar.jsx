@@ -36,22 +36,33 @@ function Sidebar() {
         const hasPlan = dashboardResult.success && 
                        dashboardResult.data?.profile?.selected_plan_id
 
-        // Verificar se tem conta forex configurada, ativa E conectada ao MyFXBook
+        // Verificar se tem conta forex configurada
+        // Se tiver conta configurada (mesmo que pendente), considerar onboarding completo
+        // A restrição do menu só deve acontecer para contas que ainda não foram configuradas pelo admin
         const mt4Result = await getMT4Accounts()
         const hasForexAccount = mt4Result.success && 
                                 mt4Result.data && 
-                                mt4Result.data.length > 0 &&
-                                mt4Result.data.some(account => 
-                                  account.status === 'active' && 
-                                  account.myfxbook_integration_login &&
-                                  account.myfxbook_integration_login.trim() !== ''
-                                )
+                                mt4Result.data.length > 0
+        
+        // Verificar se a conta já foi configurada pelo admin (tem myfxbook_integration_login)
+        // Se tiver sido configurada, mostrar menu completo independente do status
+        const hasMyfxbookConfigured = mt4Result.success && 
+                                      mt4Result.data && 
+                                      mt4Result.data.length > 0 &&
+                                      mt4Result.data.some(account => 
+                                        account.myfxbook_integration_login &&
+                                        account.myfxbook_integration_login.trim() !== ''
+                                      )
 
+        // Se a conta já foi configurada pelo admin, considerar onboarding completo
+        // Caso contrário, só considerar completo se tiver plano e conta forex
+        const isComplete = hasMyfxbookConfigured || (hasPlan && hasForexAccount)
+        
         setOnboardingStatus({
           loading: false,
           hasPlan: !!hasPlan,
           hasForexAccount: !!hasForexAccount,
-          isComplete: hasPlan && hasForexAccount
+          isComplete: isComplete
         })
       } catch (error) {
         console.error('Erro ao verificar onboarding no Sidebar:', error)
