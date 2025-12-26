@@ -70,7 +70,8 @@ export const addMT4Account = async (accountData) => {
       account_name: accountData.account_name || null,
       balance: accountData.balance || 0,
       equity: accountData.equity || 0,
-      currency: accountData.currency || 'USD'
+      currency: accountData.currency || 'USD',
+      risk_profile: accountData.risk_profile || 'moderado'
     }
     
     console.log('[addMT4Account] Enviando payload:', payload)

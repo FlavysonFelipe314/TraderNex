@@ -192,7 +192,7 @@ exports.getMT4Accounts = async (req, res) => {
 exports.addMT4Account = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { account_number, account_name, broker, server, balance, equity, currency } = req.body;
+    const { account_number, account_name, broker, server, balance, equity, currency, risk_profile, password } = req.body;
 
     if (!account_number || !broker || !server) {
       return res.status(400).json({
@@ -208,23 +208,36 @@ exports.addMT4Account = async (req, res) => {
     );
 
     if (existingAccount.rows.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Já existe uma conta MT4 com este número para seu usuário.'
+      // Atualizar conta existente
+      const result = await pool.query(
+        `UPDATE mt4_accounts 
+         SET broker = $1, server = $2, account_name = $3, balance = $4, equity = $5, currency = $6, 
+             risk_profile = $7, updated_at = NOW()
+         WHERE user_id = $8 AND account_number = $9
+         RETURNING *`,
+        [broker, server, account_name || null, balance || 0, equity || 0, currency || 'USD', 
+         risk_profile || 'moderado', userId, account_number]
+      );
+
+      return res.json({
+        success: true,
+        data: result.rows[0],
+        message: 'Conta MT4 atualizada com sucesso!'
       });
     }
 
+    // Criar nova conta (status será 'pending' até o admin ativar)
     const result = await pool.query(
-      `INSERT INTO mt4_accounts (user_id, account_number, account_name, broker, server, balance, equity, currency, status, connected_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', NOW())
+      `INSERT INTO mt4_accounts (user_id, account_number, account_name, broker, server, balance, equity, currency, status, risk_profile, connected_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, NOW())
        RETURNING *`,
-      [userId, account_number, account_name || null, broker, server, balance || 0, equity || 0, currency || 'USD']
+      [userId, account_number, account_name || null, broker, server, balance || 0, equity || 0, currency || 'USD', risk_profile || 'moderado']
     );
 
     res.json({
       success: true,
       data: result.rows[0],
-      message: 'Conta MT4 adicionada com sucesso!'
+      message: 'Conta MT4 adicionada com sucesso! Aguarde a ativação pelo administrador.'
     });
   } catch (error) {
     console.error('Erro ao adicionar conta MT4:', error);

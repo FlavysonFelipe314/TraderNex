@@ -104,6 +104,8 @@ function Mt4CredentialsPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [availableServers, setAvailableServers] = useState([])
+  const [riskProfile, setRiskProfile] = useState('moderado')
+  const [showSetupMessage, setShowSetupMessage] = useState(false)
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -150,6 +152,11 @@ function Mt4CredentialsPage() {
           if (broker && BROKERS_CONFIG[broker]) {
             setAvailableServers(BROKERS_CONFIG[broker])
           }
+          
+          // Carregar perfil de risco se existir
+          if (account.risk_profile) {
+            setRiskProfile(account.risk_profile)
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar conta MT4 existente:', error)
@@ -192,13 +199,15 @@ function Mt4CredentialsPage() {
     }
     
     try {
-      const result = await addMT4Account(formData)
+      const result = await addMT4Account({
+        ...formData,
+        risk_profile: riskProfile
+      })
       if (result.success) {
         setSuccess(true)
         setError('')
-        setTimeout(() => {
-          navigate('/conta-forex-mt4')
-        }, 2000)
+        setShowSetupMessage(true)
+        // Não redirecionar automaticamente, mostrar mensagem
       } else {
         setError(result.message || 'Erro ao conectar conta MT4.')
         setSuccess(false)
@@ -238,10 +247,38 @@ function Mt4CredentialsPage() {
               </div>
             )}
 
-            {success && (
+            {success && !showSetupMessage && (
               <div className="mb-6 bg-green-50 text-green-600 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2">
                 <Icon icon="lucide:check-circle" className="text-lg" />
-                Conectado com sucesso! Redirecionando...
+                Credenciais salvas com sucesso!
+              </div>
+            )}
+
+            {showSetupMessage && (
+              <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Icon icon="lucide:info" className="text-blue-600 text-xl mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-blue-900 mb-1">
+                      Configuração em andamento
+                    </h4>
+                    <p className="text-sm text-blue-700 mb-3">
+                      Suas credenciais foram salvas com sucesso! O sistema irá configurar o setup e ativar o Falcon FX para operar em até <strong>30 minutos</strong>.
+                    </p>
+                    <p className="text-xs text-blue-600">
+                      Quando o administrador ativar sua conta, você verá o status "Conectado" e o Falcon FX estará ativo. Até lá, a conta aparecerá como "Desconectada" e o Falcon FX como "Inativo".
+                    </p>
+                    <button
+                      onClick={() => {
+                        setShowSetupMessage(false)
+                        navigate('/conta-forex-mt4')
+                      }}
+                      className="mt-4 w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      Entendi, ir para Conta Forex
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -357,6 +394,47 @@ function Mt4CredentialsPage() {
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] pointer-events-none">
                     <Icon icon="lucide:chevron-down" />
                   </div>
+                </div>
+              </div>
+
+              {/* Perfil de Risco */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-semibold text-[#374151]">Perfil de Risco</label>
+                <span className="text-xs text-[#6b7280] mb-1">Define a agressividade das entradas do Falcon FX</span>
+                <div className="flex bg-[#f3f4f6] p-1 rounded-xl gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setRiskProfile('conservador')}
+                    className={`flex-1 text-center py-2.5 px-3 text-sm font-medium rounded-lg cursor-pointer transition-all ${
+                      riskProfile === 'conservador' 
+                        ? 'bg-white text-[#111827] font-semibold shadow-[0_2px_4px_rgba(0,0,0,0.05)]' 
+                        : 'text-[#6b7280] hover:text-[#374151]'
+                    }`}
+                  >
+                    Conservador
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRiskProfile('moderado')}
+                    className={`flex-1 text-center py-2.5 px-3 text-sm font-medium rounded-lg cursor-pointer transition-all ${
+                      riskProfile === 'moderado' 
+                        ? 'bg-white text-[#111827] font-semibold shadow-[0_2px_4px_rgba(0,0,0,0.05)]' 
+                        : 'text-[#6b7280] hover:text-[#374151]'
+                    }`}
+                  >
+                    Moderado
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRiskProfile('agressivo')}
+                    className={`flex-1 text-center py-2.5 px-3 text-sm font-medium rounded-lg cursor-pointer transition-all ${
+                      riskProfile === 'agressivo' 
+                        ? 'bg-white text-[#111827] font-semibold shadow-[0_2px_4px_rgba(0,0,0,0.05)]' 
+                        : 'text-[#6b7280] hover:text-[#374151]'
+                    }`}
+                  >
+                    Agressivo
+                  </button>
                 </div>
               </div>
 

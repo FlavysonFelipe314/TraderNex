@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS mt4_accounts (
     balance DECIMAL(15, 2) DEFAULT 0.00,
     equity DECIMAL(15, 2) DEFAULT 0.00,
     currency VARCHAR(10) DEFAULT 'USD',
-    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('active', 'inactive', 'suspended', 'pending')),
     connected_at TIMESTAMP,
     last_sync TIMESTAMP,
     myfxbook_integration_login VARCHAR(100),

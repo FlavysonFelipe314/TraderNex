@@ -45,10 +45,10 @@ function InvestirPlanosPage() {
       if (result.success) {
         setSelectedPlanName(plan.name)
         setShowSuccessMessage(true)
-        // Redirecionar para conta forex após 2 segundos
+        // Redirecionar para configuração MT4 após 2 segundos
         setTimeout(() => {
           setShowSuccessMessage(false)
-          navigate('/conta-forex-mt4')
+          navigate('/mt4-config')
         }, 2000)
       } else {
         alert('Erro ao selecionar plano: ' + (result.message || 'Erro desconhecido'))

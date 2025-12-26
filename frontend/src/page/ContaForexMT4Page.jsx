@@ -154,21 +154,21 @@ function ContaForexMT4Page() {
           {/* Card 1: Status MT4 Conectado */}
           <div className="bg-white rounded-xl sm:rounded-2xl border border-[#e5e7eb] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.03)] h-auto sm:h-[110px] flex items-center px-4 sm:px-7 py-4 sm:py-0 gap-4 sm:gap-5 hover:-translate-y-0.5 transition-transform">
             <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${
-              myfxbookConnected 
+              mt4Accounts.length > 0 && mt4Accounts[0].status === 'active'
                 ? 'bg-[#d1fae5] text-[#059669]' 
                 : 'bg-[#fee2e2] text-[#dc2626]'
             }`}>
               <Icon 
-                icon={myfxbookConnected ? "lucide:check-circle" : "lucide:x-circle"} 
+                icon={mt4Accounts.length > 0 && mt4Accounts[0].status === 'active' ? "lucide:check-circle" : "lucide:x-circle"} 
                 className="text-lg sm:text-xl" 
               />
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[10px] sm:text-xs font-semibold text-[#9ca3af] uppercase tracking-wider">MT4 Conectado</span>
               <span className={`text-sm sm:text-base font-bold ${
-                myfxbookConnected ? 'text-[#059669]' : 'text-[#dc2626]'
+                mt4Accounts.length > 0 && mt4Accounts[0].status === 'active' ? 'text-[#059669]' : 'text-[#dc2626]'
                 }`}>
-                  {myfxbookConnected ? 'Conectado' : 'Desconectado'}
+                  {mt4Accounts.length > 0 && mt4Accounts[0].status === 'active' ? 'Conectado' : 'Desconectado'}
                 </span>
             </div>
           </div>
@@ -187,17 +187,37 @@ function ContaForexMT4Page() {
           </div>
 
           {/* Card 3: Falcon AI */}
-          <div className="bg-[#0e0e10] rounded-xl sm:rounded-2xl border border-[#1f2937] shadow-[0_8px_30px_rgba(0,255,136,0.05)] h-auto sm:h-[110px] flex items-center justify-between px-4 sm:px-7 py-4 sm:py-0 hover:-translate-y-0.5 transition-transform">
+          <div className={`rounded-xl sm:rounded-2xl border h-auto sm:h-[110px] flex items-center justify-between px-4 sm:px-7 py-4 sm:py-0 hover:-translate-y-0.5 transition-transform ${
+            mt4Accounts.length > 0 && mt4Accounts[0].status === 'active' && automationEnabled
+              ? 'bg-[#0e0e10] border-[#1f2937] shadow-[0_8px_30px_rgba(0,255,136,0.05)]'
+              : 'bg-[#1f2937] border-[#374151] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02)]'
+          }`}>
             <div className="flex items-center gap-3 sm:gap-5">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[rgba(255,255,255,0.08)] rounded-xl flex items-center justify-center text-[#00ff88] border border-[rgba(0,255,136,0.2)] shadow-[0_0_15px_rgba(0,255,136,0.15)]">
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center border ${
+                mt4Accounts.length > 0 && mt4Accounts[0].status === 'active' && automationEnabled
+                  ? 'bg-[rgba(255,255,255,0.08)] text-[#00ff88] border-[rgba(0,255,136,0.2)] shadow-[0_0_15px_rgba(0,255,136,0.15)]'
+                  : 'bg-[rgba(255,255,255,0.05)] text-[#6b7280] border-[rgba(255,255,255,0.1)]'
+              }`}>
                 <Icon icon="lucide:zap" className="text-lg sm:text-[22px]" />
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] sm:text-xs font-semibold text-[rgba(255,255,255,0.5)] uppercase tracking-wider">Inteligência Ativa</span>
-                <span className="text-sm sm:text-[17px] font-bold text-white">Falcon AI Operando</span>
+                <span className={`text-sm sm:text-[17px] font-bold ${
+                  mt4Accounts.length > 0 && mt4Accounts[0].status === 'active' && automationEnabled
+                    ? 'text-white'
+                    : 'text-[#9ca3af]'
+                }`}>
+                  {mt4Accounts.length > 0 && mt4Accounts[0].status === 'active' && automationEnabled
+                    ? 'Falcon AI Operando'
+                    : 'Falcon AI Inativo'}
+                </span>
               </div>
             </div>
-            <div className="bg-[rgba(0,255,136,0.1)] text-[#00ff88] text-[11px] font-bold px-3 py-1.5 rounded-full border border-[rgba(0,255,136,0.2)]">
+            <div className={`text-[11px] font-bold px-3 py-1.5 rounded-full border ${
+              mt4Accounts.length > 0 && mt4Accounts[0].status === 'active' && automationEnabled
+                ? 'bg-[rgba(0,255,136,0.1)] text-[#00ff88] border-[rgba(0,255,136,0.2)]'
+                : 'bg-[rgba(107,114,128,0.1)] text-[#6b7280] border-[rgba(107,114,128,0.2)]'
+            }`}>
               v4.2
             </div>
           </div>
