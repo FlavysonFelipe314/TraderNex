@@ -1,13 +1,66 @@
 import { Icon } from '@iconify/react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSidebar } from '../contexts/SidebarContext'
+import { getDashboardData, getMT4Accounts } from '../services/dashboardService'
 
 function Sidebar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuth()
   const { isSidebarOpen, toggleSidebar } = useSidebar()
+  const [onboardingStatus, setOnboardingStatus] = useState({
+    loading: true,
+    hasPlan: false,
+    hasForexAccount: false,
+    isComplete: false
+  })
+  
+  // Verificar status do onboarding
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      if (!user) {
+        setOnboardingStatus({
+          loading: false,
+          hasPlan: false,
+          hasForexAccount: false,
+          isComplete: false
+        })
+        return
+      }
+
+      try {
+        // Verificar se tem plano selecionado
+        const dashboardResult = await getDashboardData()
+        const hasPlan = dashboardResult.success && 
+                       dashboardResult.data?.profile?.selected_plan_id
+
+        // Verificar se tem conta forex configurada
+        const mt4Result = await getMT4Accounts()
+        const hasForexAccount = mt4Result.success && 
+                                mt4Result.data && 
+                                mt4Result.data.length > 0
+
+        setOnboardingStatus({
+          loading: false,
+          hasPlan: !!hasPlan,
+          hasForexAccount: !!hasForexAccount,
+          isComplete: hasPlan && hasForexAccount
+        })
+      } catch (error) {
+        console.error('Erro ao verificar onboarding no Sidebar:', error)
+        setOnboardingStatus({
+          loading: false,
+          hasPlan: false,
+          hasForexAccount: false,
+          isComplete: false
+        })
+      }
+    }
+
+    checkOnboarding()
+  }, [user])
   
   // Verificar status de admin - verificar múltiplas fontes para garantir robustez
   // Também verificar localStorage como fallback caso o contexto não esteja atualizado
@@ -44,20 +97,50 @@ function Sidebar() {
     })
   }
 
-  const navItems = [
-    { id: 'overview', label: 'Visão Geral', icon: 'lucide:layout-dashboard', path: '/dashboard' },
-    { id: 'invest', label: 'Planos', icon: 'lucide:trending-up', path: '/investir-planos' },
-    { id: 'forex', label: 'Conta Forex', icon: 'lucide:layers', path: '/conta-forex-mt4' },
-    { id: 'crypto', label: 'Cripto', icon: 'lucide:bitcoin', path: '/cripto-em-breve' },
-    { id: 'reports', label: 'Relatórios', icon: 'lucide:file-bar-chart', path: '/relatorios-performance' },
-    { id: 'invoices', label: 'Faturas', icon: 'lucide:receipt', path: '/faturas-performance' },
+  // Itens do menu principal - alguns só aparecem após onboarding completo
+  const allNavItems = [
+    { id: 'overview', label: 'Visão Geral', icon: 'lucide:layout-dashboard', path: '/dashboard', requiresOnboarding: true },
+    { id: 'invest', label: 'Planos', icon: 'lucide:trending-up', path: '/investir-planos', requiresOnboarding: false },
+    { id: 'forex', label: 'Conta Forex', icon: 'lucide:layers', path: '/conta-forex-mt4', requiresOnboarding: true },
+    { id: 'mt4-config', label: 'Configurar MT4', icon: 'lucide:settings-2', path: '/mt4-config', requiresOnboarding: false },
+    { id: 'crypto', label: 'Cripto', icon: 'lucide:bitcoin', path: '/cripto-em-breve', requiresOnboarding: true },
+    { id: 'reports', label: 'Relatórios', icon: 'lucide:file-bar-chart', path: '/relatorios-performance', requiresOnboarding: true },
+    { id: 'invoices', label: 'Faturas', icon: 'lucide:receipt', path: '/faturas-performance', requiresOnboarding: true },
   ]
 
-  const accountNavItems = [
-    { id: 'profile', label: 'Perfil', icon: 'lucide:user', path: '/perfil-cliente' },
-    { id: 'referrals', label: 'Indicações', icon: 'lucide:users', path: '/referral-program' },
-    { id: 'support', label: 'Suporte', icon: 'lucide:life-buoy', path: '/suporte-cliente' },
+  // Filtrar itens baseado no status do onboarding
+  const navItems = allNavItems.filter(item => {
+    // Se o onboarding está completo, mostrar todos os itens
+    if (onboardingStatus.isComplete) {
+      return true
+    }
+    // Se não está completo, mostrar apenas itens que não requerem onboarding
+    // ou itens específicos do onboarding (Planos e Configurar MT4)
+    if (!item.requiresOnboarding) {
+      return true
+    }
+    // Se tem plano mas não tem conta forex, mostrar "Conta Forex" também
+    if (item.id === 'forex' && onboardingStatus.hasPlan && !onboardingStatus.hasForexAccount) {
+      return true
+    }
+    return false
+  })
+
+  const allAccountNavItems = [
+    { id: 'profile', label: 'Perfil', icon: 'lucide:user', path: '/perfil-cliente', requiresOnboarding: true },
+    { id: 'referrals', label: 'Indicações', icon: 'lucide:users', path: '/referral-program', requiresOnboarding: true },
+    { id: 'support', label: 'Suporte', icon: 'lucide:life-buoy', path: '/suporte-cliente', requiresOnboarding: true },
   ]
+
+  // Filtrar itens da conta baseado no status do onboarding
+  const accountNavItems = allAccountNavItems.filter(item => {
+    // Se o onboarding está completo, mostrar todos os itens
+    if (onboardingStatus.isComplete) {
+      return true
+    }
+    // Durante onboarding, não mostrar itens da conta
+    return false
+  })
 
   const adminAccountNavItems = [
     { id: 'profile', label: 'Perfil', icon: 'lucide:user', path: '/perfil-admin' },
@@ -238,29 +321,33 @@ function Sidebar() {
               })}
 
               {/* Seção Sua Conta - todos os itens para não-admins */}
-          <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
-            Sua Conta
-          </div>
-              {accountNavItems.map((item) => {
-              const active = isActive(item.path)
-              return (
-                <div
-                  key={item.id}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
-                    active
-                        ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
-                        : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white hover:pl-4'
-                  }`}
-                  onClick={() => handleNavigation(item.path)}
-                  data-media-type="banani-button"
-                >
-                  <div className="w-[18px] h-[18px] flex items-center justify-center">
-                    <Icon icon={item.icon} className="text-lg" />
+              {accountNavItems.length > 0 && (
+                <>
+                  <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
+                    Sua Conta
                   </div>
-                  <span className="text-sm font-medium">{item.label}</span>
-                </div>
-              )
-            })}
+                  {accountNavItems.map((item) => {
+                    const active = isActive(item.path)
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                          active
+                            ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                            : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white hover:pl-4'
+                        }`}
+                        onClick={() => handleNavigation(item.path)}
+                        data-media-type="banani-button"
+                      >
+                        <div className="w-[18px] h-[18px] flex items-center justify-center">
+                          <Icon icon={item.icon} className="text-lg" />
+                        </div>
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </div>
+                    )
+                  })}
+                </>
+              )}
             </>
           )}
         </nav>
@@ -414,29 +501,33 @@ function Sidebar() {
               })}
 
               {/* Seção Sua Conta - todos os itens para não-admins */}
-          <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
-            Sua Conta
-          </div>
-              {accountNavItems.map((item) => {
-              const active = isActive(item.path)
-              return (
-                <div
-                  key={item.id}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                    active
-                        ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
-                        : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white'
-                  }`}
-                  onClick={() => handleNavigation(item.path)}
-                  data-media-type="banani-button"
-                >
-                  <div className="w-[18px] h-[18px] flex items-center justify-center">
-                    <Icon icon={item.icon} className="text-lg" />
+              {accountNavItems.length > 0 && (
+                <>
+                  <div className="text-[10px] font-semibold text-[rgba(255,255,255,0.3)] uppercase tracking-[0.1em] mx-3 mb-3 mt-6">
+                    Sua Conta
                   </div>
-                  <span className="text-sm font-medium">{item.label}</span>
-                </div>
-              )
-            })}
+                  {accountNavItems.map((item) => {
+                    const active = isActive(item.path)
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                          active
+                            ? 'bg-gradient-to-r from-[rgba(0,255,136,0.06)] to-[rgba(0,255,136,0.01)] text-[#00ff88] border border-[rgba(0,255,136,0.08)]'
+                            : 'text-[#9ca3af] border border-transparent hover:bg-[rgba(255,255,255,0.03)] hover:text-white'
+                        }`}
+                        onClick={() => handleNavigation(item.path)}
+                        data-media-type="banani-button"
+                      >
+                        <div className="w-[18px] h-[18px] flex items-center justify-center">
+                          <Icon icon={item.icon} className="text-lg" />
+                        </div>
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </div>
+                    )
+                  })}
+                </>
+              )}
             </>
           )}
         </nav>
