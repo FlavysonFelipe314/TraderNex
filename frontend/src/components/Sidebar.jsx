@@ -17,7 +17,7 @@ function Sidebar() {
     isComplete: false
   })
   
-  // Verificar status do onboarding
+  // Verificar status do onboarding - atualizar quando mudar de rota ou usuário
   useEffect(() => {
     const checkOnboarding = async () => {
       if (!user) {
@@ -36,11 +36,16 @@ function Sidebar() {
         const hasPlan = dashboardResult.success && 
                        dashboardResult.data?.profile?.selected_plan_id
 
-        // Verificar se tem conta forex configurada
+        // Verificar se tem conta forex configurada, ativa E conectada ao MyFXBook
         const mt4Result = await getMT4Accounts()
         const hasForexAccount = mt4Result.success && 
                                 mt4Result.data && 
-                                mt4Result.data.length > 0
+                                mt4Result.data.length > 0 &&
+                                mt4Result.data.some(account => 
+                                  account.status === 'active' && 
+                                  account.myfxbook_integration_login &&
+                                  account.myfxbook_integration_login.trim() !== ''
+                                )
 
         setOnboardingStatus({
           loading: false,
@@ -60,7 +65,7 @@ function Sidebar() {
     }
 
     checkOnboarding()
-  }, [user])
+  }, [user, location.pathname])
   
   // Verificar status de admin - verificar múltiplas fontes para garantir robustez
   // Também verificar localStorage como fallback caso o contexto não esteja atualizado

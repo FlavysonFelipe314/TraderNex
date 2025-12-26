@@ -734,10 +734,34 @@ exports.getInvoices = async (req, res) => {
   try {
     const userId = req.user.userId;
 
+    // Verificar se o usuário tem conta MT4 ativa e conectada ao MyFXBook
+    const mt4Check = await pool.query(
+      `SELECT id, status, myfxbook_integration_login 
+       FROM mt4_accounts 
+       WHERE user_id = $1 
+       AND status = 'active' 
+       AND myfxbook_integration_login IS NOT NULL 
+       AND myfxbook_integration_login != ''
+       LIMIT 1`,
+      [userId]
+    );
+
+    // Se não tiver conta ativa e conectada, retornar vazio
+    if (mt4Check.rows.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        totals: { total: 0, pending: 0, paid: 0, overdue: 0 },
+        nextDueDate: null,
+        weekNumber: null,
+        message: 'Nenhuma fatura disponível. Sua conta precisa estar ativa e conectada ao MyFXBook pelo administrador.'
+      });
+    }
+
     const result = await pool.query(
-      `SELECT i.id, i.invoice_number, i.amount, i.status, i.due_date, i.paid_date, 
-              i.created_at, i.description,
-              cp.selected_plan_id, ip.name as plan_name, ip.min_investment
+      `SELECT i.id, i.invoice_number, i.amount, i.profit_amount, i.fee_percentage, i.status, i.due_date, i.paid_date, 
+              i.created_at, i.description, i.plan_name,
+              cp.selected_plan_id, ip.name as plan_name_from_profile, ip.min_investment
        FROM invoices i
        LEFT JOIN client_profiles cp ON cp.user_id = i.user_id
        LEFT JOIN investment_plans ip ON cp.selected_plan_id = ip.id
@@ -781,7 +805,8 @@ exports.getInvoices = async (req, res) => {
       })),
       totals,
       nextDueDate: nextDueDate.toISOString().split('T')[0],
-      weekNumber: weekNumber
+      weekNumber: weekNumber,
+      message: result.rows.length === 0 ? 'Nenhuma fatura disponível. Sua conta precisa estar ativa e conectada ao MyFXBook pelo administrador.' : null
     });
   } catch (error) {
     console.error('Erro ao buscar faturas:', error);

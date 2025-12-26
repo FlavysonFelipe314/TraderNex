@@ -26,7 +26,7 @@ function FaturasPerformancePage() {
       setLoading(true)
       try {
         const result = await getInvoices()
-        if (result.success && result.data) {
+        if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
           // Salvar totais
           if (result.totals) {
             setTotals(result.totals)
@@ -366,8 +366,14 @@ function FaturasPerformancePage() {
                 </div>
               </div>
             ) : displayInvoices.length === 0 ? (
-              <div className="px-6 py-8 text-center text-[#6b7280]">
-                Nenhuma fatura encontrada
+              <div className="px-6 py-12 text-center">
+                <div className="w-16 h-16 bg-[#f3f4f6] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Icon icon="lucide:receipt-x" className="text-2xl text-[#9ca3af]" />
+                </div>
+                <p className="text-[#6b7280] text-sm font-medium mb-2">Nenhuma fatura encontrada</p>
+                <p className="text-[#9ca3af] text-xs">
+                  Sua conta precisa estar ativa e conectada ao MyFXBook pelo administrador para gerar faturas.
+                </p>
               </div>
             ) : (
               displayInvoices.map((invoice, index) => (
@@ -456,8 +462,14 @@ function FaturasPerformancePage() {
                 </div>
               </div>
             ) : displayInvoices.length === 0 ? (
-              <div className="py-8 text-center text-[#6b7280]">
-                Nenhuma fatura encontrada
+              <div className="py-12 text-center">
+                <div className="w-16 h-16 bg-[#f3f4f6] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Icon icon="lucide:receipt-x" className="text-2xl text-[#9ca3af]" />
+                </div>
+                <p className="text-[#6b7280] text-sm font-medium mb-2">Nenhuma fatura encontrada</p>
+                <p className="text-[#9ca3af] text-xs">
+                  Sua conta precisa estar ativa e conectada ao MyFXBook pelo administrador para gerar faturas.
+                </p>
               </div>
             ) : (
               displayInvoices.map((invoice, index) => (
