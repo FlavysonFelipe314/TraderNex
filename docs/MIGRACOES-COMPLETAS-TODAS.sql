@@ -28,6 +28,12 @@ CREATE INDEX IF NOT EXISTS idx_client_profiles_selected_plan_id ON client_profil
 ALTER TABLE investment_plans ADD COLUMN IF NOT EXISTS profit_fee_percentage DECIMAL(5, 2) DEFAULT 0.00 CHECK (profit_fee_percentage >= 0 AND profit_fee_percentage <= 100);
 COMMENT ON COLUMN investment_plans.profit_fee_percentage IS 'Percentual de taxa sobre o lucro que será descontado do lucro do MyFXBook';
 
+-- 5. Adicionar status 'pending' ao constraint da tabela mt4_accounts
+ALTER TABLE mt4_accounts DROP CONSTRAINT IF EXISTS mt4_accounts_status_check;
+ALTER TABLE mt4_accounts ADD CONSTRAINT mt4_accounts_status_check CHECK (status IN ('active', 'inactive', 'suspended', 'pending'));
+ALTER TABLE mt4_accounts ALTER COLUMN status SET DEFAULT 'pending';
+COMMENT ON COLUMN mt4_accounts.status IS 'Status da conta: active (ativa), inactive (inativa), suspended (suspensa), pending (aguardando ativação)';
+
 -- 5. Criar tabela system_myfxbook_config
 CREATE TABLE IF NOT EXISTS system_myfxbook_config (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

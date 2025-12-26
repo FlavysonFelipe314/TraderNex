@@ -28,6 +28,18 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
+      // Verificar se há um usuário anterior logado
+      let previousUserId = null
+      try {
+        const previousUserData = localStorage.getItem('user')
+        if (previousUserData) {
+          const previousUser = JSON.parse(previousUserData)
+          previousUserId = previousUser.id || previousUser.userId || previousUser.user_id
+        }
+      } catch (e) {
+        // Ignorar erro
+      }
+      
       const response = await api.post('/api/auth/login', { email, password })
       
       // A API retorna: { success, message, data: { user, token } }
@@ -43,6 +55,19 @@ export function AuthProvider({ children }) {
           last_name: user.last_name || user.lastName,
           is_admin: user.is_admin || user.isAdmin || false,
           isAdmin: user.is_admin || user.isAdmin || false
+        }
+        
+        const newUserId = normalizedUser.id || normalizedUser.userId || normalizedUser.user_id
+        
+        // Se o usuário mudou, limpar cache do usuário anterior
+        if (previousUserId && previousUserId !== newUserId) {
+          try {
+            const { clearCache } = await import('../utils/myfxbookCache')
+            clearCache(previousUserId)
+            console.log('[Auth] Cache do MyFXBook limpo para usuário anterior:', previousUserId)
+          } catch (cacheError) {
+            console.warn('[Auth] Erro ao limpar cache do usuário anterior:', cacheError)
+          }
         }
 
         localStorage.setItem('token', token)
@@ -317,6 +342,29 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
+      // Obter userId antes de limpar
+      let userId = null
+      try {
+        const userData = localStorage.getItem('user')
+        if (userData) {
+          const user = JSON.parse(userData)
+          userId = user.id || user.userId || user.user_id
+        }
+      } catch (e) {
+        // Ignorar erro
+      }
+      
+      // Limpar cache do MyFXBook antes de fazer logout
+      if (userId) {
+        try {
+          const { clearCache } = await import('../utils/myfxbookCache')
+          clearCache(userId)
+          console.log('[Auth] Cache do MyFXBook limpo para usuário:', userId)
+        } catch (cacheError) {
+          console.warn('[Auth] Erro ao limpar cache do MyFXBook:', cacheError)
+        }
+      }
+      
       // Chamar o endpoint de logout no backend (opcional, mas boa prática)
       try {
         await api.post('/api/auth/logout')
@@ -331,6 +379,15 @@ export function AuthProvider({ children }) {
       delete api.defaults.headers.common['Authorization']
       setUser(null)
       
+      // Limpar todas as flags de setup de cache
+      if (typeof window !== 'undefined') {
+        Object.keys(window).forEach(key => {
+          if (key.startsWith('myfxbookCacheSetup_')) {
+            delete window[key]
+          }
+        })
+      }
+      
       // Redirecionar para login
       window.location.href = '/login'
     } catch (error) {
@@ -340,6 +397,15 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('user')
       delete api.defaults.headers.common['Authorization']
       setUser(null)
+      
+      // Limpar cache geral como fallback
+      try {
+        const { clearCache } = await import('../utils/myfxbookCache')
+        clearCache() // Limpar todos os caches
+      } catch (cacheError) {
+        // Ignorar erro
+      }
+      
       window.location.href = '/login'
     }
   }

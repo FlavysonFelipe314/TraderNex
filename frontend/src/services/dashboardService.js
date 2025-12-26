@@ -180,18 +180,37 @@ export const getUserInvestments = async () => {
 // Parâmetros opcionais: startDate (yyyy-mm-dd), endDate (yyyy-mm-dd), forceRefresh (boolean)
 export const getMyfxbookData = async (startDate = null, endDate = null, forceRefresh = false) => {
   try {
+    // Obter userId do localStorage
+    let userId = null
+    try {
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        const user = JSON.parse(userData)
+        userId = user.id || user.userId || user.user_id
+      }
+    } catch (e) {
+      console.warn('[MyFXBook] Erro ao obter userId:', e)
+    }
+    
+    if (!userId) {
+      console.warn('[MyFXBook] userId não encontrado, não será possível usar cache')
+    }
+    
     // Importar funções de cache
     const { getCachedData, setCachedData, setupMidnightReset, clearCache } = await import('../utils/myfxbookCache')
     
-    // Configurar reset automático à meia-noite (apenas uma vez)
-    if (typeof window !== 'undefined' && !window.myfxbookCacheSetup) {
-      setupMidnightReset()
-      window.myfxbookCacheSetup = true
+    // Configurar reset automático à meia-noite (apenas uma vez por usuário)
+    if (typeof window !== 'undefined' && userId) {
+      const setupKey = `myfxbookCacheSetup_${userId}`
+      if (!window[setupKey]) {
+        setupMidnightReset(userId)
+        window[setupKey] = true
+      }
     }
     
     // Se não for refresh forçado, tentar obter do cache primeiro
-    if (!forceRefresh) {
-      const cached = getCachedData()
+    if (!forceRefresh && userId) {
+      const cached = getCachedData(userId)
       if (cached) {
         console.log('[MyFXBook] Usando dados do cache')
         return {
@@ -201,9 +220,9 @@ export const getMyfxbookData = async (startDate = null, endDate = null, forceRef
           fromCache: true
         }
       }
-    } else {
-      // Se for refresh forçado, limpar cache
-      clearCache()
+    } else if (forceRefresh && userId) {
+      // Se for refresh forçado, limpar cache do usuário
+      clearCache(userId)
     }
     
     // Se não tem cache ou é refresh, buscar da API
@@ -214,9 +233,9 @@ export const getMyfxbookData = async (startDate = null, endDate = null, forceRef
     
     const response = await api.get('/api/dashboard/myfxbook-data', { params })
     
-    if (response.data.success && response.data.data) {
+    if (response.data.success && response.data.data && userId) {
       // Salvar no cache (válido por 24 horas)
-      setCachedData(response.data.data, 24)
+      setCachedData(response.data.data, userId, 24)
     }
     
     return {
@@ -230,16 +249,29 @@ export const getMyfxbookData = async (startDate = null, endDate = null, forceRef
     
     // Se der erro, tentar usar cache mesmo expirado como fallback
     try {
-      const { getCachedData } = await import('../utils/myfxbookCache')
-      const cached = getCachedData()
-      if (cached) {
-        console.log('[MyFXBook] Erro na API, usando cache como fallback')
-        return {
-          success: true,
-          data: cached,
-          message: 'Dados do cache (API indisponível)',
-          fromCache: true,
-          error: error.message
+      let userId = null
+      try {
+        const userData = localStorage.getItem('user')
+        if (userData) {
+          const user = JSON.parse(userData)
+          userId = user.id || user.userId || user.user_id
+        }
+      } catch (e) {
+        // Ignorar erro
+      }
+      
+      if (userId) {
+        const { getCachedData } = await import('../utils/myfxbookCache')
+        const cached = getCachedData(userId)
+        if (cached) {
+          console.log('[MyFXBook] Erro na API, usando cache como fallback')
+          return {
+            success: true,
+            data: cached,
+            message: 'Dados do cache (API indisponível)',
+            fromCache: true,
+            error: error.message
+          }
         }
       }
     } catch (cacheError) {
