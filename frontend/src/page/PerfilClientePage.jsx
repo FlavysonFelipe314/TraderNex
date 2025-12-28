@@ -3,6 +3,7 @@ import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
 import { useAuth } from '../contexts/AuthContext'
 import { updatePassword as updatePasswordService } from '../services/profileService'
+import { getDashboardData } from '../services/dashboardService'
 
 function PerfilClientePage() {
   const { user, getProfile, updateProfile } = useAuth()
@@ -19,6 +20,7 @@ function PerfilClientePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showToast, setShowToast] = useState(false)
+  const [planData, setPlanData] = useState(null)
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -47,12 +49,29 @@ function PerfilClientePage() {
       setLoading(true)
       try {
         console.log('[PerfilClientePage] Carregando perfil para userId:', userId)
-        const result = await getProfile()
-        console.log('[PerfilClientePage] Resultado do getProfile:', result)
+        
+        // Carregar perfil e dados do dashboard em paralelo
+        const [profileResult, dashboardResult] = await Promise.all([
+          getProfile(),
+          getDashboardData()
+        ])
+        
+        console.log('[PerfilClientePage] Resultado do getProfile:', profileResult)
+        console.log('[PerfilClientePage] Resultado do getDashboardData:', dashboardResult)
+        
         if (!isMounted) return
 
-        if (result.success && result.user) {
-          const u = result.user
+        // Carregar dados do plano do dashboard
+        if (dashboardResult.success && dashboardResult.data?.profile) {
+          const profile = dashboardResult.data.profile
+          setPlanData({
+            plan_name: profile.plan_name,
+            profit_fee_percentage: profile.profit_fee_percentage
+          })
+        }
+
+        if (profileResult.success && profileResult.user) {
+          const u = profileResult.user
           console.log('[PerfilClientePage] Dados do usuário recebidos:', u)
           setFormData(prev => ({
             ...prev,
@@ -70,7 +89,7 @@ function PerfilClientePage() {
           }))
           console.log('[PerfilClientePage] FormData atualizado com sucesso')
         } else {
-          console.warn('[PerfilClientePage] Resultado sem sucesso ou sem user:', result)
+          console.warn('[PerfilClientePage] Resultado sem sucesso ou sem user:', profileResult)
           if (user) {
             const u = user
             console.log('[PerfilClientePage] Usando dados do user do contexto:', u)
@@ -299,10 +318,12 @@ function PerfilClientePage() {
                 <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-br from-[#0e0e10] to-[#25262b] rounded-lg text-[#00ff88] text-[10px] sm:text-xs font-semibold shadow-[0_4px_12px_rgba(0,0,0,0.08)] border border-[rgba(255,255,255,0.05)] scale-95">
                   <Icon icon="lucide:zap" className="text-xs sm:text-sm" />
                   <span className="whitespace-nowrap">
-                    {user?.accountType === 'Pro' ? 'Plano Nex Pro • 40% Fee' : 
-                     user?.accountType === 'Premium' ? 'Plano Nex Premium • 30% Fee' : 
-                     user?.accountType === 'Basic' ? 'Plano Nex Start • 50% Fee' : 
-                     'Plano Nex Pro • 40% Fee'}
+                    {planData?.plan_name && planData?.profit_fee_percentage 
+                      ? `Plano ${planData.plan_name} • ${planData.profit_fee_percentage}% Fee`
+                      : user?.accountType === 'Pro' ? 'Plano Nex Pro • 40% Fee' : 
+                        user?.accountType === 'Premium' ? 'Plano Nex Premium • 30% Fee' : 
+                        user?.accountType === 'Basic' ? 'Plano Nex Start • 50% Fee' : 
+                        'Plano Nex Pro • 40% Fee'}
                   </span>
                 </div>
               </div>

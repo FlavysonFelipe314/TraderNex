@@ -10,12 +10,65 @@ function Sidebar() {
   const location = useLocation()
   const { user, logout } = useAuth()
   const { isSidebarOpen, toggleSidebar } = useSidebar()
-  const [onboardingStatus, setOnboardingStatus] = useState({
-    loading: true,
-    hasPlan: false,
-    hasForexAccount: false,
-    isComplete: false
-  })
+  // Função para obter cache do onboarding
+  const getOnboardingCache = (userId) => {
+    try {
+      const cacheKey = `onboarding_status_${userId}`
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        // Verificar se o cache não expirou (válido por 5 minutos)
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+          return parsed.data
+        }
+      }
+    } catch (e) {
+      console.warn('[Sidebar] Erro ao ler cache do onboarding:', e)
+    }
+    return null
+  }
+
+  // Função para salvar cache do onboarding
+  const setOnboardingCache = (userId, data) => {
+    try {
+      const cacheKey = `onboarding_status_${userId}`
+      localStorage.setItem(cacheKey, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }))
+    } catch (e) {
+      console.warn('[Sidebar] Erro ao salvar cache do onboarding:', e)
+    }
+  }
+
+  // Estado inicial baseado em cache se disponível
+  const getInitialOnboardingStatus = () => {
+    if (!user?.id) {
+      return {
+        loading: false,
+        hasPlan: false,
+        hasForexAccount: false,
+        isComplete: false
+      }
+    }
+    
+    const cached = getOnboardingCache(user.id)
+    if (cached) {
+      return {
+        loading: false,
+        ...cached
+      }
+    }
+    
+    return {
+      loading: true,
+      hasPlan: false,
+      hasForexAccount: false,
+      isComplete: false
+    }
+  }
+
+  const [onboardingStatus, setOnboardingStatus] = useState(getInitialOnboardingStatus())
   
   // Verificar status do onboarding - atualizar quando mudar de rota ou usuário
   useEffect(() => {
@@ -28,6 +81,15 @@ function Sidebar() {
           isComplete: false
         })
         return
+      }
+
+      // Tentar usar cache primeiro para evitar delay
+      const cached = getOnboardingCache(user.id)
+      if (cached) {
+        setOnboardingStatus({
+          loading: false,
+          ...cached
+        })
       }
 
       try {
@@ -58,12 +120,21 @@ function Sidebar() {
         // Caso contrário, só considerar completo se tiver plano e conta forex
         const isComplete = hasMyfxbookConfigured || (hasPlan && hasForexAccount)
         
-        setOnboardingStatus({
+        const newStatus = {
           loading: false,
           hasPlan: !!hasPlan,
           hasForexAccount: !!hasForexAccount,
           isComplete: isComplete
+        }
+        
+        // Salvar no cache
+        setOnboardingCache(user.id, {
+          hasPlan: newStatus.hasPlan,
+          hasForexAccount: newStatus.hasForexAccount,
+          isComplete: newStatus.isComplete
         })
+        
+        setOnboardingStatus(newStatus)
       } catch (error) {
         console.error('Erro ao verificar onboarding no Sidebar:', error)
         setOnboardingStatus({
@@ -76,7 +147,7 @@ function Sidebar() {
     }
 
     checkOnboarding()
-  }, [user, location.pathname])
+  }, [user?.id, location.pathname])
   
   // Verificar status de admin - verificar múltiplas fontes para garantir robustez
   // Também verificar localStorage como fallback caso o contexto não esteja atualizado
