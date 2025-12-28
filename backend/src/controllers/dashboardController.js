@@ -26,6 +26,15 @@ exports.getDashboardData = async (req, res) => {
     }
 
     const profile = profileResult.rows[0];
+    
+    // Log para debug
+    console.log('[getDashboardData] Dados do perfil:', {
+      userId,
+      selected_plan_id: profile.selected_plan_id,
+      plan_name: profile.plan_name,
+      profit_fee_percentage: profile.profit_fee_percentage,
+      account_type: profile.account_type
+    });
 
     // Buscar contas MT4
     const mt4Result = await pool.query(

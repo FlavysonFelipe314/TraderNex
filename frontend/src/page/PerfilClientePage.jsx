@@ -64,10 +64,31 @@ function PerfilClientePage() {
         // Carregar dados do plano do dashboard
         if (dashboardResult.success && dashboardResult.data?.profile) {
           const profile = dashboardResult.data.profile
-          setPlanData({
+          console.log('[PerfilClientePage] Dados do plano recebidos:', {
+            selected_plan_id: profile.selected_plan_id,
             plan_name: profile.plan_name,
-            profit_fee_percentage: profile.profit_fee_percentage
+            profit_fee_percentage: profile.profit_fee_percentage,
+            account_type: profile.account_type
           })
+          
+          // Se temos plan_name e profit_fee_percentage, usar esses dados
+          if (profile.plan_name && profile.profit_fee_percentage !== undefined) {
+            setPlanData({
+              plan_name: profile.plan_name,
+              profit_fee_percentage: profile.profit_fee_percentage
+            })
+          } else if (profile.selected_plan_id) {
+            // Se temos selected_plan_id mas não temos plan_name, pode ser que o plano não existe mais
+            console.warn('[PerfilClientePage] Plano selecionado mas dados não encontrados:', profile.selected_plan_id)
+            setPlanData(null)
+          } else {
+            // Não tem plano selecionado
+            console.log('[PerfilClientePage] Nenhum plano selecionado')
+            setPlanData(null)
+          }
+        } else {
+          console.warn('[PerfilClientePage] Erro ao carregar dados do dashboard:', dashboardResult)
+          setPlanData(null)
         }
 
         if (profileResult.success && profileResult.user) {
@@ -318,12 +339,9 @@ function PerfilClientePage() {
                 <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-br from-[#0e0e10] to-[#25262b] rounded-lg text-[#00ff88] text-[10px] sm:text-xs font-semibold shadow-[0_4px_12px_rgba(0,0,0,0.08)] border border-[rgba(255,255,255,0.05)] scale-95">
                   <Icon icon="lucide:zap" className="text-xs sm:text-sm" />
                   <span className="whitespace-nowrap">
-                    {planData?.plan_name && planData?.profit_fee_percentage 
+                    {planData?.plan_name && (planData?.profit_fee_percentage !== undefined && planData?.profit_fee_percentage !== null)
                       ? `Plano ${planData.plan_name} • ${planData.profit_fee_percentage}% Fee`
-                      : user?.accountType === 'Pro' ? 'Plano Nex Pro • 40% Fee' : 
-                        user?.accountType === 'Premium' ? 'Plano Nex Premium • 30% Fee' : 
-                        user?.accountType === 'Basic' ? 'Plano Nex Start • 50% Fee' : 
-                        'Plano Nex Pro • 40% Fee'}
+                      : 'Selecione um plano'}
                   </span>
                 </div>
               </div>

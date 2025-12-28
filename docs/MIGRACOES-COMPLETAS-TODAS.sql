@@ -28,6 +28,11 @@ CREATE INDEX IF NOT EXISTS idx_client_profiles_selected_plan_id ON client_profil
 ALTER TABLE investment_plans ADD COLUMN IF NOT EXISTS profit_fee_percentage DECIMAL(5, 2) DEFAULT 0.00 CHECK (profit_fee_percentage >= 0 AND profit_fee_percentage <= 100);
 COMMENT ON COLUMN investment_plans.profit_fee_percentage IS 'Percentual de taxa sobre o lucro que será descontado do lucro do MyFXBook';
 
+-- 4.2. Atualizar profit_fee_percentage dos planos existentes
+UPDATE investment_plans SET profit_fee_percentage = 50.00 WHERE name = 'Nex Start' AND (profit_fee_percentage IS NULL OR profit_fee_percentage = 0);
+UPDATE investment_plans SET profit_fee_percentage = 40.00 WHERE name = 'Nex Pro' AND (profit_fee_percentage IS NULL OR profit_fee_percentage = 0);
+UPDATE investment_plans SET profit_fee_percentage = 30.00 WHERE name = 'Nex Prime' AND (profit_fee_percentage IS NULL OR profit_fee_percentage = 0);
+
 -- 5. Adicionar status 'pending' ao constraint da tabela mt4_accounts
 ALTER TABLE mt4_accounts DROP CONSTRAINT IF EXISTS mt4_accounts_status_check;
 ALTER TABLE mt4_accounts ADD CONSTRAINT mt4_accounts_status_check CHECK (status IN ('active', 'inactive', 'suspended', 'pending'));
