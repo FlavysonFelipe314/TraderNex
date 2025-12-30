@@ -296,6 +296,9 @@ router.post('/plans', plansController.createPlan);
 router.put('/plans/:planId', plansController.updatePlan);
 router.delete('/plans/:planId', plansController.deletePlan);
 router.put('/users/:userId/plan', plansController.updateUserPlan);
+router.get('/plans/pending-approvals', plansController.getPendingPlanApprovals);
+router.post('/plans/:userId/approve', plansController.approveUserPlan);
+router.post('/plans/:userId/reject', plansController.rejectUserPlan);
 
 /**
  * @swagger

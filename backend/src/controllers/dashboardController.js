@@ -625,26 +625,48 @@ exports.selectInvestmentPlan = async (req, res) => {
       });
     }
 
-    // Verificar se o perfil existe, se não, criar
+    // Verificar se o perfil existe e se já tem um plano selecionado
     const profileCheck = await pool.query(
-      'SELECT id FROM client_profiles WHERE user_id = $1',
+      `SELECT id, selected_plan_id, plan_status 
+       FROM client_profiles 
+       WHERE user_id = $1`,
       [userId]
     );
 
-    if (profileCheck.rows.length === 0) {
-      // Criar perfil se não existir
-      await pool.query(
-        `INSERT INTO client_profiles (user_id, selected_plan_id)
-         VALUES ($1, $2)`,
-        [userId, plan_id]
-      );
-    } else {
-      // Atualizar perfil existente
+    // Se já tem um plano aprovado, não pode trocar
+    if (profileCheck.rows.length > 0) {
+      const profile = profileCheck.rows[0];
+      if (profile.selected_plan_id && profile.plan_status === 'approved') {
+        return res.status(400).json({
+          success: false,
+          message: 'Você já possui um plano aprovado. Entre em contato com o administrador para alterar seu plano.'
+        });
+      }
+      // Se tem um plano pendente, não pode trocar
+      if (profile.selected_plan_id && profile.plan_status === 'pending') {
+        return res.status(400).json({
+          success: false,
+          message: 'Você já possui um plano aguardando aprovação. Aguarde a revisão do administrador.'
+        });
+      }
+      // Se tem um plano rejeitado ou não tem plano, pode selecionar um novo
       await pool.query(
         `UPDATE client_profiles
-         SET selected_plan_id = $1, updated_at = NOW()
+         SET selected_plan_id = $1, 
+             plan_status = 'pending',
+             plan_reviewed_at = NULL,
+             plan_reviewed_by = NULL,
+             plan_review_notes = NULL,
+             updated_at = NOW()
          WHERE user_id = $2`,
         [plan_id, userId]
+      );
+    } else {
+      // Criar perfil se não existir com status pending
+      await pool.query(
+        `INSERT INTO client_profiles (user_id, selected_plan_id, plan_status)
+         VALUES ($1, $2, 'pending')`,
+        [userId, plan_id]
       );
     }
 
@@ -652,9 +674,10 @@ exports.selectInvestmentPlan = async (req, res) => {
       success: true,
       data: {
         plan_id: plan_id,
-        plan_name: planCheck.rows[0].name
+        plan_name: planCheck.rows[0].name,
+        status: 'pending'
       },
-      message: `Plano ${planCheck.rows[0].name} selecionado com sucesso!`
+      message: `Plano ${planCheck.rows[0].name} selecionado com sucesso! Aguarde a aprovação do administrador.`
     });
   } catch (error) {
     console.error('Erro ao selecionar plano:', error);
@@ -870,10 +893,13 @@ exports.getReferrals = async (req, res) => {
       `SELECT r.id, r.commission, r.status, r.created_at, r.last_commission_date,
               r.investment_amount, r.profit_amount, r.broker_fee_percentage, r.broker_profit,
               u.email as referred_email, u.first_name as referred_first_name, u.last_name as referred_last_name,
-              cp.account_type as referred_account_type
+              cp.account_type as referred_account_type,
+              cp.plan_status,
+              ip.name as plan_name, ip.profit_fee_percentage as plan_profit_fee_percentage
        FROM referrals r
        JOIN users u ON r.referred_id = u.id
        LEFT JOIN client_profiles cp ON cp.user_id = u.id
+       LEFT JOIN investment_plans ip ON cp.selected_plan_id = ip.id
        WHERE r.referrer_id = $1
        ORDER BY r.last_commission_date DESC NULLS LAST, r.created_at DESC`,
       [userId]
@@ -910,6 +936,8 @@ exports.getReferrals = async (req, res) => {
           referredName: `${row.referred_first_name || ''} ${row.referred_last_name || ''}`.trim() || row.referred_email,
           referredEmail: row.referred_email,
           referredAccountType: row.referred_account_type,
+          planName: row.plan_name || null,
+          planStatus: row.plan_status || null,
           commission: parseFloat(row.commission) || 0,
           investmentAmount: parseFloat(row.investment_amount) || 0,
           profitAmount: parseFloat(row.profit_amount) || 0,

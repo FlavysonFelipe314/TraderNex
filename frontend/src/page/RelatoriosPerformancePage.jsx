@@ -982,38 +982,6 @@ function RelatoriosPerformancePage() {
         {/* Informações Adicionais */}
         {myfxbookData?.connected && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12">
-            {/* Trades Abertos */}
-            <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
-              <div className="flex justify-between items-start mb-3">
-                <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">TRADES ABERTOS</span>
-                <Icon icon="lucide:trending-up" className="text-base text-[#059669]" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold text-[#111827]">{kpis.openTrades}</div>
-            </div>
-
-            {/* Ordens Abertas */}
-            <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
-              <div className="flex justify-between items-start mb-3">
-                <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">ORDENS ABERTAS</span>
-                <Icon icon="lucide:list" className="text-base text-[#6b7280]" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold text-[#111827]">{kpis.openOrders}</div>
-            </div>
-
-            {/* Total de Trades */}
-            <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
-              <div className="flex justify-between items-start mb-3">
-                <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">TOTAL TRADES</span>
-                <Icon icon="lucide:bar-chart-2" className="text-base text-[#6b7280]" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold text-[#111827]">{kpis.totalTrades}</div>
-              {kpis.totalTrades < 50 && myfxbookData?.history?.length > 0 && (
-                <div className="text-[10px] text-[#9ca3af] mt-1">
-                  * Limitado aos últimos 50 trades da API
-                </div>
-              )}
-            </div>
-
             {/* Ganho no Período */}
             <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
               <div className="flex justify-between items-start mb-3">

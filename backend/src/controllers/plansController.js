@@ -167,6 +167,219 @@ exports.deletePlan = async (req, res) => {
 };
 
 /**
+ * Obter usuários com planos pendentes de aprovação (Admin)
+ * GET /api/admin/plans/pending-approvals
+ */
+exports.getPendingPlanApprovals = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT 
+         cp.user_id,
+         cp.selected_plan_id,
+         cp.plan_status,
+         cp.plan_reviewed_at,
+         cp.plan_review_notes,
+         u.email,
+         u.first_name,
+         u.last_name,
+         u.created_at as user_created_at,
+         ip.name as plan_name,
+         ip.min_investment,
+         ip.max_investment,
+         ip.profit_fee_percentage
+       FROM client_profiles cp
+       JOIN users u ON cp.user_id = u.id
+       LEFT JOIN investment_plans ip ON cp.selected_plan_id = ip.id
+       WHERE cp.plan_status = 'pending'
+         AND cp.selected_plan_id IS NOT NULL
+       ORDER BY u.created_at DESC`
+    );
+
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Erro ao buscar planos pendentes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar planos pendentes de aprovação.',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Aprovar plano de um usuário (Admin)
+ * POST /api/admin/plans/:userId/approve
+ */
+exports.approveUserPlan = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const adminId = req.user.userId;
+    const { notes } = req.body || {};
+
+    // Verificar se o usuário existe e tem plano pendente
+    const profileResult = await pool.query(
+      `SELECT cp.user_id, cp.selected_plan_id, cp.plan_status,
+              u.email, u.first_name, u.last_name,
+              ip.name as plan_name
+       FROM client_profiles cp
+       JOIN users u ON cp.user_id = u.id
+       LEFT JOIN investment_plans ip ON cp.selected_plan_id = ip.id
+       WHERE cp.user_id = $1`,
+      [userId]
+    );
+
+    if (profileResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado.'
+      });
+    }
+
+    const profile = profileResult.rows[0];
+
+    if (!profile.selected_plan_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Usuário não possui plano selecionado.'
+      });
+    }
+
+    if (profile.plan_status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Plano já foi ${profile.plan_status === 'approved' ? 'aprovado' : 'rejeitado'}.`
+      });
+    }
+
+    // Aprovar plano
+    await pool.query(
+      `UPDATE client_profiles
+       SET plan_status = 'approved',
+           plan_reviewed_at = NOW(),
+           plan_reviewed_by = $1,
+           plan_review_notes = $2,
+           updated_at = NOW()
+       WHERE user_id = $3`,
+      [adminId, notes || null, userId]
+    );
+
+    // Enviar email de aprovação (será implementado)
+    const { sendPlanApprovalEmail } = require('../services/emailService');
+    try {
+      await sendPlanApprovalEmail(
+        profile.email,
+        profile.first_name || 'Cliente',
+        profile.plan_name
+      );
+    } catch (emailError) {
+      console.error('Erro ao enviar email de aprovação:', emailError);
+      // Não falhar a requisição se o email falhar
+    }
+
+    res.json({
+      success: true,
+      message: 'Plano aprovado com sucesso!'
+    });
+  } catch (error) {
+    console.error('Erro ao aprovar plano:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao aprovar plano do usuário.',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Rejeitar plano de um usuário (Admin)
+ * POST /api/admin/plans/:userId/reject
+ */
+exports.rejectUserPlan = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const adminId = req.user.userId;
+    const { notes } = req.body || {};
+
+    // Verificar se o usuário existe e tem plano pendente
+    const profileResult = await pool.query(
+      `SELECT cp.user_id, cp.selected_plan_id, cp.plan_status,
+              u.email, u.first_name, u.last_name,
+              ip.name as plan_name
+       FROM client_profiles cp
+       JOIN users u ON cp.user_id = u.id
+       LEFT JOIN investment_plans ip ON cp.selected_plan_id = ip.id
+       WHERE cp.user_id = $1`,
+      [userId]
+    );
+
+    if (profileResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado.'
+      });
+    }
+
+    const profile = profileResult.rows[0];
+
+    if (!profile.selected_plan_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Usuário não possui plano selecionado.'
+      });
+    }
+
+    if (profile.plan_status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Plano já foi ${profile.plan_status === 'approved' ? 'aprovado' : 'rejeitado'}.`
+      });
+    }
+
+    // Rejeitar plano (remover plano selecionado e marcar como rejeitado)
+    await pool.query(
+      `UPDATE client_profiles
+       SET plan_status = 'rejected',
+           plan_reviewed_at = NOW(),
+           plan_reviewed_by = $1,
+           plan_review_notes = $2,
+           selected_plan_id = NULL,
+           updated_at = NOW()
+       WHERE user_id = $3`,
+      [adminId, notes || null, userId]
+    );
+
+    // Enviar email de rejeição (será implementado)
+    const { sendPlanRejectionEmail } = require('../services/emailService');
+    try {
+      await sendPlanRejectionEmail(
+        profile.email,
+        profile.first_name || 'Cliente',
+        profile.plan_name,
+        notes || 'Não aprovado pelos critérios da empresa.'
+      );
+    } catch (emailError) {
+      console.error('Erro ao enviar email de rejeição:', emailError);
+      // Não falhar a requisição se o email falhar
+    }
+
+    res.json({
+      success: true,
+      message: 'Plano rejeitado com sucesso!'
+    });
+  } catch (error) {
+    console.error('Erro ao rejeitar plano:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao rejeitar plano do usuário.',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Atualizar plano selecionado de um usuário (Admin)
  * PUT /api/admin/users/:userId/plan
  */

@@ -367,40 +367,6 @@ function ReferralProgramPage() {
           </table>
         </div>
 
-        {/* Marketing Materials */}
-        <div className="flex items-center gap-2.5 mb-6">
-          <div className="w-7 h-7 rounded-md bg-[rgba(0,175,170,0.1)] flex items-center justify-center text-[#00afaa]">
-            <Icon icon="lucide:megaphone" className="text-base" />
-          </div>
-          <span className="text-lg font-bold text-[#111827]">Materiais de Divulgação</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <div className="bg-[#f9fafb] rounded-xl p-5 border border-[#e5e7eb] transition-all cursor-pointer hover:bg-white hover:border-[#00afaa] hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-[#111827] shadow-[0_2px_6px_rgba(0,0,0,0.05)] mb-4">
-              <Icon icon="lucide:message-square" className="text-xl" />
-            </div>
-            <div className="text-[15px] font-semibold text-[#111827] mb-1">Scripts de Abordagem</div>
-            <div className="text-[13px] text-[#6b7280] leading-snug">Modelos prontos de texto para enviar no WhatsApp e Telegram.</div>
-          </div>
-
-          <div className="bg-[#f9fafb] rounded-xl p-5 border border-[#e5e7eb] transition-all cursor-pointer hover:bg-white hover:border-[#00afaa] hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-[#111827] shadow-[0_2px_6px_rgba(0,0,0,0.05)] mb-4">
-              <Icon icon="lucide:image" className="text-xl" />
-            </div>
-            <div className="text-[15px] font-semibold text-[#111827] mb-1">Banners e Criativos</div>
-            <div className="text-[13px] text-[#6b7280] leading-snug">Imagens de alta qualidade para postar nos stories e feed.</div>
-          </div>
-
-          <div className="bg-[#f9fafb] rounded-xl p-5 border border-[#e5e7eb] transition-all cursor-pointer hover:bg-white hover:border-[#00afaa] hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-[#111827] shadow-[0_2px_6px_rgba(0,0,0,0.05)] mb-4">
-              <Icon icon="lucide:file-text" className="text-xl" />
-            </div>
-            <div className="text-[15px] font-semibold text-[#111827] mb-1">Argumentação de Venda</div>
-            <div className="text-[13px] text-[#6b7280] leading-snug">PDF com as principais dúvidas e respostas para prospectos.</div>
-          </div>
-        </div>
-
         {/* Footer Info */}
         <div className="text-center py-10 text-[13px] text-[#6b7280] border-t border-[#e5e7eb] mt-10">
           Comissões semanais calculadas automaticamente toda sexta-feira com base no desempenho MT4. <br />

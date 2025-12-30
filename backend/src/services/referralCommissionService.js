@@ -20,13 +20,10 @@ function calculateBrokerPerformanceFee(investmentAmount) {
 /**
  * Calcula a comissão do indicador (10% do lucro líquido da corretora)
  * @param {number} profit - Lucro total do investimento
- * @param {number} investmentAmount - Valor do investimento
+ * @param {number} brokerFeePercentage - Percentual da taxa de performance da corretora (do plano)
  * @returns {Object} Objeto com os cálculos detalhados
  */
-function calculateReferralCommission(profit, investmentAmount) {
-  // Calcular taxa de performance da corretora
-  const brokerFeePercentage = calculateBrokerPerformanceFee(investmentAmount);
-  
+function calculateReferralCommission(profit, brokerFeePercentage) {
   // Lucro líquido do investimento (lucro total)
   const netProfit = profit;
   
@@ -62,9 +59,12 @@ async function processReferralCommission(userId, profit, investmentAmount, inves
   try {
     await client.query('BEGIN');
     
-    // Verificar se o usuário foi indicado por alguém
+    // Verificar se o usuário foi indicado por alguém e buscar o plano para obter profit_fee_percentage
     const profileResult = await client.query(
-      'SELECT referred_by FROM client_profiles WHERE user_id = $1',
+      `SELECT cp.referred_by, cp.selected_plan_id, ip.profit_fee_percentage
+       FROM client_profiles cp
+       LEFT JOIN investment_plans ip ON cp.selected_plan_id = ip.id
+       WHERE cp.user_id = $1`,
       [userId]
     );
     
@@ -79,8 +79,17 @@ async function processReferralCommission(userId, profit, investmentAmount, inves
     
     const referrerId = profileResult.rows[0].referred_by;
     
+    // Obter profit_fee_percentage do plano, ou usar cálculo baseado no valor do investimento como fallback
+    let brokerFeePercentage;
+    if (profileResult.rows[0].profit_fee_percentage !== null && profileResult.rows[0].profit_fee_percentage !== undefined) {
+      brokerFeePercentage = parseFloat(profileResult.rows[0].profit_fee_percentage);
+    } else {
+      // Fallback: calcular baseado no valor do investimento
+      brokerFeePercentage = calculateBrokerPerformanceFee(investmentAmount);
+    }
+    
     // Calcular comissão
-    const calculation = calculateReferralCommission(profit, investmentAmount);
+    const calculation = calculateReferralCommission(profit, brokerFeePercentage);
     
     if (calculation.referralCommission <= 0) {
       await client.query('COMMIT');
