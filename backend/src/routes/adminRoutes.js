@@ -74,6 +74,8 @@ router.get('/mt4-accounts', adminController.getAllMT4Accounts);
  *         description: Acesso negado - apenas admins
  */
 router.put('/mt4-accounts/:accountId/myfxbook-login', adminController.updateMyfxbookIntegrationLogin);
+router.post('/mt4-accounts/:accountId/approve-credentials', adminController.approveMT4Credentials);
+router.post('/mt4-accounts/:accountId/reject-credentials', adminController.rejectMT4Credentials);
 
 /**
  * @swagger

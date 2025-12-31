@@ -513,7 +513,6 @@ function DashboardPage() {
                             <th className="px-3 py-2 text-left text-[#6b7280] font-semibold">Data</th>
                             <th className="px-3 py-2 text-left text-[#6b7280] font-semibold">Tipo</th>
                             <th className="px-3 py-2 text-left text-[#6b7280] font-semibold">Par</th>
-                            <th className="px-3 py-2 text-right text-[#6b7280] font-semibold">Lots</th>
                             <th className="px-3 py-2 text-right text-[#6b7280] font-semibold">Preço</th>
                             <th className="px-3 py-2 text-right text-[#6b7280] font-semibold">Lucro</th>
                           </tr>
@@ -544,7 +543,6 @@ function DashboardPage() {
                                   </span>
                                 </td>
                                 <td className="px-3 py-2 font-medium text-[#111827]">{trade.symbol || 'N/A'}</td>
-                                <td className="px-3 py-2 text-right text-[#111827]">{trade.lots || '0'}</td>
                                 <td className="px-3 py-2 text-right text-[#111827]">{trade.closePrice || trade.openPrice || 'N/A'}</td>
                                 <td className={`px-3 py-2 text-right font-bold ${
                                   (trade.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'

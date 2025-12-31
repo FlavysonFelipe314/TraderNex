@@ -397,6 +397,44 @@ export const rejectUserPlan = async (userId, notes) => {
   }
 }
 
+// Aprovar credenciais MT4 (Admin)
+export const approveMT4Credentials = async (accountId) => {
+  try {
+    const response = await api.post(`/api/admin/mt4-accounts/${accountId}/approve-credentials`)
+    return {
+      success: response.data.success,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao aprovar credenciais MT4:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao aprovar credenciais MT4.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Rejeitar credenciais MT4 (Admin)
+export const rejectMT4Credentials = async (accountId, notes) => {
+  try {
+    const response = await api.post(`/api/admin/mt4-accounts/${accountId}/reject-credentials`, {
+      notes: notes || null
+    })
+    return {
+      success: response.data.success,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao rejeitar credenciais MT4:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao rejeitar credenciais MT4.',
+      error: error.response?.data
+    }
+  }
+}
+
 // Deletar usuário (Admin)
 export const deleteUser = async (userId) => {
   try {

@@ -1011,7 +1011,6 @@ function RelatoriosPerformancePage() {
                   <tr className="border-b border-[#f3f4f6]">
                     <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Símbolo</th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Tipo</th>
-                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Lotes</th>
                     <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Preço Abertura</th>
                     <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">P/L</th>
                   </tr>
@@ -1021,7 +1020,6 @@ function RelatoriosPerformancePage() {
                     <tr key={index} className="border-b border-[#f9fafb] hover:bg-[#f3f4f6]">
                       <td className="py-3 px-4 text-sm font-semibold text-[#111827]">{trade.symbol || 'N/A'}</td>
                       <td className="py-3 px-4 text-sm text-[#6b7280]">{trade.side === 'buy' ? 'Compra' : 'Venda'}</td>
-                      <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(trade.lots || 0).toFixed(2)}</td>
                       <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(trade.openPrice || 0).toFixed(5)}</td>
                       <td className={`py-3 px-4 text-sm text-right font-semibold ${parseFloat(trade.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#e53935]'}`}>
                         {formatCurrencyBR(trade.profit || 0)}
@@ -1049,7 +1047,6 @@ function RelatoriosPerformancePage() {
                   <tr className="border-b border-[#f3f4f6]">
                     <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Símbolo</th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Tipo</th>
-                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Lotes</th>
                     <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Preço</th>
                   </tr>
                 </thead>
@@ -1058,7 +1055,6 @@ function RelatoriosPerformancePage() {
                     <tr key={index} className="border-b border-[#f9fafb] hover:bg-[#f3f4f6]">
                       <td className="py-3 px-4 text-sm font-semibold text-[#111827]">{order.symbol || 'N/A'}</td>
                       <td className="py-3 px-4 text-sm text-[#6b7280]">{order.type || 'N/A'}</td>
-                      <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(order.lots || 0).toFixed(2)}</td>
                       <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(order.price || 0).toFixed(5)}</td>
                     </tr>
                   ))}

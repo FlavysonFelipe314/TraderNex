@@ -33,7 +33,7 @@ exports.getAllUsers = async (req, res) => {
     // Para cada usuário, buscar suas contas MT4 e conexão MyFXBook
     const usersWithDetails = await Promise.all(
       users.map(async (user) => {
-        // Buscar contas MT4
+        // Buscar contas MT4 (incluindo senha descriptografada para admin)
         const mt4Result = await pool.query(
           `SELECT 
             id,
@@ -50,12 +50,33 @@ exports.getAllUsers = async (req, res) => {
             myfxbook_integration_login,
             automation_enabled,
             risk_profile,
+            encrypted_password,
+            credentials_status,
+            credentials_reviewed_at,
+            credentials_review_notes,
             created_at
           FROM mt4_accounts 
           WHERE user_id = $1
           ORDER BY created_at DESC`,
           [user.id]
         );
+        
+        // Descriptografar senhas para o admin
+        const { decrypt } = require('../utils/encryption');
+        const mt4AccountsWithPassword = mt4Result.rows.map(account => {
+          let password = null;
+          if (account.encrypted_password) {
+            try {
+              password = decrypt(account.encrypted_password);
+            } catch (error) {
+              console.error(`Erro ao descriptografar senha da conta ${account.id}:`, error);
+            }
+          }
+          return {
+            ...account,
+            password: password // Senha descriptografada apenas para admin
+          };
+        });
 
         // Buscar conexão MyFXBook
         const myfxbookResult = await pool.query(
@@ -72,7 +93,7 @@ exports.getAllUsers = async (req, res) => {
 
         return {
           ...user,
-          mt4_accounts: mt4Result.rows,
+          mt4_accounts: mt4AccountsWithPassword,
           myfxbook: myfxbookResult.rows[0] || null,
           has_mt4: mt4Result.rows.length > 0,
           has_myfxbook: myfxbookResult.rows.length > 0,
@@ -293,10 +314,13 @@ exports.updateMyfxbookIntegrationLogin = async (req, res) => {
   try {
     const { accountId } = req.params;
     const { myfxbook_integration_login } = req.body;
+    const adminId = req.user.userId;
 
     // Verificar se a conta existe
     const accountResult = await pool.query(
-      'SELECT id FROM mt4_accounts WHERE id = $1',
+      `SELECT id, user_id, credentials_status 
+       FROM mt4_accounts 
+       WHERE id = $1`,
       [accountId]
     );
 
@@ -306,6 +330,8 @@ exports.updateMyfxbookIntegrationLogin = async (req, res) => {
         message: 'Conta MT4 não encontrada.'
       });
     }
+
+    const account = accountResult.rows[0];
 
     // Atualizar o login de integração
     const updateResult = await pool.query(
@@ -326,6 +352,163 @@ exports.updateMyfxbookIntegrationLogin = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao atualizar login de integração MyFXBook.',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Aprovar credenciais MT4 de um usuário (Admin)
+ * POST /api/admin/mt4-accounts/:accountId/approve-credentials
+ */
+exports.approveMT4Credentials = async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const adminId = req.user.userId;
+
+    // Verificar se a conta existe e buscar dados do usuário
+    const accountResult = await pool.query(
+      `SELECT ma.id, ma.user_id, ma.account_number, ma.credentials_status,
+              u.email, u.first_name, u.last_name
+       FROM mt4_accounts ma
+       JOIN users u ON ma.user_id = u.id
+       WHERE ma.id = $1`,
+      [accountId]
+    );
+
+    if (accountResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Conta MT4 não encontrada.'
+      });
+    }
+
+    const account = accountResult.rows[0];
+
+    if (account.credentials_status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Credenciais já foram ${account.credentials_status === 'approved' ? 'aprovadas' : 'rejeitadas'}.`
+      });
+    }
+
+    // Aprovar credenciais e ativar conta
+    await pool.query(
+      `UPDATE mt4_accounts
+       SET credentials_status = 'approved',
+           credentials_reviewed_at = NOW(),
+           credentials_reviewed_by = $1,
+           status = 'active',
+           updated_at = NOW()
+       WHERE id = $2`,
+      [adminId, accountId]
+    );
+
+    // Enviar email de aprovação
+    const { sendMT4CredentialsApprovalEmail } = require('../services/emailService');
+    try {
+      await sendMT4CredentialsApprovalEmail(
+        account.email,
+        account.first_name || 'Cliente',
+        account.account_number
+      );
+    } catch (emailError) {
+      console.error('Erro ao enviar email de aprovação de credenciais:', emailError);
+      // Não falhar a requisição se o email falhar
+    }
+
+    res.json({
+      success: true,
+      message: 'Credenciais MT4 aprovadas com sucesso! O usuário receberá um email de confirmação.'
+    });
+  } catch (error) {
+    console.error('Erro ao aprovar credenciais MT4:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao aprovar credenciais MT4.',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Rejeitar credenciais MT4 de um usuário (Admin)
+ * POST /api/admin/mt4-accounts/:accountId/reject-credentials
+ */
+exports.rejectMT4Credentials = async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const adminId = req.user.userId;
+    const { notes } = req.body || {};
+
+    if (!notes || !notes.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Justificativa é obrigatória para rejeitar credenciais.'
+      });
+    }
+
+    // Verificar se a conta existe e buscar dados do usuário
+    const accountResult = await pool.query(
+      `SELECT ma.id, ma.user_id, ma.account_number, ma.credentials_status,
+              u.email, u.first_name, u.last_name
+       FROM mt4_accounts ma
+       JOIN users u ON ma.user_id = u.id
+       WHERE ma.id = $1`,
+      [accountId]
+    );
+
+    if (accountResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Conta MT4 não encontrada.'
+      });
+    }
+
+    const account = accountResult.rows[0];
+
+    if (account.credentials_status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Credenciais já foram ${account.credentials_status === 'approved' ? 'aprovadas' : 'rejeitadas'}.`
+      });
+    }
+
+    // Rejeitar credenciais
+    await pool.query(
+      `UPDATE mt4_accounts
+       SET credentials_status = 'rejected',
+           credentials_reviewed_at = NOW(),
+           credentials_reviewed_by = $1,
+           credentials_review_notes = $2,
+           updated_at = NOW()
+       WHERE id = $3`,
+      [adminId, notes, accountId]
+    );
+
+    // Enviar email de rejeição
+    const { sendMT4CredentialsRejectionEmail } = require('../services/emailService');
+    try {
+      await sendMT4CredentialsRejectionEmail(
+        account.email,
+        account.first_name || 'Cliente',
+        account.account_number,
+        notes
+      );
+    } catch (emailError) {
+      console.error('Erro ao enviar email de rejeição de credenciais:', emailError);
+      // Não falhar a requisição se o email falhar
+    }
+
+    res.json({
+      success: true,
+      message: 'Credenciais MT4 rejeitadas. O usuário receberá um email com a justificativa.'
+    });
+  } catch (error) {
+    console.error('Erro ao rejeitar credenciais MT4:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao rejeitar credenciais MT4.',
       error: error.message
     });
   }

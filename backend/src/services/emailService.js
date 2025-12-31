@@ -304,10 +304,10 @@ const getPlanApprovalEmailTemplate = (name, planName) => {
           <strong>✅ Seu plano foi aprovado!</strong>
         </div>
         <p>Temos o prazer de informar que seu plano <strong>${planName}</strong> foi aprovado pelo nosso time administrativo.</p>
-        <p>Agora você já pode configurar suas credenciais MT4 e começar a usar a plataforma TraderNex.</p>
-        <p>Acesse sua conta para continuar com a configuração:</p>
+        <p>Suas credenciais MT4 já foram configuradas e você já pode começar a usar a plataforma TraderNex.</p>
+        <p>Acesse sua conta para acompanhar seus investimentos:</p>
         <p style="text-align: center; margin: 20px 0;">
-          <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/mt4-config" style="display: inline-block; background: linear-gradient(135deg, #00ff88 0%, #00afaa 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">Configurar MT4</a>
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard" style="display: inline-block; background: linear-gradient(135deg, #00ff88 0%, #00afaa 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">Acessar Dashboard</a>
         </p>
         <p>Se tiver alguma dúvida, não hesite em entrar em contato com nosso suporte.</p>
       </div>
@@ -416,6 +416,211 @@ exports.sendPlanApprovalEmail = async (email, name, planName) => {
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Erro ao enviar email de aprovação de plano:', error.message);
+    throw error;
+  }
+};
+
+// Template de email de aprovação de credenciais MT4
+const getMT4CredentialsApprovalEmailTemplate = (name, accountNumber) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          max-width: 600px;
+          margin: 0 auto;
+          padding: 20px;
+        }
+        .header {
+          background: linear-gradient(135deg, #00ff88 0%, #00afaa 100%);
+          color: white;
+          padding: 30px;
+          text-align: center;
+          border-radius: 10px 10px 0 0;
+        }
+        .content {
+          background: #f9fafb;
+          padding: 30px;
+          border-radius: 0 0 10px 10px;
+        }
+        .success {
+          background: #d1fae5;
+          border-left: 4px solid #059669;
+          padding: 15px;
+          margin: 20px 0;
+        }
+        .footer {
+          text-align: center;
+          margin-top: 30px;
+          color: #666;
+          font-size: 12px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Credenciais MT4 Aprovadas! 🎉</h1>
+      </div>
+      <div class="content">
+        <p>Olá ${name},</p>
+        <div class="success">
+          <strong>✅ Suas credenciais MT4 foram aprovadas!</strong>
+        </div>
+        <p>Temos o prazer de informar que suas credenciais da conta MT4 <strong>${accountNumber}</strong> foram aprovadas pelo nosso time administrativo.</p>
+        <p>Agora você já pode utilizar sua conta e acompanhar seus investimentos na plataforma TraderNex.</p>
+        <p style="text-align: center; margin: 20px 0;">
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard" style="display: inline-block; background: linear-gradient(135deg, #00ff88 0%, #00afaa 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">Acessar Dashboard</a>
+        </p>
+        <p>Se tiver alguma dúvida, não hesite em entrar em contato com nosso suporte.</p>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} TraderNex. Todos os direitos reservados.</p>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+// Template de email de rejeição de credenciais MT4
+const getMT4CredentialsRejectionEmailTemplate = (name, accountNumber, notes) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          max-width: 600px;
+          margin: 0 auto;
+          padding: 20px;
+        }
+        .header {
+          background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+          color: white;
+          padding: 30px;
+          text-align: center;
+          border-radius: 10px 10px 0 0;
+        }
+        .content {
+          background: #f9fafb;
+          padding: 30px;
+          border-radius: 0 0 10px 10px;
+        }
+        .warning {
+          background: #fee2e2;
+          border-left: 4px solid #dc2626;
+          padding: 15px;
+          margin: 20px 0;
+        }
+        .footer {
+          text-align: center;
+          margin-top: 30px;
+          color: #666;
+          font-size: 12px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Credenciais MT4 Não Aprovadas</h1>
+      </div>
+      <div class="content">
+        <p>Olá ${name},</p>
+        <div class="warning">
+          <strong>⚠️ Suas credenciais não foram aprovadas</strong>
+        </div>
+        <p>Infelizmente, suas credenciais da conta MT4 <strong>${accountNumber}</strong> não foram aprovadas pelo nosso time administrativo.</p>
+        ${notes ? `<p><strong>Motivo:</strong> ${notes}</p>` : ''}
+        <p>Você pode atualizar suas credenciais acessando sua conta. Nossa equipe está à disposição para ajudar você a corrigir o problema.</p>
+        <p>Entre em contato conosco caso tenha dúvidas ou precise de mais informações.</p>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} TraderNex. Todos os direitos reservados.</p>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+// Enviar email de aprovação de credenciais MT4
+exports.sendMT4CredentialsApprovalEmail = async (email, name, accountNumber) => {
+  try {
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      console.log('\n═══════════════════════════════════════════');
+      console.log('📧 EMAIL DE APROVAÇÃO DE CREDENCIAIS MT4 (Desenvolvimento)');
+      console.log('═══════════════════════════════════════════');
+      console.log(`Para: ${email}`);
+      console.log(`Assunto: Credenciais MT4 Aprovadas - TraderNex`);
+      console.log(`Conta: ${accountNumber}`);
+      console.log('═══════════════════════════════════════════\n');
+      return { success: true, message: 'Email logado (modo desenvolvimento)' };
+    }
+
+    const mailOptions = {
+      from: `"TraderNex" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Credenciais MT4 Aprovadas - TraderNex',
+      html: getMT4CredentialsApprovalEmailTemplate(name, accountNumber)
+    };
+
+    const sendPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout ao enviar email (12s)')), 12000)
+    );
+
+    const info = await Promise.race([sendPromise, timeoutPromise]);
+    console.log(`✅ Email de aprovação de credenciais MT4 enviado para ${email}: ${info.messageId}`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Erro ao enviar email de aprovação de credenciais MT4:', error.message);
+    throw error;
+  }
+};
+
+// Enviar email de rejeição de credenciais MT4
+exports.sendMT4CredentialsRejectionEmail = async (email, name, accountNumber, notes) => {
+  try {
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      console.log('\n═══════════════════════════════════════════');
+      console.log('📧 EMAIL DE REJEIÇÃO DE CREDENCIAIS MT4 (Desenvolvimento)');
+      console.log('═══════════════════════════════════════════');
+      console.log(`Para: ${email}`);
+      console.log(`Assunto: Credenciais MT4 Não Aprovadas - TraderNex`);
+      console.log(`Conta: ${accountNumber}`);
+      console.log(`Motivo: ${notes || 'Não especificado'}`);
+      console.log('═══════════════════════════════════════════\n');
+      return { success: true, message: 'Email logado (modo desenvolvimento)' };
+    }
+
+    const mailOptions = {
+      from: `"TraderNex" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Credenciais MT4 Não Aprovadas - TraderNex',
+      html: getMT4CredentialsRejectionEmailTemplate(name, accountNumber, notes)
+    };
+
+    const sendPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout ao enviar email (12s)')), 12000)
+    );
+
+    const info = await Promise.race([sendPromise, timeoutPromise]);
+    console.log(`✅ Email de rejeição de credenciais MT4 enviado para ${email}: ${info.messageId}`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Erro ao enviar email de rejeição de credenciais MT4:', error.message);
     throw error;
   }
 };

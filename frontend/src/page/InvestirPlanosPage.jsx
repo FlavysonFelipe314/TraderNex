@@ -48,7 +48,7 @@ function InvestirPlanosPage() {
           title: 'Solicitação Enviada!',
           html: `
             <div style="text-align: left;">
-              <p style="margin-bottom: 12px;">A alteração foi encaminhada para análise do setor responsável.</p>
+              <p style="margin-bottom: 12px;">A solicitação foi enviada ao corpo competente para análise.</p>
               <p style="margin-bottom: 12px;">Aguarde que dentro de alguns minutos você receberá um email informando o status da sua solicitação de mudança de plano.</p>
               <p style="color: #6b7280; font-size: 14px;">Plano selecionado: <strong>${plan.name}</strong></p>
             </div>

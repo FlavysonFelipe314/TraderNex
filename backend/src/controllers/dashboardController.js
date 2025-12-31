@@ -203,12 +203,16 @@ exports.addMT4Account = async (req, res) => {
     const userId = req.user.userId;
     const { account_number, account_name, broker, server, balance, equity, currency, risk_profile, password } = req.body;
 
-    if (!account_number || !broker || !server) {
+    if (!account_number || !broker || !server || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Número da conta, corretora e servidor são obrigatórios.'
+        message: 'Número da conta, corretora, servidor e senha são obrigatórios.'
       });
     }
+
+    // Criptografar senha
+    const { encrypt } = require('../utils/encryption');
+    const encryptedPassword = encrypt(password);
 
     // Verificar se já existe uma conta com o mesmo número para este usuário
     const existingAccount = await pool.query(
@@ -217,36 +221,41 @@ exports.addMT4Account = async (req, res) => {
     );
 
     if (existingAccount.rows.length > 0) {
-      // Atualizar conta existente
+      // Atualizar conta existente (incluindo senha e resetando status de aprovação)
       const result = await pool.query(
         `UPDATE mt4_accounts 
          SET broker = $1, server = $2, account_name = $3, balance = $4, equity = $5, currency = $6, 
-             risk_profile = $7, updated_at = NOW()
-         WHERE user_id = $8 AND account_number = $9
+             risk_profile = $7, encrypted_password = $8, 
+             credentials_status = 'pending',
+             credentials_reviewed_at = NULL,
+             credentials_reviewed_by = NULL,
+             credentials_review_notes = NULL,
+             updated_at = NOW()
+         WHERE user_id = $9 AND account_number = $10
          RETURNING *`,
         [broker, server, account_name || null, balance || 0, equity || 0, currency || 'USD', 
-         risk_profile || 'moderado', userId, account_number]
+         risk_profile || 'moderado', encryptedPassword, userId, account_number]
       );
 
       return res.json({
         success: true,
         data: result.rows[0],
-        message: 'Conta MT4 atualizada com sucesso!'
+        message: 'Credenciais MT4 atualizadas com sucesso! Aguarde a aprovação pelo administrador.'
       });
     }
 
     // Criar nova conta (status será 'pending' até o admin ativar)
     const result = await pool.query(
-      `INSERT INTO mt4_accounts (user_id, account_number, account_name, broker, server, balance, equity, currency, status, risk_profile, connected_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, NOW())
+      `INSERT INTO mt4_accounts (user_id, account_number, account_name, broker, server, balance, equity, currency, status, risk_profile, encrypted_password, credentials_status, connected_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9, $10, 'pending', NOW())
        RETURNING *`,
-      [userId, account_number, account_name || null, broker, server, balance || 0, equity || 0, currency || 'USD', risk_profile || 'moderado']
+      [userId, account_number, account_name || null, broker, server, balance || 0, equity || 0, currency || 'USD', risk_profile || 'moderado', encryptedPassword]
     );
 
     res.json({
       success: true,
       data: result.rows[0],
-      message: 'Conta MT4 adicionada com sucesso! Aguarde a ativação pelo administrador.'
+      message: 'Credenciais MT4 enviadas com sucesso! Aguarde a aprovação pelo administrador.'
     });
   } catch (error) {
     console.error('Erro ao adicionar conta MT4:', error);
@@ -633,23 +642,17 @@ exports.selectInvestmentPlan = async (req, res) => {
       [userId]
     );
 
-    // Se já tem um plano aprovado, não pode trocar
+    // Sempre permitir selecionar/trocar plano, mas sempre como pending
     if (profileCheck.rows.length > 0) {
+      // Se tem um plano pendente, não pode trocar até ser aprovado/rejeitado
       const profile = profileCheck.rows[0];
-      if (profile.selected_plan_id && profile.plan_status === 'approved') {
-        return res.status(400).json({
-          success: false,
-          message: 'Você já possui um plano aprovado. Entre em contato com o administrador para alterar seu plano.'
-        });
-      }
-      // Se tem um plano pendente, não pode trocar
       if (profile.selected_plan_id && profile.plan_status === 'pending') {
         return res.status(400).json({
           success: false,
           message: 'Você já possui um plano aguardando aprovação. Aguarde a revisão do administrador.'
         });
       }
-      // Se tem um plano rejeitado ou não tem plano, pode selecionar um novo
+      // Se tem plano aprovado ou rejeitado, pode solicitar troca (novo como pending)
       await pool.query(
         `UPDATE client_profiles
          SET selected_plan_id = $1, 

@@ -15,7 +15,9 @@ import {
   deletePlan,
   updateUserPlan,
   approveUserPlan,
-  rejectUserPlan
+  rejectUserPlan,
+  approveMT4Credentials,
+  rejectMT4Credentials
 } from '../services/adminService'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
@@ -45,6 +47,10 @@ function AdminPage() {
   const [planReviewNotes, setPlanReviewNotes] = useState('')
   const [approvingPlan, setApprovingPlan] = useState(false)
   const [rejectingPlan, setRejectingPlan] = useState(false)
+  const [credentialsReviewNotes, setCredentialsReviewNotes] = useState('')
+  const [approvingCredentials, setApprovingCredentials] = useState(false)
+  const [rejectingCredentials, setRejectingCredentials] = useState(false)
+  const [selectedAccountId, setSelectedAccountId] = useState(null)
   
   // Estados para edição
   const [editingLogin, setEditingLogin] = useState('')
@@ -241,6 +247,70 @@ function AdminPage() {
     setPlanReviewNotes('')
     setApprovingPlan(false)
     setRejectingPlan(false)
+    setCredentialsReviewNotes('')
+    setApprovingCredentials(false)
+    setRejectingCredentials(false)
+    setSelectedAccountId(null)
+  }
+  
+  const handleApproveMT4Credentials = async (accountId) => {
+    setSelectedAccountId(accountId)
+    setApprovingCredentials(true)
+    try {
+      const result = await approveMT4Credentials(accountId)
+      if (result.success) {
+        await loadUsers()
+        alert('Credenciais MT4 aprovadas com sucesso! O usuário receberá um email de confirmação.')
+        // Fechar modal se necessário
+        if (selectedUser && selectedUser.mt4_accounts) {
+          const account = selectedUser.mt4_accounts.find(acc => acc.id === accountId)
+          if (account) {
+            account.credentials_status = 'approved'
+          }
+        }
+      } else {
+        alert('Erro ao aprovar credenciais: ' + (result.message || 'Erro desconhecido'))
+      }
+    } catch (error) {
+      console.error('Erro ao aprovar credenciais MT4:', error)
+      alert('Erro ao aprovar credenciais MT4.')
+    } finally {
+      setApprovingCredentials(false)
+      setSelectedAccountId(null)
+    }
+  }
+  
+  const handleRejectMT4Credentials = async (accountId) => {
+    if (!credentialsReviewNotes.trim()) {
+      alert('Por favor, informe a justificativa para rejeitar as credenciais.')
+      return
+    }
+    
+    setSelectedAccountId(accountId)
+    setRejectingCredentials(true)
+    try {
+      const result = await rejectMT4Credentials(accountId, credentialsReviewNotes)
+      if (result.success) {
+        await loadUsers()
+        setCredentialsReviewNotes('')
+        alert('Credenciais MT4 rejeitadas. O usuário receberá um email com a justificativa.')
+        // Fechar modal se necessário
+        if (selectedUser && selectedUser.mt4_accounts) {
+          const account = selectedUser.mt4_accounts.find(acc => acc.id === accountId)
+          if (account) {
+            account.credentials_status = 'rejected'
+          }
+        }
+      } else {
+        alert('Erro ao rejeitar credenciais: ' + (result.message || 'Erro desconhecido'))
+      }
+    } catch (error) {
+      console.error('Erro ao rejeitar credenciais MT4:', error)
+      alert('Erro ao rejeitar credenciais MT4.')
+    } finally {
+      setRejectingCredentials(false)
+      setSelectedAccountId(null)
+    }
   }
   
   const handleApprovePlan = async () => {
@@ -607,34 +677,6 @@ function AdminPage() {
                       {user.mt4_accounts && user.mt4_accounts.some(acc => acc.myfxbook_integration_login) ? 'Configurado' : 'Não configurado'}
                     </span>
                   </div>
-                  {user.mt4_accounts && user.mt4_accounts.length > 0 && (
-                    <div className="flex items-center justify-between text-sm pt-2 border-t border-[#e5e7eb]">
-                      <span className="text-[#6b7280]">Robô:</span>
-                      {(() => {
-                        const account = user.mt4_accounts[0]
-                        const isActive = account.status === 'active'
-                        const isAutomationEnabled = account.automation_enabled !== false
-                        const isOperating = isActive && isAutomationEnabled
-                        
-                        return (
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 ${
-                            isOperating
-                              ? 'bg-[#dcfce7] text-[#166534]'
-                              : isActive && !isAutomationEnabled
-                              ? 'bg-[#fef3c7] text-[#b45309]'
-                              : 'bg-[#fee2e2] text-[#991b1b]'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${
-                              isOperating ? 'bg-[#22c55e] animate-pulse' : 
-                              isActive && !isAutomationEnabled ? 'bg-[#f59e0b]' : 
-                              'bg-[#ef4444]'
-                            }`} />
-                            {isOperating ? 'Ativo' : isActive && !isAutomationEnabled ? 'Desativado' : 'Indisponível'}
-                          </span>
-                        )
-                      })()}
-                    </div>
-                  )}
                 </div>
 
                 {/* Botões de Ação */}
@@ -717,6 +759,26 @@ function AdminPage() {
                               {account.balance ? `$${parseFloat(account.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'N/A'}
                             </p>
                           </div>
+                          <div>
+                            <label className="text-xs text-[#6b7280] mb-1 block">Senha MT4</label>
+                            <p className="font-mono text-sm font-semibold text-[#111827] bg-[#f9fafb] px-2 py-1 rounded border border-[#e5e7eb]">
+                              {account.password || 'Não informada'}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-xs text-[#6b7280] mb-1 block">Status Credenciais</label>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                              account.credentials_status === 'approved' 
+                                ? 'bg-[#dcfce7] text-[#166534]' 
+                                : account.credentials_status === 'pending'
+                                ? 'bg-[#fef3c7] text-[#b45309]'
+                                : 'bg-[#fee2e2] text-[#991b1b]'
+                            }`}>
+                              {account.credentials_status === 'approved' ? 'Aprovado' : 
+                               account.credentials_status === 'pending' ? 'Pendente' : 
+                               account.credentials_status === 'rejected' ? 'Rejeitado' : 'N/A'}
+                            </span>
+                          </div>
                         </div>
                         {index === 0 && (
                           <div className="mt-4 pt-4 border-t border-[#e5e7eb]">
@@ -761,6 +823,94 @@ function AdminPage() {
                                 Account ID configurado: {account.myfxbook_integration_login}
                               </p>
                             )}
+                          </div>
+                        )}
+                        
+                        {/* Seção de Aprovação/Rejeição de Credenciais */}
+                        {account.credentials_status === 'pending' && (
+                          <div className="mt-4 pt-4 border-t border-[#e5e7eb]">
+                            <div className="mb-3">
+                              <label className="text-sm font-medium text-[#111827] mb-2 block">
+                                Revisar Credenciais MT4
+                              </label>
+                              <p className="text-xs text-[#6b7280] mb-3">
+                                Após configurar o Account ID MyFXBook, aprove ou rejeite as credenciais do usuário.
+                              </p>
+                              <div>
+                                <label className="text-xs text-[#6b7280] mb-1 block">
+                                  Justificativa (obrigatória para rejeição)
+                                </label>
+                                <textarea
+                                  value={credentialsReviewNotes}
+                                  onChange={(e) => setCredentialsReviewNotes(e.target.value)}
+                                  placeholder="Adicione notas sobre a revisão das credenciais..."
+                                  className="w-full px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa] min-h-[80px]"
+                                  disabled={approvingCredentials || rejectingCredentials}
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedAccountId(account.id)
+                                  handleApproveMT4Credentials(account.id)
+                                }}
+                                disabled={approvingCredentials || rejectingCredentials || (selectedAccountId !== null && selectedAccountId !== account.id)}
+                                className="flex-1 px-4 py-2 bg-[#059669] text-white rounded-lg text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                              >
+                                {approvingCredentials && selectedAccountId === account.id ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    Aprovando...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Icon icon="lucide:check-circle" className="text-base" />
+                                    Aprovar Credenciais
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedAccountId(account.id)
+                                  handleRejectMT4Credentials(account.id)
+                                }}
+                                disabled={approvingCredentials || rejectingCredentials || (selectedAccountId !== null && selectedAccountId !== account.id)}
+                                className="flex-1 px-4 py-2 bg-[#dc2626] text-white rounded-lg text-sm font-medium hover:bg-[#b91c1c] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                              >
+                                {rejectingCredentials && selectedAccountId === account.id ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    Rejeitando...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Icon icon="lucide:x-circle" className="text-base" />
+                                    Rejeitar Credenciais
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {account.credentials_status === 'approved' && (
+                          <div className="mt-4 pt-4 border-t border-[#e5e7eb]">
+                            <div className="bg-[#dcfce7] border border-[#059669] rounded-lg p-3">
+                              <p className="text-xs text-[#166534] font-medium flex items-center gap-2">
+                                <Icon icon="lucide:check-circle" className="text-sm" />
+                                Credenciais aprovadas e conta ativa
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {account.credentials_status === 'rejected' && account.credentials_review_notes && (
+                          <div className="mt-4 pt-4 border-t border-[#e5e7eb]">
+                            <div className="bg-[#fee2e2] border border-[#dc2626] rounded-lg p-3">
+                              <p className="text-xs text-[#991b1b] font-medium mb-1">Credenciais rejeitadas</p>
+                              <p className="text-xs text-[#991b1b]">{account.credentials_review_notes}</p>
+                            </div>
                           </div>
                         )}
                       </div>
