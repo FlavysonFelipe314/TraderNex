@@ -338,6 +338,65 @@ export const updateUserPlan = async (userId, planId) => {
   }
 }
 
+// Obter planos pendentes de aprovação (Admin)
+export const getPendingPlanApprovals = async () => {
+  try {
+    const response = await api.get('/api/admin/plans/pending-approvals')
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao buscar planos pendentes:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao buscar planos pendentes.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Aprovar plano de um usuário (Admin)
+export const approveUserPlan = async (userId, notes) => {
+  try {
+    const response = await api.post(`/api/admin/plans/${userId}/approve`, {
+      notes: notes || null
+    })
+    return {
+      success: response.data.success,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao aprovar plano:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao aprovar plano.',
+      error: error.response?.data
+    }
+  }
+}
+
+// Rejeitar plano de um usuário (Admin)
+export const rejectUserPlan = async (userId, notes) => {
+  try {
+    const response = await api.post(`/api/admin/plans/${userId}/reject`, {
+      notes: notes || null
+    })
+    return {
+      success: response.data.success,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao rejeitar plano:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao rejeitar plano.',
+      error: error.response?.data
+    }
+  }
+}
+
 // Deletar usuário (Admin)
 export const deleteUser = async (userId) => {
   try {

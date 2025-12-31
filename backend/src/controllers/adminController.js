@@ -19,6 +19,7 @@ exports.getAllUsers = async (req, res) => {
         u.is_active,
         u.email_verified,
         cp.selected_plan_id,
+        cp.plan_status,
         ip.name as plan_name
       FROM users u
       LEFT JOIN client_profiles cp ON u.id = cp.user_id
@@ -77,7 +78,8 @@ exports.getAllUsers = async (req, res) => {
           has_myfxbook: myfxbookResult.rows.length > 0,
           mt4_count: mt4Result.rows.length,
           selected_plan_id: user.selected_plan_id,
-          plan_name: user.plan_name
+          plan_name: user.plan_name,
+          plan_status: user.plan_status
         };
       })
     );

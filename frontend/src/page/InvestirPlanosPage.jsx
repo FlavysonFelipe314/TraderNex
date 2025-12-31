@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
+import Swal from 'sweetalert2'
 import DashboardLayout from '../components/DashboardLayout'
 import { getInvestmentPlans, selectInvestmentPlan } from '../services/dashboardService'
 
@@ -9,8 +10,6 @@ function InvestirPlanosPage() {
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectingPlan, setSelectingPlan] = useState(null)
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
-  const [selectedPlanName, setSelectedPlanName] = useState('')
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -43,20 +42,39 @@ function InvestirPlanosPage() {
     try {
       const result = await selectInvestmentPlan(plan.id)
       if (result.success) {
-        setSelectedPlanName(plan.name)
-        setShowSuccessMessage(true)
-        // Redirecionar para configuração MT4 após 2 segundos
-        setTimeout(() => {
-          setShowSuccessMessage(false)
-          navigate('/mt4-config')
-        }, 2000)
+        // Mostrar SweetAlert informando que foi encaminhado para análise
+        await Swal.fire({
+          icon: 'info',
+          title: 'Solicitação Enviada!',
+          html: `
+            <div style="text-align: left;">
+              <p style="margin-bottom: 12px;">A alteração foi encaminhada para análise do setor responsável.</p>
+              <p style="margin-bottom: 12px;">Aguarde que dentro de alguns minutos você receberá um email informando o status da sua solicitação de mudança de plano.</p>
+              <p style="color: #6b7280; font-size: 14px;">Plano selecionado: <strong>${plan.name}</strong></p>
+            </div>
+          `,
+          confirmButtonText: 'Entendi',
+          confirmButtonColor: '#00afaa',
+          width: '500px'
+        })
+        setSelectingPlan(null)
       } else {
-        alert('Erro ao selecionar plano: ' + (result.message || 'Erro desconhecido'))
+        await Swal.fire({
+          icon: 'error',
+          title: 'Erro',
+          text: result.message || 'Erro ao selecionar plano',
+          confirmButtonColor: '#dc2626'
+        })
         setSelectingPlan(null)
       }
     } catch (error) {
       console.error('Erro ao selecionar plano:', error)
-      alert('Erro ao selecionar plano.')
+      await Swal.fire({
+        icon: 'error',
+        title: 'Erro',
+        text: 'Erro ao selecionar plano. Tente novamente.',
+        confirmButtonColor: '#dc2626'
+      })
       setSelectingPlan(null)
     }
   }
@@ -64,31 +82,6 @@ function InvestirPlanosPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col items-center pb-20">
-        {/* Mensagem de Sucesso */}
-        {showSuccessMessage && (
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50" style={{
-            animation: 'fadeInDown 0.5s ease-out'
-          }}>
-            <div className="bg-gradient-to-r from-[#00afaa] to-[#009a96] text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[300px] max-w-[90vw]" style={{
-              animation: 'bounceIn 0.6s ease-out'
-            }}>
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-                <Icon icon="lucide:check-circle" className="text-2xl" />
-              </div>
-              <div className="flex-1">
-                <div className="font-bold text-base">Plano Selecionado!</div>
-                <div className="text-sm opacity-90">Você selecionou o plano {selectedPlanName}</div>
-              </div>
-              <button
-                onClick={() => setShowSuccessMessage(false)}
-                className="text-white/80 hover:text-white transition-colors"
-              >
-                <Icon icon="lucide:x" className="text-lg" />
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Hero Section */}
         <section className="flex flex-col items-center text-center gap-4 sm:gap-6 py-8 sm:py-12 lg:py-18 px-4 sm:px-6 max-w-[960px] mx-auto">
           <div className="w-12 h-12 sm:w-15 sm:h-15 rounded-[14px] sm:rounded-[18px] bg-[rgba(0,175,170,0.04)] text-[#00afaa] flex items-center justify-center mb-1 border border-[rgba(0,175,170,0.08)]">

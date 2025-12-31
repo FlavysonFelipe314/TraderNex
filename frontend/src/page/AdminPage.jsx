@@ -13,7 +13,9 @@ import {
   createPlan,
   updatePlan,
   deletePlan,
-  updateUserPlan
+  updateUserPlan,
+  approveUserPlan,
+  rejectUserPlan
 } from '../services/adminService'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
@@ -40,6 +42,9 @@ function AdminPage() {
   })
   const [userPlanModal, setUserPlanModal] = useState(null) // userId quando aberto
   const [selectedUserPlan, setSelectedUserPlan] = useState('')
+  const [planReviewNotes, setPlanReviewNotes] = useState('')
+  const [approvingPlan, setApprovingPlan] = useState(false)
+  const [rejectingPlan, setRejectingPlan] = useState(false)
   
   // Estados para edição
   const [editingLogin, setEditingLogin] = useState('')
@@ -219,6 +224,12 @@ function AdminPage() {
       setEditingAutomationEnabled(firstAccount.automation_enabled !== undefined ? firstAccount.automation_enabled : true)
       setEditingRiskProfile(firstAccount.risk_profile || 'moderado')
     }
+    
+    if (modalType === 'user-plan') {
+      setUserPlanModal(user.id)
+      setSelectedUserPlan(user.selected_plan_id || '')
+      setPlanReviewNotes('')
+    }
   }
 
   const closeModal = () => {
@@ -227,6 +238,56 @@ function AdminPage() {
     setEditingLogin('')
     setUserPlanModal(null)
     setSelectedUserPlan('')
+    setPlanReviewNotes('')
+    setApprovingPlan(false)
+    setRejectingPlan(false)
+  }
+  
+  const handleApprovePlan = async () => {
+    if (!userPlanModal) return
+    
+    setApprovingPlan(true)
+    try {
+      const result = await approveUserPlan(userPlanModal, planReviewNotes)
+      if (result.success) {
+        await loadUsers()
+        closeModal()
+        alert('Plano aprovado com sucesso! O usuário receberá um email de confirmação.')
+      } else {
+        alert('Erro ao aprovar plano: ' + (result.message || 'Erro desconhecido'))
+      }
+    } catch (error) {
+      console.error('Erro ao aprovar plano:', error)
+      alert('Erro ao aprovar plano.')
+    } finally {
+      setApprovingPlan(false)
+    }
+  }
+  
+  const handleRejectPlan = async () => {
+    if (!userPlanModal) return
+    
+    if (!planReviewNotes.trim()) {
+      alert('Por favor, informe o motivo da rejeição.')
+      return
+    }
+    
+    setRejectingPlan(true)
+    try {
+      const result = await rejectUserPlan(userPlanModal, planReviewNotes)
+      if (result.success) {
+        await loadUsers()
+        closeModal()
+        alert('Plano rejeitado com sucesso! O usuário receberá um email informando o motivo.')
+      } else {
+        alert('Erro ao rejeitar plano: ' + (result.message || 'Erro desconhecido'))
+      }
+    } catch (error) {
+      console.error('Erro ao rejeitar plano:', error)
+      alert('Erro ao rejeitar plano.')
+    } finally {
+      setRejectingPlan(false)
+    }
   }
 
   const handleSaveUserPlan = async () => {
@@ -886,12 +947,12 @@ function AdminPage() {
         )}
 
         {/* Modal Selecionar Plano do Usuário */}
-        {activeModal === 'user-plan' && userPlanModal && (
+        {activeModal === 'user-plan' && userPlanModal && selectedUser && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
               <div className="sticky top-0 bg-white border-b border-[#e5e7eb] px-6 py-4 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-[#111827]">
-                  Selecionar Plano - {selectedUser?.first_name} {selectedUser?.last_name}
+                  Gerenciar Plano - {selectedUser.first_name} {selectedUser.last_name}
                 </h2>
                 <button
                   onClick={closeModal}
@@ -901,31 +962,114 @@ function AdminPage() {
                 </button>
               </div>
               <div className="p-6 space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-[#111827] mb-2 block">
-                    Plano de Investimento
-                  </label>
-                  <select
-                    value={selectedUserPlan}
-                    onChange={(e) => setSelectedUserPlan(e.target.value)}
-                    className="w-full px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
-                    disabled={saving}
-                  >
-                    <option value="">Nenhum plano</option>
-                    {plans.map((plan) => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.name} {plan.is_active ? '' : '(Inativo)'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  onClick={handleSaveUserPlan}
-                  disabled={saving}
-                  className="w-full px-4 py-2 bg-[#00afaa] text-white rounded-lg text-sm font-medium hover:bg-[#009a96] transition-colors disabled:opacity-50"
-                >
-                  {saving ? 'Salvando...' : 'Salvar'}
-                </button>
+                {/* Status do Plano Atual */}
+                {selectedUser.plan_name && (
+                  <div className="bg-[#f9fafb] rounded-lg p-4 border border-[#e5e7eb]">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-[#6b7280]">Plano Atual:</span>
+                      <span className="text-sm font-bold text-[#111827]">{selectedUser.plan_name}</span>
+                    </div>
+                    {selectedUser.plan_status && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-[#6b7280]">Status:</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          selectedUser.plan_status === 'approved' 
+                            ? 'bg-[#dcfce7] text-[#166534]' 
+                            : selectedUser.plan_status === 'pending'
+                            ? 'bg-[#fef3c7] text-[#b45309]'
+                            : 'bg-[#fee2e2] text-[#991b1b]'
+                        }`}>
+                          {selectedUser.plan_status === 'approved' ? 'Aprovado' : 
+                           selectedUser.plan_status === 'pending' ? 'Pendente' : 
+                           'Rejeitado'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Se o plano está pendente, mostrar opções de aprovar/rejeitar */}
+                {selectedUser.plan_status === 'pending' && selectedUser.plan_name ? (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium text-[#111827] mb-2 block">
+                        Notas da Revisão (opcional para aprovação, obrigatório para rejeição)
+                      </label>
+                      <textarea
+                        value={planReviewNotes}
+                        onChange={(e) => setPlanReviewNotes(e.target.value)}
+                        placeholder="Adicione notas sobre a revisão do plano..."
+                        className="w-full px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa] min-h-[100px]"
+                        disabled={approvingPlan || rejectingPlan}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleApprovePlan}
+                        disabled={approvingPlan || rejectingPlan}
+                        className="flex-1 px-4 py-2 bg-[#059669] text-white rounded-lg text-sm font-medium hover:bg-[#047857] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {approvingPlan ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Aprovando...
+                          </>
+                        ) : (
+                          <>
+                            <Icon icon="lucide:check-circle" className="text-base" />
+                            Aprovar Plano
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={handleRejectPlan}
+                        disabled={approvingPlan || rejectingPlan}
+                        className="flex-1 px-4 py-2 bg-[#dc2626] text-white rounded-lg text-sm font-medium hover:bg-[#b91c1c] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {rejectingPlan ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Rejeitando...
+                          </>
+                        ) : (
+                          <>
+                            <Icon icon="lucide:x-circle" className="text-base" />
+                            Rejeitar Plano
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Se não está pendente, permitir alterar plano manualmente */}
+                    <div>
+                      <label className="text-sm font-medium text-[#111827] mb-2 block">
+                        Alterar Plano de Investimento
+                      </label>
+                      <select
+                        value={selectedUserPlan}
+                        onChange={(e) => setSelectedUserPlan(e.target.value)}
+                        className="w-full px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
+                        disabled={saving}
+                      >
+                        <option value="">Nenhum plano</option>
+                        {plans.map((plan) => (
+                          <option key={plan.id} value={plan.id}>
+                            {plan.name} {plan.is_active ? '' : '(Inativo)'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      onClick={handleSaveUserPlan}
+                      disabled={saving}
+                      className="w-full px-4 py-2 bg-[#00afaa] text-white rounded-lg text-sm font-medium hover:bg-[#009a96] transition-colors disabled:opacity-50"
+                    >
+                      {saving ? 'Salvando...' : 'Salvar Alteração'}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
