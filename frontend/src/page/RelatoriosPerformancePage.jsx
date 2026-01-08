@@ -19,12 +19,14 @@ function RelatoriosPerformancePage() {
   const loadTimeoutRef = useRef(null)
   const isLoadingRef = useRef(false)
 
-  // Verificar se o usuário está completamente aprovado (plano + credenciais MT4)
-  // Se não tiver credenciais MT4 configuradas, considera aprovado (para não mostrar blur desnecessariamente)
-  const hasMT4Credentials = dashboardData?.profile?.mt4_credentials_status !== null && 
-                            dashboardData?.profile?.mt4_credentials_status !== undefined
-  const isFullyApproved = dashboardData?.profile?.plan_status === 'approved' && 
-                          (hasMT4Credentials ? dashboardData?.profile?.mt4_credentials_status === 'approved' : true)
+  // Verificar se o usuário está completamente aprovado
+  // Se o MyFxBook está conectado/sincronizado, significa que o admin já configurou e está aprovado
+  // O blur só deve aparecer quando o MyFxBook NÃO está sincronizado
+  const isFullyApproved = myfxbookData?.connected
+    ? true // Se MyFxBook está conectado, sempre aprovado (admin já configurou)
+    : dashboardData?.profile?.plan_status === 'approved' && 
+      (dashboardData?.profile?.mt4_credentials_status === 'approved' || 
+       !dashboardData?.profile?.mt4_credentials_status) // Se não tem credenciais configuradas, considera aprovado
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
