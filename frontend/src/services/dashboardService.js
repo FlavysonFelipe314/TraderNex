@@ -209,11 +209,12 @@ export const getMyfxbookData = async (startDate = null, endDate = null, forceRef
       }
     }
     
-    // Se não for refresh forçado, tentar obter do cache primeiro
-    if (!forceRefresh && userId) {
+    // Se há parâmetros de data, NÃO usar cache (sempre buscar dados frescos para o período)
+    // Quando há filtros de data, cada período deve ter seus próprios dados
+    if (!forceRefresh && !startDate && !endDate && userId) {
       const cached = getCachedData(userId)
       if (cached) {
-        console.log('[MyFXBook] Usando dados do cache')
+        console.log('[MyFXBook] Usando dados do cache (sem filtros de data)')
         return {
           success: true,
           data: cached,
@@ -221,21 +222,19 @@ export const getMyfxbookData = async (startDate = null, endDate = null, forceRef
           fromCache: true
         }
       }
-    } else if (forceRefresh && userId) {
-      // Se for refresh forçado, limpar cache do usuário
-      clearCache(userId)
     }
     
-    // Se não tem cache ou é refresh, buscar da API
-    console.log('[MyFXBook] Buscando dados da API...')
+    // Se há parâmetros de data ou refresh forçado, sempre buscar da API (não usar cache)
+    console.log('[MyFXBook] Buscando dados da API...', { startDate, endDate, forceRefresh })
     const params = {}
     if (startDate) params.startDate = startDate
     if (endDate) params.endDate = endDate
     
     const response = await api.get('/api/dashboard/myfxbook-data', { params })
     
-    if (response.data.success && response.data.data && userId) {
-      // Salvar no cache (válido por 24 horas)
+    // Só salvar no cache se NÃO há filtros de data (para não misturar períodos diferentes)
+    if (response.data.success && response.data.data && userId && !startDate && !endDate) {
+      // Salvar no cache apenas quando não há filtros de data
       setCachedData(response.data.data, userId, 24)
     }
     

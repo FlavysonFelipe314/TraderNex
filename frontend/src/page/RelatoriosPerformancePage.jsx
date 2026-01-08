@@ -312,6 +312,15 @@ function RelatoriosPerformancePage() {
       dataDailyArray = dataDailyArray.flat()
     }
 
+    // Obter período selecionado para filtrar os dados
+    const dateRange = getDateRange(selectedPeriod)
+    const periodStart = dateRange.startDate ? new Date(dateRange.startDate) : null
+    const periodEnd = dateRange.endDate ? new Date(dateRange.endDate) : null
+    
+    if (periodEnd) {
+      periodEnd.setHours(23, 59, 59, 999) // Incluir o dia inteiro
+    }
+
     const monthlyMap = new Map()
 
     if (dataDailyArray && dataDailyArray.length > 0) {
@@ -321,6 +330,11 @@ function RelatoriosPerformancePage() {
         const date = parseMyFXBookDate(dateStr)
         
         if (isNaN(date.getTime())) return // Pular datas inválidas
+        
+        // Filtrar pelo período selecionado
+        if (periodStart && periodEnd && (date < periodStart || date > periodEnd)) {
+          return // Pular dados fora do período
+        }
         
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
         const monthLabel = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -390,6 +404,11 @@ function RelatoriosPerformancePage() {
       myfxbookData.history.forEach(trade => {
         const date = parseMyFXBookDate(trade.closeTime || trade.time || trade.date)
         if (isNaN(date.getTime())) return
+        
+        // Filtrar pelo período selecionado
+        if (periodStart && periodEnd && (date < periodStart || date > periodEnd)) {
+          return // Pular trades fora do período
+        }
         
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
         if (monthlyMap.has(monthKey)) {
@@ -494,9 +513,9 @@ function RelatoriosPerformancePage() {
     })
 
     return history
-  }, [myfxbookData, kpis.netProfit])
+  }, [myfxbookData, kpis.netProfit, selectedPeriod, customDates.startDate, customDates.endDate])
 
-  // Calcular estatísticas de profit
+  // Calcular estatísticas de profit - filtrar pelo período selecionado
   const profitStats = useMemo(() => {
     // Verificar se dataDaily existe e tem dados
     let dataDailyArray = myfxbookData?.dataDaily || []
@@ -519,9 +538,19 @@ function RelatoriosPerformancePage() {
       }
     }
 
-    console.log('[ProfitStats] Processando dataDaily:', dataDailyArray.length, 'registros')
-    console.log('[ProfitStats] Primeiro item:', dataDailyArray[0])
+    // Obter período selecionado para filtrar os dados
+    const dateRange = getDateRange(selectedPeriod)
+    const periodStart = dateRange.startDate ? new Date(dateRange.startDate) : null
+    const periodEnd = dateRange.endDate ? new Date(dateRange.endDate) : null
+    
+    if (periodEnd) {
+      periodEnd.setHours(23, 59, 59, 999) // Incluir o dia inteiro
+    }
 
+    console.log('[ProfitStats] Processando dataDaily:', dataDailyArray.length, 'registros')
+    console.log('[ProfitStats] Período selecionado:', { startDate: periodStart, endDate: periodEnd, period: selectedPeriod })
+
+    // Processar e filtrar dados pelo período selecionado
     const profits = dataDailyArray
       .map(item => {
         const dateStr = item.date || item.time || item.openTime || item.closeTime
@@ -536,7 +565,31 @@ function RelatoriosPerformancePage() {
           rawData: item // Manter dados originais para debug
         }
       })
-      .filter(item => !isNaN(item.date.getTime())) // Filtrar datas inválidas
+      .filter(item => {
+        // Filtrar datas inválidas
+        if (isNaN(item.date.getTime())) return false
+        
+        // Se há período definido, filtrar por data
+        if (periodStart && periodEnd) {
+          return item.date >= periodStart && item.date <= periodEnd
+        }
+        
+        return true
+      })
+
+    console.log('[ProfitStats] Dados filtrados pelo período:', profits.length, 'registros')
+
+    if (profits.length === 0) {
+      return {
+        totalProfit: 0,
+        averageDailyProfit: 0,
+        bestDay: null,
+        worstDay: null,
+        profitDays: 0,
+        lossDays: 0,
+        profitByDay: []
+      }
+    }
 
     const totalProfit = profits.reduce((sum, item) => sum + item.profit, 0)
     const averageDailyProfit = totalProfit / profits.length
@@ -554,7 +607,7 @@ function RelatoriosPerformancePage() {
       lossDays,
       profitByDay: profits.sort((a, b) => b.date - a.date) // Mais recente primeiro
     }
-  }, [myfxbookData])
+  }, [myfxbookData, selectedPeriod, customDates.startDate, customDates.endDate])
 
   // Dados do gráfico
   const chartData = useMemo(() => {

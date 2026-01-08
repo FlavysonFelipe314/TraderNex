@@ -229,7 +229,7 @@ function DashboardPage() {
               </div>
               <div>
                 <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
-                  $ {dashboardData?.profile?.totalInvested?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                  $ {dashboardData?.profile?.total_invested?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
                 </div>
                 <div className="text-xs text-[#94A3B8] flex items-center gap-1.5 font-medium mt-1">
                   <span>Total investido</span>
