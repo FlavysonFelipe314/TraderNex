@@ -187,90 +187,55 @@ function DashboardPage() {
           </div>
         </div>
 
-        {/* KPI Grid - Dados MyFXBook */}
-        {!loading && myfxbookConnected && selectedMyfxbookAccount ? (
+        {/* KPI Grid - Sempre mostrar, com dados MyFXBook se disponível */}
+        {!loading && (
           <ApprovalBlurOverlay isApproved={isFullyApproved}>
             <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 ${
-              dashboardData?.profile?.selected_plan_id ? 'xl:grid-cols-5' : 'xl:grid-cols-4'
+              dashboardData?.profile?.selected_plan_id ? 'xl:grid-cols-4' : 'xl:grid-cols-3'
             }`}>
+            {/* Card Saldo Total */}
             <div className="group bg-white rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-4 sm:gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
-                  Balance
+                  Saldo Total
                 </div>
-                <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(59,130,246,0.1)] group-hover:text-[#3b82f6]">
+                <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(0,255,136,0.1)] group-hover:text-[#059669]">
                   <Icon icon="lucide:wallet" className="text-base" />
                 </div>
               </div>
               <div>
+                <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#059669] tracking-[-0.03em] leading-none">
+                  {myfxbookConnected && selectedMyfxbookAccount?.balance != null && !isNaN(parseFloat(selectedMyfxbookAccount.balance))
+                    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(selectedMyfxbookAccount.balance))
+                    : `$ ${dashboardData?.profile?.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`}
+                </div>
+                <div className="text-xs text-[#94A3B8] mt-1">
+                  {myfxbookConnected ? 'Saldo atual' : 'Consolidado MT4'}
+                </div>
+              </div>
+            </div>
+
+            {/* Card Depósitos */}
+            <div className="group bg-white rounded-2xl p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
+                  Depósitos
+                </div>
+                <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(0,255,136,0.1)] group-hover:text-[#059669]">
+                  <Icon icon="lucide:arrow-down-circle" className="text-base" />
+                </div>
+              </div>
+              <div>
                 <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
-                  {selectedMyfxbookAccount.balance != null && selectedMyfxbookAccount.balance !== undefined && !isNaN(parseFloat(selectedMyfxbookAccount.balance)) 
-                    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(selectedMyfxbookAccount.balance)) 
-                    : 'N/A'}
+                  $ {dashboardData?.profile?.totalInvested?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
                 </div>
-                <div className="text-xs text-[#94A3B8] mt-1">Saldo atual</div>
-              </div>
-            </div>
-
-            <div className="group bg-white rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-4 sm:gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
-                  Ganho Total
-                </div>
-                <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(0,255,136,0.1)] group-hover:text-[#059669]">
-                  <Icon icon="lucide:trending-up" className="text-base" />
-                </div>
-              </div>
-              <div>
-                <div className={`text-[28px] font-bold tracking-[-0.03em] leading-none ${
-                  (selectedMyfxbookAccount.gain || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
-                }`}>
-                  {selectedMyfxbookAccount.gain != null && selectedMyfxbookAccount.gain !== undefined && !isNaN(parseFloat(selectedMyfxbookAccount.gain))
-                    ? formatPercentBR(selectedMyfxbookAccount.gain) 
-                    : 'N/A'}
+                <div className="text-xs text-[#94A3B8] flex items-center gap-1.5 font-medium mt-1">
+                  <span>Total investido</span>
                 </div>
               </div>
             </div>
 
-            <div className="group bg-white rounded-2xl p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
-                  Lucro
-                </div>
-                <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(0,255,136,0.1)] group-hover:text-[#059669]">
-                  <Icon icon="lucide:dollar-sign" className="text-base" />
-                </div>
-              </div>
-              <div>
-                <div className={`text-xl sm:text-2xl lg:text-[28px] font-bold tracking-[-0.03em] leading-none ${
-                  (selectedMyfxbookAccount.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
-                }`}>
-                  {selectedMyfxbookAccount.profit != null && selectedMyfxbookAccount.profit !== undefined && !isNaN(parseFloat(selectedMyfxbookAccount.profit))
-                    ? formatCurrencyBR(selectedMyfxbookAccount.profit) 
-                    : 'N/A'}
-                </div>
-              </div>
-            </div>
-
-            <div className="group bg-white rounded-2xl p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
-                  Drawdown
-                </div>
-                <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(239,68,68,0.1)] group-hover:text-[#dc2626]">
-                  <Icon icon="lucide:trending-down" className="text-base" />
-                </div>
-              </div>
-              <div>
-                <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#dc2626] tracking-[-0.03em] leading-none">
-                  {selectedMyfxbookAccount.drawdown != null && selectedMyfxbookAccount.drawdown !== undefined && !isNaN(parseFloat(selectedMyfxbookAccount.drawdown))
-                    ? `-${formatNumberBR(Math.abs(selectedMyfxbookAccount.drawdown))}%` 
-                    : 'N/A'}
-                </div>
-              </div>
-            </div>
-
-            {/* Card de Lucro Líquido - Aparece quando tem plano selecionado */}
+            {/* Card Lucro Líquido - Aparece quando tem plano selecionado */}
             {dashboardData?.profile?.selected_plan_id && (
               <div className="group bg-white rounded-2xl p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
                 <div className="flex items-center justify-between">
@@ -283,8 +248,10 @@ function DashboardPage() {
                 </div>
                 <div>
                   {(() => {
-                    // Calcular lucro líquido: lucro do MyFXBook - porcentagem do plano
-                    const myfxbookProfit = selectedMyfxbookAccount?.profit || 0
+                    // Calcular lucro líquido: lucro do MyFXBook (se disponível) ou do dashboard - porcentagem do plano
+                    const myfxbookProfit = myfxbookConnected && selectedMyfxbookAccount?.profit != null 
+                      ? (selectedMyfxbookAccount.profit || 0)
+                      : (dashboardData?.profile?.total_profit || 0)
                     const profitFeePercentage = dashboardData?.profile?.profit_fee_percentage || 0
                     const netProfit = myfxbookProfit > 0 
                       ? myfxbookProfit * (1 - profitFeePercentage / 100)
@@ -317,121 +284,30 @@ function DashboardPage() {
                 </div>
               </div>
             )}
-            </div>
-          </ApprovalBlurOverlay>
-        ) : loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-sm text-[#64748B]">Carregando dados...</div>
-          </div>
-        ) : (
-          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 ${
-            dashboardData?.profile?.selected_plan_id ? 'xl:grid-cols-4' : 'xl:grid-cols-3'
-          }`}>
-            <div className="group bg-white rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-4 sm:gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
-                  Saldo Total
-                </div>
-                <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(0,255,136,0.1)] group-hover:text-[#059669]">
-                  <Icon icon="lucide:wallet" className="text-base" />
-                </div>
-              </div>
-              <div>
-                <div className="text-[28px] font-bold text-[#059669] tracking-[-0.03em] leading-none">
-                  $ {dashboardData?.profile?.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
-                </div>
-              </div>
-              <div className="text-xs text-[#94A3B8] flex items-center gap-1.5 font-medium">
-                <span>Consolidado MT4</span>
-              </div>
-            </div>
 
-            <div className="group bg-white rounded-2xl p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
-                  Depósitos
-                </div>
-                <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(0,255,136,0.1)] group-hover:text-[#059669]">
-                  <Icon icon="lucide:arrow-down-circle" className="text-base" />
-                </div>
-              </div>
-              <div>
-                <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
-                  $ {dashboardData?.profile?.totalInvested?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
-                </div>
-              </div>
-              <div className="text-xs text-[#94A3B8] flex items-center gap-1.5 font-medium">
-                <span>Total investido</span>
-              </div>
-            </div>
-
-            {/* Card de Lucro Líquido - Aparece quando tem plano selecionado (sem MyFXBook) */}
+            {/* Card Performance Fee - Aparece quando tem plano selecionado */}
             {dashboardData?.profile?.selected_plan_id && (
               <div className="group bg-white rounded-2xl p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
-                    Lucro Líquido
+                    Performance Fee
                   </div>
                   <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(0,255,136,0.1)] group-hover:text-[#059669]">
-                    <Icon icon="lucide:trending-up" className="text-base" />
+                    <Icon icon="lucide:percent" className="text-base" />
                   </div>
                 </div>
                 <div>
-                  {(() => {
-                    // Calcular lucro líquido: lucro do dashboard - porcentagem do plano
-                    const dashboardProfit = dashboardData?.profile?.total_profit || 0
-                    const profitFeePercentage = dashboardData?.profile?.profit_fee_percentage || 0
-                    const netProfit = dashboardProfit > 0 
-                      ? dashboardProfit * (1 - profitFeePercentage / 100)
-                      : dashboardProfit
-                    
-                    return (
-                      <div className={`text-xl sm:text-2xl lg:text-[28px] font-bold tracking-[-0.03em] leading-none ${
-                        netProfit >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
-                      }`}>
-                        {formatCurrencyBR(netProfit)}
-                      </div>
-                    )
-                  })()}
+                  <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
+                    {dashboardData?.profile?.profit_fee_percentage?.toFixed(1) || '0'}%
+                  </div>
                 </div>
                 <div className="text-xs text-[#94A3B8] flex items-center gap-1.5 font-medium">
-                  {(() => {
-                    const profitFeePercentage = dashboardData?.profile?.profit_fee_percentage || 0
-                    if (profitFeePercentage > 0 && dashboardData?.profile?.plan_name) {
-                      return (
-                        <>
-                          <div className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-[rgba(16,185,129,0.08)] text-[#059669]">
-                            <span>Plano: {dashboardData.profile.plan_name}</span>
-                          </div>
-                          <span>Taxa: {profitFeePercentage.toFixed(1)}%</span>
-                        </>
-                      )
-                    }
-                    return <span>Após desconto da taxa do plano</span>
-                  })()}
+                  <span>Plano atual</span>
                 </div>
               </div>
             )}
-
-            <div className="group bg-white rounded-2xl p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
-                  Performance Fee
-                </div>
-                <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(0,255,136,0.1)] group-hover:text-[#059669]">
-                  <Icon icon="lucide:percent" className="text-base" />
-                </div>
-              </div>
-              <div>
-                <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
-                  {dashboardData?.profile?.accountType === 'Pro' ? '40%' : dashboardData?.profile?.accountType === 'Premium' ? '30%' : '50%'}
-                </div>
-              </div>
-              <div className="text-xs text-[#94A3B8] flex items-center gap-1.5 font-medium">
-                <span>Plano atual</span>
-              </div>
             </div>
-          </div>
+          </ApprovalBlurOverlay>
         )}
 
         {/* Dados MT4 - Se conectado */}

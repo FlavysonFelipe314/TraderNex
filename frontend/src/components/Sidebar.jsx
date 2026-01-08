@@ -100,25 +100,15 @@ function Sidebar() {
 
         // Verificar se tem conta forex configurada
         // Se tiver conta configurada (mesmo que pendente), considerar onboarding completo
-        // A restrição do menu só deve acontecer para contas que ainda não foram configuradas pelo admin
+        // O menu deve aparecer completo assim que o usuário configurar MT4
         const mt4Result = await getMT4Accounts()
         const hasForexAccount = mt4Result.success && 
                                 mt4Result.data && 
                                 mt4Result.data.length > 0
-        
-        // Verificar se a conta já foi configurada pelo admin (tem myfxbook_integration_login)
-        // Se tiver sido configurada, mostrar menu completo independente do status
-        const hasMyfxbookConfigured = mt4Result.success && 
-                                      mt4Result.data && 
-                                      mt4Result.data.length > 0 &&
-                                      mt4Result.data.some(account => 
-                                        account.myfxbook_integration_login &&
-                                        account.myfxbook_integration_login.trim() !== ''
-                                      )
 
-        // Se a conta já foi configurada pelo admin, considerar onboarding completo
-        // Caso contrário, só considerar completo se tiver plano e conta forex
-        const isComplete = hasMyfxbookConfigured || (hasPlan && hasForexAccount)
+        // Se o usuário tem conta MT4 configurada (mesmo que pendente), mostrar menu completo
+        // Isso permite que o usuário veja tudo, mas com blur até o admin aprovar
+        const isComplete = hasForexAccount || hasPlan
         
         const newStatus = {
           loading: false,
@@ -148,6 +138,46 @@ function Sidebar() {
 
     checkOnboarding()
   }, [user?.id, location.pathname])
+
+  // Escutar evento de atualização de conta MT4
+  useEffect(() => {
+    const handleMT4Update = () => {
+      // Limpar cache e forçar recarregamento
+      if (user?.id) {
+        localStorage.removeItem(`onboarding_status_${user.id}`)
+        // Recarregar verificação do onboarding
+        const checkOnboarding = async () => {
+          try {
+            const dashboardResult = await getDashboardData()
+            const hasPlan = dashboardResult.success && 
+                           dashboardResult.data?.profile?.selected_plan_id
+
+            const mt4Result = await getMT4Accounts()
+            const hasForexAccount = mt4Result.success && 
+                                    mt4Result.data && 
+                                    mt4Result.data.length > 0
+
+            const isComplete = hasForexAccount || hasPlan
+            
+            setOnboardingStatus({
+              loading: false,
+              hasPlan: !!hasPlan,
+              hasForexAccount: !!hasForexAccount,
+              isComplete: isComplete
+            })
+          } catch (error) {
+            console.error('Erro ao verificar onboarding após atualização MT4:', error)
+          }
+        }
+        checkOnboarding()
+      }
+    }
+
+    window.addEventListener('mt4-account-updated', handleMT4Update)
+    return () => {
+      window.removeEventListener('mt4-account-updated', handleMT4Update)
+    }
+  }, [user?.id])
   
   // Verificar status de admin - verificar múltiplas fontes para garantir robustez
   // Também verificar localStorage como fallback caso o contexto não esteja atualizado

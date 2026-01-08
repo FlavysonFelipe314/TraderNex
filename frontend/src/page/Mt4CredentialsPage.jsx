@@ -207,6 +207,21 @@ function Mt4CredentialsPage() {
         setSuccess(true)
         setError('')
         setShowSetupMessage(true)
+        // Limpar cache do onboarding para forçar atualização do menu
+        try {
+          const userData = localStorage.getItem('user')
+          if (userData) {
+            const user = JSON.parse(userData)
+            if (user.id || user.userId) {
+              const userId = user.id || user.userId
+              localStorage.removeItem(`onboarding_status_${userId}`)
+              // Disparar evento customizado para o Sidebar recarregar
+              window.dispatchEvent(new CustomEvent('mt4-account-updated'))
+            }
+          }
+        } catch (e) {
+          console.warn('Erro ao limpar cache do onboarding:', e)
+        }
         // Não redirecionar automaticamente, mostrar mensagem
       } else {
         setError(result.message || 'Erro ao conectar conta MT4.')
