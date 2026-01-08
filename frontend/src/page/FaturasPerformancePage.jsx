@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
-import { getInvoices } from '../services/dashboardService'
+import ApprovalBlurOverlay from '../components/ApprovalBlurOverlay'
+import { getInvoices, getDashboardData, getMyfxbookData } from '../services/dashboardService'
 
 function FaturasPerformancePage() {
   const [statusFilter, setStatusFilter] = useState('todas')
   const [periodFilter, setPeriodFilter] = useState('ultimas-4-semanas')
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
+  const [dashboardData, setDashboardData] = useState(null)
+  const [myfxbookData, setMyfxbookData] = useState(null)
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -19,6 +22,30 @@ function FaturasPerformancePage() {
   const [totals, setTotals] = useState({ total: 0, pending: 0, paid: 0, overdue: 0 })
   const [nextDueDate, setNextDueDate] = useState(null)
   const [weekNumber, setWeekNumber] = useState(null)
+
+  // Carregar dados do dashboard e MyFxBook para verificar aprovação
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const [dashboardResult, myfxbookResult] = await Promise.all([
+          getDashboardData(),
+          getMyfxbookData()
+        ])
+        
+        if (dashboardResult.success) {
+          setDashboardData(dashboardResult.data)
+        }
+        
+        if (myfxbookResult.success && myfxbookResult.data?.connected) {
+          setMyfxbookData(myfxbookResult.data)
+        }
+      } catch (error) {
+        console.error('[FaturasPerformancePage] Erro ao carregar dados do dashboard:', error)
+      }
+    }
+    
+    loadDashboardData()
+  }, [])
 
   // Carregar faturas do backend
   useEffect(() => {
@@ -134,12 +161,21 @@ function FaturasPerformancePage() {
   // Usar APENAS dados reais - nunca usar mock
   const displayInvoices = filteredInvoices
   
+  // Verificar se o usuário está completamente aprovado (mesma lógica do Dashboard)
+  const isFullyApproved = myfxbookData?.connected
+    ? true // Se MyFxBook está conectado, sempre aprovado (admin já configurou)
+    : dashboardData?.profile?.plan_status === 'approved' && 
+      (dashboardData?.profile?.mt4_credentials_status === 'approved' || 
+       !dashboardData?.profile?.mt4_credentials_status) // Se não tem credenciais configuradas, considera aprovado
+  
   // Log para debug
   console.log('[FaturasPerformancePage] Estado atual:', {
     invoicesLength: invoices.length,
     filteredInvoicesLength: filteredInvoices.length,
     displayInvoicesLength: displayInvoices.length,
-    loading
+    loading,
+    isFullyApproved,
+    myfxbookConnected: myfxbookData?.connected
   })
 
   return (
@@ -160,6 +196,7 @@ function FaturasPerformancePage() {
         </div>
 
         {/* Summary Cards */}
+        <ApprovalBlurOverlay isApproved={isFullyApproved}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {/* Total Pago */}
           <div className="bg-white p-6 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.03)] flex flex-col justify-between h-[140px] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(0,0,0,0.06)]">
@@ -213,6 +250,7 @@ function FaturasPerformancePage() {
             </div>
           </div>
         </div>
+        </ApprovalBlurOverlay>
 
         {/* Table Section */}
         <div className="bg-white rounded-2xl p-4 sm:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.03)] overflow-hidden">
@@ -551,6 +589,7 @@ function FaturasPerformancePage() {
             </p>
           </div>
         </div>
+        </ApprovalBlurOverlay>
       </div>
     </DashboardLayout>
   )

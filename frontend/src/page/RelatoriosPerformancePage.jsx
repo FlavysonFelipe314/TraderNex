@@ -36,9 +36,16 @@ function RelatoriosPerformancePage() {
   }, [])
 
   // Calcular datas baseadas no período selecionado
+  // Usar métodos locais para evitar problemas de timezone
   const getDateRange = (period) => {
     const today = new Date()
-    const endDate = today.toISOString().split('T')[0]
+    
+    // Usar métodos locais para obter a data atual sem problemas de timezone
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    const endDate = `${year}-${month}-${day}` // Data local no formato yyyy-mm-dd
+    
     let startDate = ''
 
     switch (period) {
@@ -48,22 +55,34 @@ function RelatoriosPerformancePage() {
       case '7-dias':
         const sevenDaysAgo = new Date(today)
         sevenDaysAgo.setDate(today.getDate() - 7)
-        startDate = sevenDaysAgo.toISOString().split('T')[0]
+        const sevenDaysAgoYear = sevenDaysAgo.getFullYear()
+        const sevenDaysAgoMonth = String(sevenDaysAgo.getMonth() + 1).padStart(2, '0')
+        const sevenDaysAgoDay = String(sevenDaysAgo.getDate()).padStart(2, '0')
+        startDate = `${sevenDaysAgoYear}-${sevenDaysAgoMonth}-${sevenDaysAgoDay}`
         break
       case 'este-mes':
         const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-        startDate = firstDayOfMonth.toISOString().split('T')[0]
+        const firstMonthYear = firstDayOfMonth.getFullYear()
+        const firstMonthMonth = String(firstDayOfMonth.getMonth() + 1).padStart(2, '0')
+        const firstMonthDay = String(firstDayOfMonth.getDate()).padStart(2, '0')
+        startDate = `${firstMonthYear}-${firstMonthMonth}-${firstMonthDay}`
         break
       case 'este-ano':
         const firstDayOfYear = new Date(today.getFullYear(), 0, 1)
-        startDate = firstDayOfYear.toISOString().split('T')[0]
+        const firstYearYear = firstDayOfYear.getFullYear()
+        const firstYearMonth = String(firstDayOfYear.getMonth() + 1).padStart(2, '0')
+        const firstYearDay = String(firstDayOfYear.getDate()).padStart(2, '0')
+        startDate = `${firstYearYear}-${firstYearMonth}-${firstYearDay}`
         break
       case 'custom':
         return { startDate: customDates.startDate, endDate: customDates.endDate }
       default:
         const thirtyDaysAgo = new Date(today)
         thirtyDaysAgo.setDate(today.getDate() - 30)
-        startDate = thirtyDaysAgo.toISOString().split('T')[0]
+        const thirtyDaysAgoYear = thirtyDaysAgo.getFullYear()
+        const thirtyDaysAgoMonth = String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0')
+        const thirtyDaysAgoDay = String(thirtyDaysAgo.getDate()).padStart(2, '0')
+        startDate = `${thirtyDaysAgoYear}-${thirtyDaysAgoMonth}-${thirtyDaysAgoDay}`
     }
 
     return { startDate, endDate }
@@ -314,11 +333,19 @@ function RelatoriosPerformancePage() {
 
     // Obter período selecionado para filtrar os dados
     const dateRange = getDateRange(selectedPeriod)
-    const periodStart = dateRange.startDate ? new Date(dateRange.startDate) : null
-    const periodEnd = dateRange.endDate ? new Date(dateRange.endDate) : null
     
-    if (periodEnd) {
-      periodEnd.setHours(23, 59, 59, 999) // Incluir o dia inteiro
+    // Normalizar datas para comparação (apenas data, sem hora)
+    let periodStart = null
+    let periodEnd = null
+    
+    if (dateRange.startDate) {
+      periodStart = new Date(dateRange.startDate + 'T00:00:00')
+      periodStart.setHours(0, 0, 0, 0) // Meia-noite local
+    }
+    
+    if (dateRange.endDate) {
+      periodEnd = new Date(dateRange.endDate + 'T00:00:00')
+      periodEnd.setHours(23, 59, 59, 999) // Fim do dia local - incluir todo o dia
     }
 
     const monthlyMap = new Map()
@@ -331,9 +358,20 @@ function RelatoriosPerformancePage() {
         
         if (isNaN(date.getTime())) return // Pular datas inválidas
         
-        // Filtrar pelo período selecionado
-        if (periodStart && periodEnd && (date < periodStart || date > periodEnd)) {
-          return // Pular dados fora do período
+        // Filtrar pelo período selecionado (comparar apenas datas, não horas)
+        if (periodStart && periodEnd) {
+          const itemDateOnly = new Date(date)
+          itemDateOnly.setHours(0, 0, 0, 0)
+          
+          const startDateOnly = new Date(periodStart)
+          startDateOnly.setHours(0, 0, 0, 0)
+          
+          const endDateOnly = new Date(periodEnd)
+          endDateOnly.setHours(23, 59, 59, 999)
+          
+          if (itemDateOnly < startDateOnly || itemDateOnly > endDateOnly) {
+            return // Pular dados fora do período
+          }
         }
         
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
@@ -405,9 +443,20 @@ function RelatoriosPerformancePage() {
         const date = parseMyFXBookDate(trade.closeTime || trade.time || trade.date)
         if (isNaN(date.getTime())) return
         
-        // Filtrar pelo período selecionado
-        if (periodStart && periodEnd && (date < periodStart || date > periodEnd)) {
-          return // Pular trades fora do período
+        // Filtrar pelo período selecionado (comparar apenas datas, não horas)
+        if (periodStart && periodEnd) {
+          const itemDateOnly = new Date(date)
+          itemDateOnly.setHours(0, 0, 0, 0)
+          
+          const startDateOnly = new Date(periodStart)
+          startDateOnly.setHours(0, 0, 0, 0)
+          
+          const endDateOnly = new Date(periodEnd)
+          endDateOnly.setHours(23, 59, 59, 999)
+          
+          if (itemDateOnly < startDateOnly || itemDateOnly > endDateOnly) {
+            return // Pular trades fora do período
+          }
         }
         
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
@@ -571,7 +620,18 @@ function RelatoriosPerformancePage() {
         
         // Se há período definido, filtrar por data
         if (periodStart && periodEnd) {
-          return item.date >= periodStart && item.date <= periodEnd
+          // Normalizar a data do item para comparação (apenas data, sem hora)
+          const itemDateOnly = new Date(item.date)
+          itemDateOnly.setHours(0, 0, 0, 0)
+          
+          // Comparar apenas as datas (incluindo o dia final completo)
+          const startDateOnly = new Date(periodStart)
+          startDateOnly.setHours(0, 0, 0, 0)
+          
+          const endDateOnly = new Date(periodEnd)
+          endDateOnly.setHours(23, 59, 59, 999)
+          
+          return itemDateOnly >= startDateOnly && itemDateOnly <= endDateOnly
         }
         
         return true
@@ -971,175 +1031,6 @@ function RelatoriosPerformancePage() {
           </div>
         </div>
 
-        {/* KPIs Grid */}
-        {myfxbookData?.connected ? (
-          <ApprovalBlurOverlay isApproved={isFullyApproved}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12">
-          {/* Retorno Total */}
-          <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between min-h-[120px] sm:h-[140px]">
-            <div className="flex justify-between items-start mb-3">
-              <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">RETORNO TOTAL</span>
-              <div className="w-8 h-8 rounded-[10px] bg-[rgba(0,255,136,0.1)] flex items-center justify-center text-[#059669]">
-                <Icon icon="lucide:trending-up" className="text-base" />
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-[#059669] tracking-tight leading-none mb-1.5">
-                {loading ? '...' : formatPercentBR(kpis.totalReturn)}
-              </div>
-              <div className="text-xs sm:text-[13px] text-[#9ba0aa] font-normal">Desde o início</div>
-            </div>
-          </div>
-
-          {/* Lucro Líquido */}
-          <div className="bg-white p-6 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between h-[140px]">
-            <div className="flex justify-between items-start mb-3">
-              <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">LUCRO LÍQUIDO</span>
-              <div className="w-8 h-8 rounded-[10px] bg-[#f3f4f6] flex items-center justify-center text-[#6b7280]">
-                <Icon icon="lucide:dollar-sign" className="text-base" />
-              </div>
-            </div>
-            <div>
-              <div className="text-[32px] font-bold text-[#059669] tracking-tight leading-none mb-1.5">
-                {loading ? '...' : formatCurrencyBR(kpis.netProfit)}
-              </div>
-              <div className="text-[13px] text-[#9ba0aa] font-normal">Acumulado no ano</div>
-            </div>
-          </div>
-
-          {/* Fator de Lucro */}
-          <div className="bg-white p-6 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between h-[140px]">
-            <div className="flex justify-between items-start mb-3">
-              <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">FATOR DE LUCRO</span>
-              <div className="w-8 h-8 rounded-[10px] bg-[#f3f4f6] flex items-center justify-center text-[#6b7280]">
-                <Icon icon="lucide:pie-chart" className="text-base" />
-              </div>
-            </div>
-            <div>
-              <div className="text-[32px] font-bold text-[#111827] tracking-tight leading-none mb-1.5">
-                {loading ? '...' : kpis.profitFactor.toFixed(2)}
-              </div>
-              <div className="text-[13px] text-[#9ba0aa] font-normal">
-                {kpis.profitFactor >= 2 ? 'Alta eficiência' : kpis.profitFactor >= 1 ? 'Eficiência moderada' : 'Baixa eficiência'}
-              </div>
-            </div>
-          </div>
-
-          {/* Drawdown Máx. */}
-          <div className="bg-white p-6 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between h-[140px]">
-            <div className="flex justify-between items-start mb-3">
-              <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">DRAWDOWN MÁX.</span>
-              <div className="w-8 h-8 rounded-[10px] bg-[#fef2f2] flex items-center justify-center text-[#e53935]">
-                <Icon icon="lucide:activity" className="text-base" />
-              </div>
-            </div>
-            <div>
-              <div className="text-[32px] font-bold text-[#e53935] tracking-tight leading-none mb-1.5">
-                {loading ? '...' : `-${formatNumberBR(kpis.maxDrawdown)}%`}
-              </div>
-              <div className="text-[13px] text-[#9ba0aa] font-normal">
-                {kpis.maxDrawdown < 5 ? 'Risco controlado' : kpis.maxDrawdown < 10 ? 'Risco moderado' : 'Risco elevado'}
-              </div>
-            </div>
-          </div>
-            </div>
-          </ApprovalBlurOverlay>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12">
-            {/* Placeholder quando não há dados MyFXBook */}
-          </div>
-        )}
-
-        {/* Informações Adicionais */}
-        {myfxbookData?.connected && (
-          <ApprovalBlurOverlay isApproved={isFullyApproved}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12">
-            {/* Ganho no Período */}
-            <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
-              <div className="flex justify-between items-start mb-3">
-                <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">GANHO PERÍODO</span>
-                <Icon icon="lucide:percent" className="text-base text-[#059669]" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold text-[#059669]">
-                {loading ? '...' : kpis.gain ? formatPercentBR(kpis.gain) : 'N/A'}
-              </div>
-            </div>
-          </div>
-          </ApprovalBlurOverlay>
-        )}
-
-        {/* Trades Abertos */}
-        {myfxbookData?.openTrades && myfxbookData.openTrades.length > 0 && (
-          <ApprovalBlurOverlay isApproved={isFullyApproved}>
-          <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em]">Trades Abertos</h3>
-              <span className="text-xs font-semibold text-[#00afaa] bg-[rgba(0,175,170,0.08)] px-3 py-1 rounded-full">
-                {myfxbookData.openTrades.length} {myfxbookData.openTrades.length === 1 ? 'trade' : 'trades'}
-              </span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-[#f3f4f6]">
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Símbolo</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Tipo</th>
-                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Preço Abertura</th>
-                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">P/L</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {myfxbookData.openTrades.map((trade, index) => (
-                    <tr key={index} className="border-b border-[#f9fafb] hover:bg-[#f3f4f6]">
-                      <td className="py-3 px-4 text-sm font-semibold text-[#111827]">{trade.symbol || 'N/A'}</td>
-                      <td className="py-3 px-4 text-sm text-[#6b7280]">{trade.side === 'buy' ? 'Compra' : 'Venda'}</td>
-                      <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(trade.openPrice || 0).toFixed(5)}</td>
-                      <td className={`py-3 px-4 text-sm text-right font-semibold ${parseFloat(trade.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#e53935]'}`}>
-                        {formatCurrencyBR(trade.profit || 0)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          </ApprovalBlurOverlay>
-        )}
-
-        {/* Ordens Abertas */}
-        {myfxbookData?.openOrders && myfxbookData.openOrders.length > 0 && (
-          <ApprovalBlurOverlay isApproved={isFullyApproved}>
-          <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em]">Ordens Abertas</h3>
-              <span className="text-xs font-semibold text-[#00afaa] bg-[rgba(0,175,170,0.08)] px-3 py-1 rounded-full">
-                {myfxbookData.openOrders.length} {myfxbookData.openOrders.length === 1 ? 'ordem' : 'ordens'}
-              </span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-[#f3f4f6]">
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Símbolo</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Tipo</th>
-                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Preço</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {myfxbookData.openOrders.map((order, index) => (
-                    <tr key={index} className="border-b border-[#f9fafb] hover:bg-[#f3f4f6]">
-                      <td className="py-3 px-4 text-sm font-semibold text-[#111827]">{order.symbol || 'N/A'}</td>
-                      <td className="py-3 px-4 text-sm text-[#6b7280]">{order.type || 'N/A'}</td>
-                      <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(order.price || 0).toFixed(5)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          </ApprovalBlurOverlay>
-        )}
-
         {/* Relatório de Profit Diário - MyFXBook */}
         {(() => {
           // Verificar se dataDaily existe e tem dados (desaninhar se necessário)
@@ -1150,7 +1041,7 @@ function RelatoriosPerformancePage() {
           return dataDailyArray.length > 0
         })() && (
           <ApprovalBlurOverlay isApproved={isFullyApproved}>
-            <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
+            <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8 sm:mb-10 lg:mb-12">
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em] mb-1">Relatório de Profit Diário</h3>
@@ -1395,6 +1286,175 @@ function RelatoriosPerformancePage() {
               </div>
             )}
             </div>
+          </ApprovalBlurOverlay>
+        )}
+
+        {/* KPIs Grid */}
+        {myfxbookData?.connected ? (
+          <ApprovalBlurOverlay isApproved={isFullyApproved}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12">
+          {/* Retorno Total */}
+          <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between min-h-[120px] sm:h-[140px]">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">RETORNO TOTAL</span>
+              <div className="w-8 h-8 rounded-[10px] bg-[rgba(0,255,136,0.1)] flex items-center justify-center text-[#059669]">
+                <Icon icon="lucide:trending-up" className="text-base" />
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-[#059669] tracking-tight leading-none mb-1.5">
+                {loading ? '...' : formatPercentBR(kpis.totalReturn)}
+              </div>
+              <div className="text-xs sm:text-[13px] text-[#9ba0aa] font-normal">Desde o início</div>
+            </div>
+          </div>
+
+          {/* Lucro Líquido */}
+          <div className="bg-white p-6 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between h-[140px]">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">LUCRO LÍQUIDO</span>
+              <div className="w-8 h-8 rounded-[10px] bg-[#f3f4f6] flex items-center justify-center text-[#6b7280]">
+                <Icon icon="lucide:dollar-sign" className="text-base" />
+              </div>
+            </div>
+            <div>
+              <div className="text-[32px] font-bold text-[#059669] tracking-tight leading-none mb-1.5">
+                {loading ? '...' : formatCurrencyBR(kpis.netProfit)}
+              </div>
+              <div className="text-[13px] text-[#9ba0aa] font-normal">Acumulado no ano</div>
+            </div>
+          </div>
+
+          {/* Fator de Lucro */}
+          <div className="bg-white p-6 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between h-[140px]">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">FATOR DE LUCRO</span>
+              <div className="w-8 h-8 rounded-[10px] bg-[#f3f4f6] flex items-center justify-center text-[#6b7280]">
+                <Icon icon="lucide:pie-chart" className="text-base" />
+              </div>
+            </div>
+            <div>
+              <div className="text-[32px] font-bold text-[#111827] tracking-tight leading-none mb-1.5">
+                {loading ? '...' : kpis.profitFactor.toFixed(2)}
+              </div>
+              <div className="text-[13px] text-[#9ba0aa] font-normal">
+                {kpis.profitFactor >= 2 ? 'Alta eficiência' : kpis.profitFactor >= 1 ? 'Eficiência moderada' : 'Baixa eficiência'}
+              </div>
+            </div>
+          </div>
+
+          {/* Drawdown Máx. */}
+          <div className="bg-white p-6 rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between h-[140px]">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">DRAWDOWN MÁX.</span>
+              <div className="w-8 h-8 rounded-[10px] bg-[#fef2f2] flex items-center justify-center text-[#e53935]">
+                <Icon icon="lucide:activity" className="text-base" />
+              </div>
+            </div>
+            <div>
+              <div className="text-[32px] font-bold text-[#e53935] tracking-tight leading-none mb-1.5">
+                {loading ? '...' : `-${formatNumberBR(kpis.maxDrawdown)}%`}
+              </div>
+              <div className="text-[13px] text-[#9ba0aa] font-normal">
+                {kpis.maxDrawdown < 5 ? 'Risco controlado' : kpis.maxDrawdown < 10 ? 'Risco moderado' : 'Risco elevado'}
+              </div>
+            </div>
+          </div>
+            </div>
+          </ApprovalBlurOverlay>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12">
+            {/* Placeholder quando não há dados MyFXBook */}
+          </div>
+        )}
+
+        {/* Informações Adicionais */}
+        {myfxbookData?.connected && (
+          <ApprovalBlurOverlay isApproved={isFullyApproved}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12">
+            {/* Ganho no Período */}
+            <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-[11px] font-bold text-[#9ca3af] uppercase tracking-wider">GANHO PERÍODO</span>
+                <Icon icon="lucide:percent" className="text-base text-[#059669]" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold text-[#059669]">
+                {loading ? '...' : kpis.gain ? formatPercentBR(kpis.gain) : 'N/A'}
+              </div>
+            </div>
+          </div>
+          </ApprovalBlurOverlay>
+        )}
+
+        {/* Trades Abertos */}
+        {myfxbookData?.openTrades && myfxbookData.openTrades.length > 0 && (
+          <ApprovalBlurOverlay isApproved={isFullyApproved}>
+          <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em]">Trades Abertos</h3>
+              <span className="text-xs font-semibold text-[#00afaa] bg-[rgba(0,175,170,0.08)] px-3 py-1 rounded-full">
+                {myfxbookData.openTrades.length} {myfxbookData.openTrades.length === 1 ? 'trade' : 'trades'}
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#f3f4f6]">
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Símbolo</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Tipo</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Preço Abertura</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">P/L</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myfxbookData.openTrades.map((trade, index) => (
+                    <tr key={index} className="border-b border-[#f9fafb] hover:bg-[#f3f4f6]">
+                      <td className="py-3 px-4 text-sm font-semibold text-[#111827]">{trade.symbol || 'N/A'}</td>
+                      <td className="py-3 px-4 text-sm text-[#6b7280]">{trade.side === 'buy' ? 'Compra' : 'Venda'}</td>
+                      <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(trade.openPrice || 0).toFixed(5)}</td>
+                      <td className={`py-3 px-4 text-sm text-right font-semibold ${parseFloat(trade.profit || 0) >= 0 ? 'text-[#059669]' : 'text-[#e53935]'}`}>
+                        {formatCurrencyBR(trade.profit || 0)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          </ApprovalBlurOverlay>
+        )}
+
+        {/* Ordens Abertas */}
+        {myfxbookData?.openOrders && myfxbookData.openOrders.length > 0 && (
+          <ApprovalBlurOverlay isApproved={isFullyApproved}>
+          <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em]">Ordens Abertas</h3>
+              <span className="text-xs font-semibold text-[#00afaa] bg-[rgba(0,175,170,0.08)] px-3 py-1 rounded-full">
+                {myfxbookData.openOrders.length} {myfxbookData.openOrders.length === 1 ? 'ordem' : 'ordens'}
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#f3f4f6]">
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Símbolo</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Tipo</th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-[#6b7280] uppercase">Preço</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myfxbookData.openOrders.map((order, index) => (
+                    <tr key={index} className="border-b border-[#f9fafb] hover:bg-[#f3f4f6]">
+                      <td className="py-3 px-4 text-sm font-semibold text-[#111827]">{order.symbol || 'N/A'}</td>
+                      <td className="py-3 px-4 text-sm text-[#6b7280]">{order.type || 'N/A'}</td>
+                      <td className="py-3 px-4 text-sm text-right text-[#6b7280]">{parseFloat(order.price || 0).toFixed(5)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
           </ApprovalBlurOverlay>
         )}
 
