@@ -6,6 +6,7 @@ import { useSidebar } from '../contexts/SidebarContext'
 import { useAuth } from '../contexts/AuthContext'
 import { getDashboardData, getMT4Accounts, getPerformanceStats, getMyfxbookData } from '../services/dashboardService'
 import { formatCurrencyBR, formatPercentBR, formatNumberBR } from '../utils/format'
+import ApprovalBlurOverlay from '../components/ApprovalBlurOverlay'
 
 function DashboardPage() {
   const { isSidebarOpen } = useSidebar()
@@ -26,6 +27,13 @@ function DashboardPage() {
   const pulseStyle = {
     animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
   }
+
+  // Verificar se o usuário está completamente aprovado (plano + credenciais MT4)
+  // Se não tiver credenciais MT4 configuradas, considera aprovado (para não mostrar blur desnecessariamente)
+  const hasMT4Credentials = dashboardData?.profile?.mt4_credentials_status !== null && 
+                            dashboardData?.profile?.mt4_credentials_status !== undefined
+  const isFullyApproved = dashboardData?.profile?.plan_status === 'approved' && 
+                          (hasMT4Credentials ? dashboardData?.profile?.mt4_credentials_status === 'approved' : true)
 
   // Habilitar scroll no body quando o componente montar
   useEffect(() => {
@@ -181,9 +189,10 @@ function DashboardPage() {
 
         {/* KPI Grid - Dados MyFXBook */}
         {!loading && myfxbookConnected && selectedMyfxbookAccount ? (
-          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 ${
-            dashboardData?.profile?.selected_plan_id ? 'xl:grid-cols-5' : 'xl:grid-cols-4'
-          }`}>
+          <ApprovalBlurOverlay isApproved={isFullyApproved}>
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 ${
+              dashboardData?.profile?.selected_plan_id ? 'xl:grid-cols-5' : 'xl:grid-cols-4'
+            }`}>
             <div className="group bg-white rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-4 sm:gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
@@ -308,7 +317,8 @@ function DashboardPage() {
                 </div>
               </div>
             )}
-                </div>
+            </div>
+          </ApprovalBlurOverlay>
         ) : loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-sm text-[#64748B]">Carregando dados...</div>
@@ -426,7 +436,8 @@ function DashboardPage() {
 
         {/* Dados MT4 - Se conectado */}
         {myfxbookConnected && selectedMyfxbookAccount && (
-          <div className="bg-white rounded-xl sm:rounded-2xl border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] overflow-hidden">
+          <ApprovalBlurOverlay isApproved={isFullyApproved}>
+            <div className="bg-white rounded-xl sm:rounded-2xl border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] overflow-hidden">
             <div className="p-4 sm:p-6 lg:p-8 border-b border-[#F8FAFC] flex justify-between items-center bg-white">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 bg-[#3b82f6] rounded-[10px] flex items-center justify-center text-white">
@@ -566,12 +577,14 @@ function DashboardPage() {
                 </div>
               )}
             </div>
-          </div>
+            </div>
+          </ApprovalBlurOverlay>
         )}
 
         {/* Dashboard Grid - Só mostrar se tiver MyFXBook configurado */}
         {myfxbookConnected && myfxbookAccountData && (
-        <div className="grid grid-cols-1 xl:grid-cols-[2.2fr_1.3fr] gap-4 sm:gap-6 items-stretch">
+          <ApprovalBlurOverlay isApproved={isFullyApproved}>
+            <div className="grid grid-cols-1 xl:grid-cols-[2.2fr_1.3fr] gap-4 sm:gap-6 items-stretch">
           {/* Chart Card */}
           <div className="bg-white rounded-xl sm:rounded-2xl border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden">
             <div className="p-4 sm:p-6 lg:p-8 border-b border-[#F8FAFC] flex justify-between items-center bg-white">
@@ -965,7 +978,8 @@ function DashboardPage() {
               )}
             </div>
           </div>
-        </div>
+            </div>
+          </ApprovalBlurOverlay>
         )}
       </div>
       </div>

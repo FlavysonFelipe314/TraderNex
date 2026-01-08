@@ -3,6 +3,7 @@ import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
 import { getPerformanceStats, getMyfxbookData, getDashboardData } from '../services/dashboardService'
 import { formatCurrencyBR, formatPercentBR, formatNumberBR } from '../utils/format'
+import ApprovalBlurOverlay from '../components/ApprovalBlurOverlay'
 
 function RelatoriosPerformancePage() {
   const [selectedPeriod, setSelectedPeriod] = useState('este-mes')
@@ -17,6 +18,13 @@ function RelatoriosPerformancePage() {
   const abortControllerRef = useRef(null)
   const loadTimeoutRef = useRef(null)
   const isLoadingRef = useRef(false)
+
+  // Verificar se o usuário está completamente aprovado (plano + credenciais MT4)
+  // Se não tiver credenciais MT4 configuradas, considera aprovado (para não mostrar blur desnecessariamente)
+  const hasMT4Credentials = dashboardData?.profile?.mt4_credentials_status !== null && 
+                            dashboardData?.profile?.mt4_credentials_status !== undefined
+  const isFullyApproved = dashboardData?.profile?.plan_status === 'approved' && 
+                          (hasMT4Credentials ? dashboardData?.profile?.mt4_credentials_status === 'approved' : true)
 
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -909,7 +917,9 @@ function RelatoriosPerformancePage() {
         </div>
 
         {/* KPIs Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12">
+        {myfxbookData?.connected ? (
+          <ApprovalBlurOverlay isApproved={isFullyApproved}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12">
           {/* Retorno Total */}
           <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] hover:-translate-y-1 transition-all flex flex-col justify-between min-h-[120px] sm:h-[140px]">
             <div className="flex justify-between items-start mb-3">
@@ -977,10 +987,17 @@ function RelatoriosPerformancePage() {
               </div>
             </div>
           </div>
-        </div>
+            </div>
+          </ApprovalBlurOverlay>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12">
+            {/* Placeholder quando não há dados MyFXBook */}
+          </div>
+        )}
 
         {/* Informações Adicionais */}
         {myfxbookData?.connected && (
+          <ApprovalBlurOverlay isApproved={isFullyApproved}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12">
             {/* Ganho no Período */}
             <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
@@ -993,11 +1010,12 @@ function RelatoriosPerformancePage() {
               </div>
             </div>
           </div>
+          </ApprovalBlurOverlay>
         )}
-
 
         {/* Trades Abertos */}
         {myfxbookData?.openTrades && myfxbookData.openTrades.length > 0 && (
+          <ApprovalBlurOverlay isApproved={isFullyApproved}>
           <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em]">Trades Abertos</h3>
@@ -1030,10 +1048,12 @@ function RelatoriosPerformancePage() {
               </table>
             </div>
           </div>
+          </ApprovalBlurOverlay>
         )}
 
         {/* Ordens Abertas */}
         {myfxbookData?.openOrders && myfxbookData.openOrders.length > 0 && (
+          <ApprovalBlurOverlay isApproved={isFullyApproved}>
           <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em]">Ordens Abertas</h3>
@@ -1062,6 +1082,7 @@ function RelatoriosPerformancePage() {
               </table>
             </div>
           </div>
+          </ApprovalBlurOverlay>
         )}
 
         {/* Relatório de Profit Diário - MyFXBook */}
@@ -1073,7 +1094,8 @@ function RelatoriosPerformancePage() {
           }
           return dataDailyArray.length > 0
         })() && (
-          <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
+          <ApprovalBlurOverlay isApproved={isFullyApproved}>
+            <div className="bg-white rounded-2xl p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)] mb-8">
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-lg font-bold text-[#111827] tracking-[-0.01em] mb-1">Relatório de Profit Diário</h3>
@@ -1317,11 +1339,14 @@ function RelatoriosPerformancePage() {
                 Mostrando os 30 dias mais recentes de {profitStats.profitByDay.length} dias disponíveis
               </div>
             )}
-          </div>
+            </div>
+          </ApprovalBlurOverlay>
         )}
 
         {/* History Table */}
-        <div className="bg-white rounded-2xl p-4 sm:p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
+        {myfxbookData?.connected && (
+          <ApprovalBlurOverlay isApproved={isFullyApproved}>
+            <div className="bg-white rounded-2xl p-4 sm:p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] border border-[rgba(0,0,0,0.02)]">
           <div className="flex justify-between items-center mb-6 sm:mb-8">
             <h3 className="text-base sm:text-lg font-bold text-[#111827] tracking-[-0.01em]">Histórico Mensal</h3>
             <span className="text-xs font-semibold text-[#00afaa] bg-[rgba(0,175,170,0.08)] px-3 py-1 rounded-full">

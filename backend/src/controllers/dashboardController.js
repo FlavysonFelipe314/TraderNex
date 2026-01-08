@@ -11,10 +11,22 @@ exports.getDashboardData = async (req, res) => {
     // Buscar dados do perfil com informações do plano selecionado
     const profileResult = await pool.query(
       `SELECT cp.balance, cp.total_invested, cp.total_profit, cp.profit_percentage, cp.account_type,
-              cp.selected_plan_id, ip.profit_fee_percentage, ip.name as plan_name
+              cp.selected_plan_id, cp.plan_status, ip.profit_fee_percentage, ip.name as plan_name
        FROM client_profiles cp
        LEFT JOIN investment_plans ip ON cp.selected_plan_id = ip.id
        WHERE cp.user_id = $1`,
+      [userId]
+    );
+
+    // Buscar status das credenciais MT4 (da conta principal/ativa com myfxbook_integration_login)
+    const mt4CredentialsResult = await pool.query(
+      `SELECT credentials_status 
+       FROM mt4_accounts 
+       WHERE user_id = $1 
+       AND myfxbook_integration_login IS NOT NULL 
+       AND myfxbook_integration_login != ''
+       ORDER BY created_at DESC 
+       LIMIT 1`,
       [userId]
     );
 
@@ -62,6 +74,11 @@ exports.getDashboardData = async (req, res) => {
       [userId]
     );
 
+    // Determinar status de aprovação das credenciais MT4
+    const mt4CredentialsStatus = mt4CredentialsResult.rows.length > 0 
+      ? mt4CredentialsResult.rows[0].credentials_status 
+      : null;
+
     res.json({
       success: true,
       data: {
@@ -73,7 +90,9 @@ exports.getDashboardData = async (req, res) => {
           account_type: profile.account_type,
           selected_plan_id: profile.selected_plan_id,
           plan_name: profile.plan_name,
-          profit_fee_percentage: parseFloat(profile.profit_fee_percentage) || 0
+          plan_status: profile.plan_status || null,
+          profit_fee_percentage: parseFloat(profile.profit_fee_percentage) || 0,
+          mt4_credentials_status: mt4CredentialsStatus
         },
         mt4: {
           total_accounts: parseInt(mt4Result.rows[0].total_accounts) || 0,
@@ -169,7 +188,7 @@ exports.getMT4Accounts = async (req, res) => {
     const userId = req.user.userId;
 
     const result = await pool.query(
-      `SELECT id, account_number, account_name, broker, server, balance, equity, currency, status, connected_at, last_sync, automation_enabled, risk_profile, myfxbook_integration_login, created_at
+      `SELECT id, account_number, account_name, broker, server, balance, equity, currency, status, connected_at, last_sync, automation_enabled, risk_profile, myfxbook_integration_login, credentials_status, created_at
        FROM mt4_accounts
        WHERE user_id = $1
        ORDER BY created_at DESC`,
