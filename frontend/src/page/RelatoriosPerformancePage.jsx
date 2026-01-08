@@ -1494,6 +1494,7 @@ function RelatoriosPerformancePage() {
         </div>
           </ApprovalBlurOverlay>
         )}
+      </div>
     </DashboardLayout>
   )
 }
