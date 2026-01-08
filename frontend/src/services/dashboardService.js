@@ -66,6 +66,7 @@ export const addMT4Account = async (accountData) => {
       account_number: accountData.login || accountData.account_number || accountData.accountNumber,
       broker: accountData.broker,
       server: accountData.server,
+      password: accountData.password, // Campo obrigatório - senha do MT4
       // Campos opcionais
       account_name: accountData.account_name || null,
       balance: accountData.balance || 0,
@@ -74,13 +75,13 @@ export const addMT4Account = async (accountData) => {
       risk_profile: accountData.risk_profile || 'moderado'
     }
     
-    console.log('[addMT4Account] Enviando payload:', payload)
+    console.log('[addMT4Account] Enviando payload:', { ...payload, password: '***' }) // Não logar a senha
     
     // Validação antes de enviar
-    if (!payload.account_number || !payload.broker || !payload.server) {
+    if (!payload.account_number || !payload.broker || !payload.server || !payload.password) {
       return {
         success: false,
-        message: 'Por favor, preencha todos os campos obrigatórios: Login, Corretora e Servidor.'
+        message: 'Por favor, preencha todos os campos obrigatórios: Login, Corretora, Servidor e Senha.'
       }
     }
     
