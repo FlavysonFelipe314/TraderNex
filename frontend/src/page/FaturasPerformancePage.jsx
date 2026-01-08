@@ -253,6 +253,7 @@ function FaturasPerformancePage() {
         </ApprovalBlurOverlay>
 
         {/* Table Section */}
+        <ApprovalBlurOverlay isApproved={isFullyApproved}>
         <div className="bg-white rounded-2xl p-4 sm:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.03)] overflow-hidden">
           {/* Filter Toolbar */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 mb-6 sm:mb-7">
