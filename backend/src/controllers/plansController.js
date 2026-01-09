@@ -9,7 +9,7 @@ exports.getAllPlans = async (req, res) => {
     const result = await pool.query(
       `SELECT id, name, description, min_investment, max_investment,
               expected_return, duration_days, risk_level, is_active,
-              profit_fee_percentage, created_at, updated_at
+              profit_fee_percentage, benefits, created_at, updated_at
        FROM investment_plans
        ORDER BY min_investment ASC`
     );
@@ -34,20 +34,33 @@ exports.getAllPlans = async (req, res) => {
  */
 exports.createPlan = async (req, res) => {
   try {
-    const { name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active, profit_fee_percentage } = req.body;
+    const { name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active, profit_fee_percentage, benefits } = req.body;
 
-    if (!name || !min_investment || !expected_return) {
+    if (!name || !min_investment) {
       return res.status(400).json({
         success: false,
-        message: 'Nome, investimento mínimo e retorno esperado são obrigatórios.'
+        message: 'Nome e investimento mínimo são obrigatórios.'
       });
     }
 
+    // Converter benefits para JSON se for array
+    let benefitsJson = '[]';
+    if (benefits && Array.isArray(benefits)) {
+      benefitsJson = JSON.stringify(benefits);
+    } else if (typeof benefits === 'string') {
+      try {
+        JSON.parse(benefits); // Validar JSON
+        benefitsJson = benefits;
+      } catch (e) {
+        benefitsJson = '[]';
+      }
+    }
+
     const result = await pool.query(
-      `INSERT INTO investment_plans (name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active, profit_fee_percentage)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO investment_plans (name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active, profit_fee_percentage, benefits)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
        RETURNING *`,
-      [name, description || null, min_investment, max_investment || null, expected_return, duration_days || null, risk_level || 'Medium', is_active !== undefined ? is_active : true, profit_fee_percentage || 0]
+      [name, description || null, min_investment, max_investment || null, expected_return || null, duration_days || null, risk_level || 'Medium', is_active !== undefined ? is_active : true, profit_fee_percentage || 0, benefitsJson]
     );
 
     res.json({
@@ -78,7 +91,24 @@ exports.createPlan = async (req, res) => {
 exports.updatePlan = async (req, res) => {
   try {
     const { planId } = req.params;
-    const { name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active, profit_fee_percentage } = req.body;
+    const { name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active, profit_fee_percentage, benefits } = req.body;
+
+    // Converter benefits para JSON se for array
+    let benefitsJson = null;
+    if (benefits !== undefined) {
+      if (Array.isArray(benefits)) {
+        benefitsJson = JSON.stringify(benefits);
+      } else if (typeof benefits === 'string') {
+        try {
+          JSON.parse(benefits); // Validar JSON
+          benefitsJson = benefits;
+        } catch (e) {
+          benefitsJson = '[]';
+        }
+      } else {
+        benefitsJson = '[]';
+      }
+    }
 
     const result = await pool.query(
       `UPDATE investment_plans
@@ -91,10 +121,11 @@ exports.updatePlan = async (req, res) => {
            risk_level = COALESCE($7, risk_level),
            is_active = COALESCE($8, is_active),
            profit_fee_percentage = COALESCE($9, profit_fee_percentage),
+           benefits = COALESCE($10::jsonb, benefits),
            updated_at = NOW()
-       WHERE id = $10
+       WHERE id = $11
        RETURNING *`,
-      [name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active, profit_fee_percentage, planId]
+      [name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active, profit_fee_percentage, benefitsJson, planId]
     );
 
     if (result.rows.length === 0) {

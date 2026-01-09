@@ -22,7 +22,8 @@ function AdminPlansPage() {
     duration_days: '',
     risk_level: 'Medium',
     is_active: true,
-    profit_fee_percentage: ''
+    profit_fee_percentage: '',
+    benefits: []
   })
   const [saving, setSaving] = useState(false)
 
@@ -53,6 +54,19 @@ function AdminPlansPage() {
 
   const handleEdit = (plan) => {
     setEditingPlan(plan)
+    // Parse benefits se for string JSON ou usar array diretamente
+    let benefits = []
+    if (plan.benefits) {
+      if (typeof plan.benefits === 'string') {
+        try {
+          benefits = JSON.parse(plan.benefits)
+        } catch (e) {
+          benefits = []
+        }
+      } else if (Array.isArray(plan.benefits)) {
+        benefits = plan.benefits
+      }
+    }
     setFormData({
       name: plan.name || '',
       description: plan.description || '',
@@ -62,7 +76,8 @@ function AdminPlansPage() {
       duration_days: plan.duration_days || '',
       risk_level: plan.risk_level || 'Medium',
       is_active: plan.is_active !== undefined ? plan.is_active : true,
-      profit_fee_percentage: plan.profit_fee_percentage || ''
+      profit_fee_percentage: plan.profit_fee_percentage || '',
+      benefits: benefits
     })
     setShowForm(true)
   }
@@ -78,24 +93,36 @@ function AdminPlansPage() {
       duration_days: '',
       risk_level: 'Medium',
       is_active: true,
-      profit_fee_percentage: ''
+      profit_fee_percentage: '',
+      benefits: []
     })
     setShowForm(true)
   }
 
   const handleSave = async () => {
-    if (!formData.name || !formData.min_investment || !formData.expected_return) {
-      alert('Preencha pelo menos: Nome, Investimento Mínimo e Retorno Esperado.')
+    if (!formData.name || !formData.min_investment) {
+      alert('Preencha pelo menos: Nome e Investimento Mínimo.')
+      return
+    }
+    // Filtrar benefícios vazios e validar
+    const validBenefits = formData.benefits.filter(b => b && b.trim() !== '')
+    if (validBenefits.length === 0) {
+      alert('Adicione pelo menos um benefício ao plano.')
       return
     }
 
     setSaving(true)
     try {
+      // Filtrar benefícios vazios antes de enviar
+      const planData = {
+        ...formData,
+        benefits: formData.benefits.filter(b => b && b.trim() !== '')
+      }
       let result
       if (editingPlan) {
-        result = await updatePlan(editingPlan.id, formData)
+        result = await updatePlan(editingPlan.id, planData)
       } else {
-        result = await createPlan(formData)
+        result = await createPlan(planData)
       }
 
       if (result.success) {
@@ -191,26 +218,41 @@ function AdminPlansPage() {
                       {plan.max_investment ? ` - $${parseFloat(plan.max_investment).toFixed(2)}` : '+'}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#6b7280]">Retorno Esperado:</span>
-                    <span className="font-semibold text-[#059669]">
-                      {parseFloat(plan.expected_return).toFixed(2)}%
-                    </span>
-                  </div>
-                  {plan.duration_days && (
-                    <div className="flex justify-between">
-                      <span className="text-[#6b7280]">Duração:</span>
-                      <span className="font-semibold text-[#111827]">
-                        {plan.duration_days} dias
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-[#6b7280]">Risco:</span>
-                    <span className="font-semibold text-[#111827]">
-                      {plan.risk_level === 'Low' ? 'Baixo' : plan.risk_level === 'Medium' ? 'Médio' : 'Alto'}
-                    </span>
-                  </div>
+                  {(() => {
+                    // Parse benefits se necessário
+                    let benefitsList = []
+                    if (plan.benefits) {
+                      if (typeof plan.benefits === 'string') {
+                        try {
+                          benefitsList = JSON.parse(plan.benefits)
+                        } catch (e) {
+                          benefitsList = []
+                        }
+                      } else if (Array.isArray(plan.benefits)) {
+                        benefitsList = plan.benefits
+                      }
+                    }
+                    
+                    if (benefitsList.length > 0) {
+                      return (
+                        <div className="mt-3">
+                          <span className="text-[#6b7280] text-xs block mb-2">Benefícios:</span>
+                          <ul className="space-y-1">
+                            {benefitsList.slice(0, 3).map((benefit, idx) => (
+                              <li key={idx} className="text-xs text-[#111827] flex items-start gap-1">
+                                <span className="text-[#00afaa] mt-0.5">•</span>
+                                <span>{benefit}</span>
+                              </li>
+                            ))}
+                            {benefitsList.length > 3 && (
+                              <li className="text-xs text-[#6b7280]">+{benefitsList.length - 3} mais...</li>
+                            )}
+                          </ul>
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
                 </div>
 
                 <div className="flex gap-2">
@@ -308,34 +350,6 @@ function AdminPlansPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-[#111827] mb-2 block">
-                      Retorno Esperado (%) *
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.expected_return}
-                      onChange={(e) => setFormData({ ...formData, expected_return: e.target.value })}
-                      className="w-full px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
-                      placeholder="5.0"
-                      step="0.01"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-[#111827] mb-2 block">
-                      Duração (dias)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.duration_days}
-                      onChange={(e) => setFormData({ ...formData, duration_days: e.target.value || null })}
-                      className="w-full px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
-                      placeholder="30"
-                    />
-                  </div>
-                </div>
-
                 <div>
                   <label className="text-sm font-medium text-[#111827] mb-2 block">
                     Taxa sobre Lucro (%) *
@@ -355,32 +369,65 @@ function AdminPlansPage() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-[#111827] mb-2 block">
-                      Nível de Risco
-                    </label>
-                    <select
-                      value={formData.risk_level}
-                      onChange={(e) => setFormData({ ...formData, risk_level: e.target.value })}
-                      className="w-full px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
+                <div>
+                  <label className="text-sm font-medium text-[#111827] mb-2 block">
+                    Benefícios do Plano *
+                  </label>
+                  <p className="text-xs text-[#6b7280] mb-3">
+                    Adicione os benefícios que aparecerão no card do plano (cada linha será um benefício)
+                  </p>
+                  <div className="space-y-2">
+                    {formData.benefits.map((benefit, index) => (
+                      <div key={index} className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={benefit}
+                          onChange={(e) => {
+                            const newBenefits = [...formData.benefits]
+                            newBenefits[index] = e.target.value
+                            setFormData({ ...formData, benefits: newBenefits })
+                          }}
+                          className="flex-1 px-3 py-2 border border-[#e5e7eb] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00afaa]"
+                          placeholder={`Benefício ${index + 1}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newBenefits = formData.benefits.filter((_, i) => i !== index)
+                            setFormData({ ...formData, benefits: newBenefits })
+                          }}
+                          className="px-3 py-2 bg-[#fee2e2] hover:bg-[#fecaca] text-[#dc2626] rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
+                        >
+                          <Icon icon="lucide:trash-2" className="text-sm" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, benefits: [...formData.benefits, ''] })
+                      }}
+                      className="w-full px-3 py-2 bg-[#f3f4f6] hover:bg-[#e5e7eb] text-[#111827] rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 border border-[#e5e7eb]"
                     >
-                      <option value="Low">Baixo</option>
-                      <option value="Medium">Médio</option>
-                      <option value="High">Alto</option>
-                    </select>
+                      <Icon icon="lucide:plus" className="text-sm" />
+                      Adicionar Benefício
+                    </button>
                   </div>
-                  <div className="flex items-end">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.is_active}
-                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                        className="w-4 h-4 text-[#00afaa] rounded focus:ring-2 focus:ring-[#00afaa]"
-                      />
-                      <span className="text-sm font-medium text-[#111827]">Plano Ativo</span>
-                    </label>
-                  </div>
+                  {formData.benefits.length === 0 && (
+                    <p className="text-xs text-[#dc2626] mt-2">Adicione pelo menos um benefício</p>
+                  )}
+                </div>
+
+                <div className="flex items-center">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_active}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                      className="w-4 h-4 text-[#00afaa] rounded focus:ring-2 focus:ring-[#00afaa]"
+                    />
+                    <span className="text-sm font-medium text-[#111827]">Plano Ativo</span>
+                  </label>
                 </div>
 
                 <div className="flex gap-3 pt-4">

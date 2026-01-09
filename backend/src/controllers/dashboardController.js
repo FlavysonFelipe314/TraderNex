@@ -608,7 +608,7 @@ exports.getInvestmentPlans = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, name, description, min_investment, max_investment,
-              expected_return, duration_days, risk_level
+              expected_return, duration_days, risk_level, benefits
        FROM investment_plans WHERE is_active = TRUE
        ORDER BY min_investment ASC`
     );

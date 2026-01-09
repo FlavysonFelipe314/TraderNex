@@ -142,49 +142,60 @@ function InvestirPlanosPage() {
                       <span className="text-[15px] font-bold text-[#111827]">US$ {plan.max_investment.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   )}
-                  <div className="flex justify-between items-center">
-                    <span className="text-[13px] font-medium text-[#6b7280]">Retorno esperado</span>
-                    <span className="text-base font-extrabold text-[#00afaa]">{plan.expected_return || 0}%</span>
-                  </div>
-                  {plan.duration_days && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-[13px] font-medium text-[#6b7280]">Duração</span>
-                      <span className="text-[15px] font-bold text-[#111827]">{plan.duration_days} dias</span>
-                    </div>
-                  )}
-                  {plan.risk_level && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-[13px] font-medium text-[#6b7280]">Risco</span>
-                      <span className={`text-[15px] font-bold ${
-                        plan.risk_level === 'Low' ? 'text-[#059669]' :
-                        plan.risk_level === 'Medium' ? 'text-[#d97706]' :
-                        'text-[#dc2626]'
-                      }`}>
-                        {plan.risk_level === 'Low' ? 'Baixo' : plan.risk_level === 'Medium' ? 'Médio' : 'Alto'}
-                      </span>
-                    </div>
-                  )}
                 </div>
                 <div className="h-px bg-[#f3f4f6] w-full my-1" />
                 <div className="flex flex-col gap-4 flex-1 pt-2">
-                  <div className="flex items-center gap-3 text-sm text-[#4b5563] font-medium">
-                    <div className="text-[#00afaa] flex-shrink-0 w-5 h-5 bg-[#f0fdf9] rounded-full flex items-center justify-center">
-                      <Icon icon="lucide:check" className="text-sm" />
-                    </div>
-                    Gestão automatizada Falcon FX
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-[#4b5563] font-medium">
-                    <div className="text-[#00afaa] flex-shrink-0 w-5 h-5 bg-[#f0fdf9] rounded-full flex items-center justify-center">
-                      <Icon icon="lucide:check" className="text-sm" />
-                    </div>
-                    Sem carência
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-[#4b5563] font-medium">
-                    <div className="text-[#00afaa] flex-shrink-0 w-5 h-5 bg-[#f0fdf9] rounded-full flex items-center justify-center">
-                      <Icon icon="lucide:check" className="text-sm" />
-                    </div>
-                    Capital sempre na sua conta
-                  </div>
+                  {(() => {
+                    // Parse benefits se for string JSON ou usar array diretamente
+                    let benefits = []
+                    if (plan.benefits) {
+                      if (typeof plan.benefits === 'string') {
+                        try {
+                          benefits = JSON.parse(plan.benefits)
+                        } catch (e) {
+                          benefits = []
+                        }
+                      } else if (Array.isArray(plan.benefits)) {
+                        benefits = plan.benefits
+                      }
+                    }
+                    
+                    // Se não houver benefícios configurados, mostrar mensagem padrão
+                    if (benefits.length === 0) {
+                      return (
+                        <>
+                          <div className="flex items-center gap-3 text-sm text-[#4b5563] font-medium">
+                            <div className="text-[#00afaa] flex-shrink-0 w-5 h-5 bg-[#f0fdf9] rounded-full flex items-center justify-center">
+                              <Icon icon="lucide:check" className="text-sm" />
+                            </div>
+                            Gestão automatizada Falcon FX
+                          </div>
+                          <div className="flex items-center gap-3 text-sm text-[#4b5563] font-medium">
+                            <div className="text-[#00afaa] flex-shrink-0 w-5 h-5 bg-[#f0fdf9] rounded-full flex items-center justify-center">
+                              <Icon icon="lucide:check" className="text-sm" />
+                            </div>
+                            Sem carência
+                          </div>
+                          <div className="flex items-center gap-3 text-sm text-[#4b5563] font-medium">
+                            <div className="text-[#00afaa] flex-shrink-0 w-5 h-5 bg-[#f0fdf9] rounded-full flex items-center justify-center">
+                              <Icon icon="lucide:check" className="text-sm" />
+                            </div>
+                            Capital sempre na sua conta
+                          </div>
+                        </>
+                      )
+                    }
+                    
+                    // Mostrar benefícios configurados
+                    return benefits.map((benefit, index) => (
+                      <div key={index} className="flex items-center gap-3 text-sm text-[#4b5563] font-medium">
+                        <div className="text-[#00afaa] flex-shrink-0 w-5 h-5 bg-[#f0fdf9] rounded-full flex items-center justify-center">
+                          <Icon icon="lucide:check" className="text-sm" />
+                        </div>
+                        {benefit}
+                      </div>
+                    ))
+                  })()}
                 </div>
                 <button 
                   onClick={() => handleSelectPlan(plan)}
