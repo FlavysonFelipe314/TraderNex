@@ -221,7 +221,7 @@ function DashboardPage() {
                 </div>
               </div>
               <div>
-                <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#059669] tracking-[-0.03em] leading-none">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-[#059669] tracking-[-0.03em] leading-none">
                   {myfxbookConnected && selectedMyfxbookAccount?.balance != null && !isNaN(parseFloat(selectedMyfxbookAccount.balance))
                     ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(selectedMyfxbookAccount.balance))
                     : `$ ${dashboardData?.profile?.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`}
@@ -243,8 +243,10 @@ function DashboardPage() {
                 </div>
               </div>
               <div>
-                <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
-                  $ {dashboardData?.profile?.total_invested?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
+                  {myfxbookConnected && myfxbookAccountData?.account?.deposits != null 
+                    ? formatCurrencyBR(parseFloat(myfxbookAccountData.account.deposits || 0))
+                    : `$ ${dashboardData?.profile?.total_invested?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`}
                 </div>
                 <div className="text-xs text-[#94A3B8] flex items-center gap-1.5 font-medium mt-1">
                   <span>Total investido</span>
@@ -275,7 +277,7 @@ function DashboardPage() {
                       : myfxbookProfit
                     
                     return (
-                      <div className={`text-xl sm:text-2xl lg:text-[28px] font-bold tracking-[-0.03em] leading-none ${
+                      <div className={`text-lg sm:text-xl lg:text-2xl font-bold tracking-[-0.03em] leading-none ${
                         netProfit >= 0 ? 'text-[#059669]' : 'text-[#dc2626]'
                       }`}>
                         {formatCurrencyBR(netProfit)}
@@ -314,7 +316,7 @@ function DashboardPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-[#0F172A] tracking-[-0.03em] leading-none">
                     {dashboardData?.profile?.profit_fee_percentage?.toFixed(1) || '0'}%
                   </div>
                 </div>
@@ -335,16 +337,18 @@ function DashboardPage() {
                 </div>
               </div>
               <div>
-                <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#dc2626] tracking-[-0.03em] leading-none">
-                  {loadingWithdrawals ? '...' : (() => {
-                    const totalWithdrawals = withdrawals.reduce((sum, w) => {
-                      if (w.status === 'completed') {
-                        return sum + Math.abs(parseFloat(w.amount) || 0)
-                      }
-                      return sum
-                    }, 0)
-                    return formatCurrencyBR(totalWithdrawals)
-                  })()}
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-[#dc2626] tracking-[-0.03em] leading-none">
+                  {myfxbookConnected && myfxbookAccountData?.account?.withdrawals != null
+                    ? formatCurrencyBR(parseFloat(myfxbookAccountData.account.withdrawals || 0))
+                    : (loadingWithdrawals ? '...' : (() => {
+                        const totalWithdrawals = withdrawals.reduce((sum, w) => {
+                          if (w.status === 'completed') {
+                            return sum + Math.abs(parseFloat(w.amount) || 0)
+                          }
+                          return sum
+                        }, 0)
+                        return formatCurrencyBR(totalWithdrawals)
+                      })())}
                 </div>
                 <div className="text-xs text-[#94A3B8] mt-1">
                   Total retirado

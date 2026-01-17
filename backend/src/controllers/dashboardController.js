@@ -578,7 +578,9 @@ exports.getMyfxbookData = async (req, res) => {
           maxDrawdownDate: targetAccount.maxDrawdownDate,
           maxDrawdownValue: targetAccount.maxDrawdownValue,
           interest: targetAccount.interest,
-          commission: targetAccount.commission
+          commission: targetAccount.commission,
+          deposits: targetAccount.deposits || targetAccount.deposit || 0,
+          withdrawals: targetAccount.withdrawals || targetAccount.withdrawal || 0
         },
         openTrades: openTradesResult.success ? (openTradesResult.openTrades || []) : [],
         openOrders: openOrdersResult.success ? (openOrdersResult.openOrders || []) : [],
