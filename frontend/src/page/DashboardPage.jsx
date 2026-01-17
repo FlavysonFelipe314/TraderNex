@@ -208,7 +208,7 @@ function DashboardPage() {
         {!loading && (
           <ApprovalBlurOverlay isApproved={isFullyApproved}>
             <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 ${
-              dashboardData?.profile?.selected_plan_id ? 'xl:grid-cols-4' : 'xl:grid-cols-3'
+              dashboardData?.profile?.selected_plan_id ? 'xl:grid-cols-5' : 'xl:grid-cols-4'
             }`}>
             {/* Card Saldo Total */}
             <div className="group bg-white rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-4 sm:gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
@@ -323,101 +323,34 @@ function DashboardPage() {
                 </div>
               </div>
             )}
-            </div>
-          </ApprovalBlurOverlay>
-        )}
 
-        {/* Card de Retiradas */}
-        {!loading && (
-          <ApprovalBlurOverlay isApproved={isFullyApproved}>
-            <div className="bg-white rounded-xl sm:rounded-2xl border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] overflow-hidden">
-              <div className="p-4 sm:p-6 lg:p-8 border-b border-[#F8FAFC] bg-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 bg-[#dc2626] rounded-[10px] flex items-center justify-center text-white">
-                      <Icon icon="lucide:arrow-up-circle" className="text-lg" />
-                    </div>
-                    <div>
-                      <div className="text-base font-bold text-[#0F172A] tracking-[-0.01em]">
-                        Retiradas
-                      </div>
-                      <div className="text-[13px] text-[#64748B] mt-1">
-                        Histórico de saques realizados
-                      </div>
-                    </div>
-                  </div>
+            {/* Card Retiradas */}
+            <div className="group bg-white rounded-xl sm:rounded-2xl p-5 sm:p-8 border border-[rgba(0,0,0,0.03)] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_10px_15px_-3px_rgba(0,0,0,0.04)] flex flex-col gap-4 sm:gap-5 transition-all duration-300 relative overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)] cursor-pointer" data-media-type="banani-button">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold text-[#64748B] uppercase tracking-[0.04em]">
+                  Retiradas
+                </div>
+                <div className="w-8 h-8 rounded-[10px] bg-[#F8FAFC] flex items-center justify-center text-[#94A3B8] transition-all duration-300 group-hover:bg-[rgba(220,38,38,0.1)] group-hover:text-[#dc2626]">
+                  <Icon icon="lucide:arrow-up-circle" className="text-base" />
                 </div>
               </div>
-              
-              <div className="p-4 sm:p-6 lg:p-8">
-                {loadingWithdrawals ? (
-                  <div className="flex justify-center items-center py-8">
-                    <div className="w-6 h-6 border-2 border-[#00afaa] border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : withdrawals.length > 0 ? (
-                  <div className="space-y-3">
-                    {withdrawals.map((withdrawal) => {
-                      const withdrawalDate = withdrawal.created_at 
-                        ? new Date(withdrawal.created_at).toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })
-                        : 'Data não disponível'
-                      
-                      const statusColors = {
-                        completed: { bg: 'bg-[#d1fae5]', text: 'text-[#065f46]', label: 'Concluída' },
-                        pending: { bg: 'bg-[#fef3c7]', text: 'text-[#92400e]', label: 'Pendente' },
-                        failed: { bg: 'bg-[#fee2e2]', text: 'text-[#991b1b]', label: 'Falhou' },
-                        cancelled: { bg: 'bg-[#f3f4f6]', text: 'text-[#374151]', label: 'Cancelada' }
+              <div>
+                <div className="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#dc2626] tracking-[-0.03em] leading-none">
+                  {loadingWithdrawals ? '...' : (() => {
+                    const totalWithdrawals = withdrawals.reduce((sum, w) => {
+                      if (w.status === 'completed') {
+                        return sum + Math.abs(parseFloat(w.amount) || 0)
                       }
-                      
-                      const status = statusColors[withdrawal.status] || statusColors.pending
-                      
-                      return (
-                        <div 
-                          key={withdrawal.id} 
-                          className="flex items-center justify-between p-4 bg-[#f9fafb] rounded-lg border border-[#f3f4f6] hover:bg-white hover:border-[#e5e7eb] transition-all"
-                        >
-                          <div className="flex items-center gap-4 flex-1">
-                            <div className="w-10 h-10 rounded-lg bg-[#fee2e2] flex items-center justify-center text-[#dc2626] flex-shrink-0">
-                              <Icon icon="lucide:arrow-up" className="text-lg" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <div className="text-sm font-semibold text-[#111827]">
-                                  {formatCurrencyBR(Math.abs(parseFloat(withdrawal.amount) || 0))}
-                                </div>
-                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${status.bg} ${status.text}`}>
-                                  {status.label}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-[#6b7280]">
-                                <Icon icon="lucide:calendar" className="text-xs" />
-                                <span>{withdrawalDate}</span>
-                                {withdrawal.description && (
-                                  <>
-                                    <span>•</span>
-                                    <span className="truncate">{withdrawal.description}</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-[#6b7280] text-sm">
-                    <Icon icon="lucide:arrow-up-circle" className="text-3xl mx-auto mb-3 text-[#9ca3af]" />
-                    <p className="font-medium mb-1">Nenhuma retirada realizada</p>
-                    <p className="text-xs text-[#9ca3af]">Suas retiradas aparecerão aqui quando forem processadas</p>
-                  </div>
-                )}
+                      return sum
+                    }, 0)
+                    return formatCurrencyBR(totalWithdrawals)
+                  })()}
+                </div>
+                <div className="text-xs text-[#94A3B8] mt-1">
+                  Total retirado
+                </div>
               </div>
+            </div>
             </div>
           </ApprovalBlurOverlay>
         )}
