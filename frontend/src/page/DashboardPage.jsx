@@ -39,16 +39,38 @@ function DashboardPage() {
       (dashboardData?.profile?.mt4_credentials_status === 'approved' || 
        !dashboardData?.profile?.mt4_credentials_status) // Se não tem credenciais configuradas, considera aprovado
 
-  // Função auxiliar para verificar se um trade NÃO é uma retirada
-  // Retiradas não têm side válido (buy ou sell)
-  // Qualquer coisa com side válido é uma operação (mesmo sem symbol válido)
-  const isNotWithdrawal = (trade) => {
-    // Se tem side válido (buy ou sell), é uma operação, não retirada
-    return trade.side === 'buy' || trade.side === 'sell'
+  // Função auxiliar para verificar se um trade é uma retirada
+  // Retiradas são identificadas por NÃO terem side válido (buy/sell) E NÃO terem symbol válido
+  // Se tiver pelo menos um dos dois (side ou symbol), é uma operação
+  const isWithdrawal = (trade) => {
+    // Verificar se tem side válido (case-insensitive)
+    const side = String(trade.side || '').toLowerCase().trim()
+    const hasValidSide = side === 'buy' || side === 'sell'
+    
+    // Verificar se tem symbol válido
+    const hasValidSymbol = trade.symbol && 
+      String(trade.symbol).trim() !== '' && 
+      String(trade.symbol).toUpperCase().trim() !== 'N/A'
+    
+    // É retirada apenas se NÃO tem side válido E NÃO tem symbol válido
+    // Se tem qualquer um dos dois, é uma operação
+    return !hasValidSide && !hasValidSymbol
   }
 
   // Filtrar apenas operações (excluir retiradas) do histórico
-  const realOperations = myfxbookAccountData?.history?.filter(isNotWithdrawal) || []
+  // Mostrar tudo que NÃO é retirada (tem side ou symbol válido)
+  const realOperations = myfxbookAccountData?.history?.filter(trade => !isWithdrawal(trade)) || []
+  
+  // Log temporário para debug
+  if (myfxbookAccountData?.history && myfxbookAccountData.history.length > 0) {
+    console.log('[Dashboard] Histórico total:', myfxbookAccountData.history.length)
+    console.log('[Dashboard] Operações filtradas:', realOperations.length)
+    console.log('[Dashboard] Primeiras 3 entradas do histórico:', myfxbookAccountData.history.slice(0, 3).map(t => ({
+      side: t.side,
+      symbol: t.symbol,
+      profit: t.profit
+    })))
+  }
 
   // Habilitar scroll no body quando o componente montar
   useEffect(() => {
