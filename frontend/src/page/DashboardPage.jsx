@@ -39,18 +39,16 @@ function DashboardPage() {
       (dashboardData?.profile?.mt4_credentials_status === 'approved' || 
        !dashboardData?.profile?.mt4_credentials_status) // Se não tem credenciais configuradas, considera aprovado
 
-  // Função auxiliar para verificar se um trade é uma operação real (não retirada)
-  const isRealOperation = (trade) => {
-    // Operações reais têm symbol válido e side válido (buy ou sell)
-    // Retiradas não têm symbol ou têm valores inválidos
-    return trade.symbol && 
-      trade.symbol.trim() !== '' && 
-      trade.symbol.toUpperCase() !== 'N/A' &&
-      (trade.side === 'buy' || trade.side === 'sell')
+  // Função auxiliar para verificar se um trade NÃO é uma retirada
+  // Retiradas não têm side válido (buy ou sell)
+  // Qualquer coisa com side válido é uma operação (mesmo sem symbol válido)
+  const isNotWithdrawal = (trade) => {
+    // Se tem side válido (buy ou sell), é uma operação, não retirada
+    return trade.side === 'buy' || trade.side === 'sell'
   }
 
-  // Filtrar apenas operações reais do histórico
-  const realOperations = myfxbookAccountData?.history?.filter(isRealOperation) || []
+  // Filtrar apenas operações (excluir retiradas) do histórico
+  const realOperations = myfxbookAccountData?.history?.filter(isNotWithdrawal) || []
 
   // Habilitar scroll no body quando o componente montar
   useEffect(() => {
