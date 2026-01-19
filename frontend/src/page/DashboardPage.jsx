@@ -39,6 +39,19 @@ function DashboardPage() {
       (dashboardData?.profile?.mt4_credentials_status === 'approved' || 
        !dashboardData?.profile?.mt4_credentials_status) // Se não tem credenciais configuradas, considera aprovado
 
+  // Função auxiliar para verificar se um trade é uma operação real (não retirada)
+  const isRealOperation = (trade) => {
+    // Operações reais têm symbol válido e side válido (buy ou sell)
+    // Retiradas não têm symbol ou têm valores inválidos
+    return trade.symbol && 
+      trade.symbol.trim() !== '' && 
+      trade.symbol.toUpperCase() !== 'N/A' &&
+      (trade.side === 'buy' || trade.side === 'sell')
+  }
+
+  // Filtrar apenas operações reais do histórico
+  const realOperations = myfxbookAccountData?.history?.filter(isRealOperation) || []
+
   // Habilitar scroll no body quando o componente montar
   useEffect(() => {
     document.body.classList.add('scroll-enabled')
@@ -433,7 +446,7 @@ function DashboardPage() {
             
             <div className="p-4 sm:p-6 lg:p-8">
               {/* Histórico Recente */}
-              {myfxbookAccountData?.history && myfxbookAccountData.history.length > 0 && (
+              {realOperations.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Icon icon="lucide:clock" className="text-base text-[#64748B]" />
@@ -454,7 +467,7 @@ function DashboardPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#f3f4f6]">
-                          {myfxbookAccountData.history.slice(0, 10).map((trade, idx) => {
+                          {realOperations.slice(0, 10).map((trade, idx) => {
                             const closeTime = trade.closeTime || trade.openTime
                             const formattedDate = closeTime 
                               ? new Date(closeTime).toLocaleString('pt-BR', { 
@@ -495,7 +508,7 @@ function DashboardPage() {
                 </div>
               )}
               
-              {(!myfxbookAccountData || !myfxbookAccountData.history || myfxbookAccountData.history.length === 0) && (
+              {realOperations.length === 0 && (
                 <div className="text-center py-8 text-[#6b7280] text-sm">
                   <Icon icon="lucide:info" className="text-2xl mx-auto mb-2 text-[#9ca3af]" />
                   <p>{loadingMyfxbook ? 'Carregando histórico...' : 'Nenhum histórico disponível ainda.'}</p>
