@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo.png'],
+      includeAssets: ['logo.png', 'logo-ico.png'],
       manifest: {
         name: 'TraderNex - Dashboard',
         short_name: 'TraderNex',
@@ -21,16 +21,28 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: '/logo.png',
+            src: '/logo-ico.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           },
           {
-            src: '/logo.png',
+            src: '/logo-ico.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: '/logo-ico.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
+            src: '/logo-ico.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ],
         categories: ['finance', 'business', 'productivity']

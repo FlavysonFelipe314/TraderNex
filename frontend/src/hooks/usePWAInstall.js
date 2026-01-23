@@ -17,6 +17,9 @@ export function usePWAInstall() {
     // Detectar Safari (iOS ou desktop)
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || iOS
     setIsIOS(iOS)
+    
+    // Variável para usar no return
+    let safariDetected = isSafari
 
     // Detectar se já está instalado (modo standalone)
     const standalone = window.matchMedia('(display-mode: standalone)').matches ||
@@ -41,8 +44,14 @@ export function usePWAInstall() {
     }
 
     // Para Safari desktop (macOS) - também pode instalar PWA
-    if (isSafari && !iOS && !standalone && 'serviceWorker' in navigator) {
+    if (safariDetected && !iOS && !standalone && 'serviceWorker' in navigator) {
       // Safari desktop suporta PWA desde a versão 16.4+
+      setIsInstallable(true)
+    }
+
+    // Para outros navegadores, sempre permitir mostrar o botão se tiver service worker
+    if (!standalone && 'serviceWorker' in navigator && !safariDetected && !iOS) {
+      // Mesmo sem prompt nativo, podemos mostrar instruções
       setIsInstallable(true)
     }
 
@@ -107,6 +116,17 @@ export function usePWAInstall() {
         success: false, 
         message: 'safari-instructions',
         instructions: 'Para instalar no Safari: vá em Arquivo > Adicionar à Tela de Início ou use o menu Compartilhar'
+      }
+    }
+
+    // Para Chrome/Edge quando não há prompt nativo - mostrar instruções
+    const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent)
+    const isEdge = /Edg/.test(navigator.userAgent)
+    if ((isChrome || isEdge) && !isStandalone) {
+      return { 
+        success: false, 
+        message: 'chrome-instructions',
+        instructions: 'Para instalar: clique no ícone de instalação na barra de endereços ou vá em Menu > Instalar TraderNex'
       }
     }
 

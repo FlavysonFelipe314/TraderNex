@@ -24,8 +24,13 @@ function LoginPage() {
   const handleInstallClick = async () => {
     const result = await install()
     
-    if (result.message === 'ios-instructions' || result.message === 'safari-instructions') {
-      setInstructionType(result.message === 'ios-instructions' ? 'ios' : 'safari')
+    if (result.message === 'ios-instructions' || result.message === 'safari-instructions' || result.message === 'chrome-instructions') {
+      const typeMap = {
+        'ios-instructions': 'ios',
+        'safari-instructions': 'safari',
+        'chrome-instructions': 'chrome'
+      }
+      setInstructionType(typeMap[result.message] || 'ios')
       setShowInstructions(true)
     } else if (result.success) {
       // Instalação bem-sucedida - pode mostrar uma mensagem de sucesso
@@ -296,8 +301,8 @@ function LoginPage() {
             </button>
           </form>
 
-          {/* Botão de Instalação PWA */}
-          {(isInstallable || (isIOS && !isInstalled)) && (
+          {/* Botão de Instalação PWA - Sempre mostrar se não estiver instalado */}
+          {!isInstalled && (
             <div className="mb-6">
               <button
                 type="button"
@@ -322,7 +327,11 @@ function LoginPage() {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-blue-900 mb-2">
-                        {instructionType === 'ios' ? 'Como instalar no iOS:' : 'Como instalar no Safari:'}
+                        {instructionType === 'ios' 
+                          ? 'Como instalar no iOS:' 
+                          : instructionType === 'safari'
+                          ? 'Como instalar no Safari:'
+                          : 'Como instalar:'}
                       </p>
                       {instructionType === 'ios' ? (
                         <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
@@ -330,11 +339,17 @@ function LoginPage() {
                           <li>Role para baixo e selecione <strong>"Adicionar à Tela de Início"</strong></li>
                           <li>Toque em <strong>"Adicionar"</strong> no canto superior direito</li>
                         </ol>
-                      ) : (
+                      ) : instructionType === 'safari' ? (
                         <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
                           <li>No menu do Safari, vá em <strong>Arquivo</strong> → <strong>Adicionar à Tela de Início</strong></li>
                           <li>Ou use o botão <strong>Compartilhar</strong> na barra de ferramentas</li>
                           <li>Selecione <strong>"Adicionar à Tela de Início"</strong> e confirme</li>
+                        </ol>
+                      ) : (
+                        <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                          <li>Procure o ícone de <strong>instalação</strong> (⊕) na barra de endereços do navegador</li>
+                          <li>Ou vá em <strong>Menu</strong> (três pontos) → <strong>Instalar TraderNex</strong></li>
+                          <li>Clique em <strong>"Instalar"</strong> na janela que aparecer</li>
                         </ol>
                       )}
                     </div>
