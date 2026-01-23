@@ -2,19 +2,35 @@ import { Icon } from '@iconify/react'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { usePWAInstall } from '../hooks/usePWAInstall'
 
 function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall()
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showInstructions, setShowInstructions] = useState(false)
+  const [instructionType, setInstructionType] = useState('ios')
 
   const handleRegisterClick = () => {
     navigate('/register')
+  }
+
+  const handleInstallClick = async () => {
+    const result = await install()
+    
+    if (result.message === 'ios-instructions' || result.message === 'safari-instructions') {
+      setInstructionType(result.message === 'ios-instructions' ? 'ios' : 'safari')
+      setShowInstructions(true)
+    } else if (result.success) {
+      // Instalação bem-sucedida - pode mostrar uma mensagem de sucesso
+      console.log('App instalado com sucesso!')
+    }
   }
 
   const handleInputChange = (e) => {
@@ -279,6 +295,71 @@ function LoginPage() {
               )}
             </button>
           </form>
+
+          {/* Botão de Instalação PWA */}
+          {(isInstallable || (isIOS && !isInstalled)) && (
+            <div className="mb-6">
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className="w-full h-[48px] sm:h-[54px] bg-gradient-to-r from-[#00ff88] to-[#00afaa] text-[#0e0e10] border-none rounded-[12px] text-sm sm:text-base font-semibold cursor-pointer transition-all flex items-center justify-center gap-3 hover:from-[#00e67a] hover:to-[#009d8f] hover:-translate-y-[1px] hover:shadow-[0_4px_12px_rgba(0,255,136,0.3)]"
+                data-media-type="banani-button"
+              >
+                <div className="w-[18px] h-[18px] flex items-center justify-center">
+                  <Icon
+                    icon={isIOS ? "lucide:download" : "lucide:smartphone"}
+                    className="text-lg"
+                  />
+                </div>
+                {isIOS ? 'Instalar App' : 'Instalar TraderNex'}
+              </button>
+              
+              {showInstructions && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 flex items-center justify-center text-blue-600 mt-0.5">
+                      <Icon icon="lucide:info" className="text-lg" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-blue-900 mb-2">
+                        {instructionType === 'ios' ? 'Como instalar no iOS:' : 'Como instalar no Safari:'}
+                      </p>
+                      {instructionType === 'ios' ? (
+                        <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                          <li>Toque no botão <strong>Compartilhar</strong> (ícone de quadrado com seta) na parte inferior da tela</li>
+                          <li>Role para baixo e selecione <strong>"Adicionar à Tela de Início"</strong></li>
+                          <li>Toque em <strong>"Adicionar"</strong> no canto superior direito</li>
+                        </ol>
+                      ) : (
+                        <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                          <li>No menu do Safari, vá em <strong>Arquivo</strong> → <strong>Adicionar à Tela de Início</strong></li>
+                          <li>Ou use o botão <strong>Compartilhar</strong> na barra de ferramentas</li>
+                          <li>Selecione <strong>"Adicionar à Tela de Início"</strong> e confirme</li>
+                        </ol>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setShowInstructions(false)}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <Icon icon="lucide:x" className="text-lg" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {isInstalled && (
+            <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+              <div className="w-5 h-5 flex items-center justify-center text-green-600">
+                <Icon icon="lucide:check-circle" className="text-lg" />
+              </div>
+              <p className="text-sm text-green-800 font-medium">
+                App instalado! Acesse pelo ícone na sua tela inicial.
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center justify-center gap-2 mt-8 text-xs text-[#9ca3af]">
             <div className="w-[14px] h-[14px] flex items-center justify-center">
