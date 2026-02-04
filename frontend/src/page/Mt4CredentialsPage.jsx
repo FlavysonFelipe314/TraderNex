@@ -85,6 +85,20 @@ const BROKERS_CONFIG = {
     // VantageGlobalPrime
     'VantageGlobalPrime-Demo',
     'VantageGlobalPrimeLLP-Live'
+  ],
+  'FBS': [
+    // VantageInternational
+'FBS-Demo',
+      'FBS-Real-1',
+      'FBS-Real-2',
+      'FBS-Real-3',
+      'FBS-Real-4',
+      'FBS-Real-5',
+      'FBS-Real-6',
+      'FBS-Real-7',
+      'FBS-Real-8',
+      'FBS-Real-9',
+      'FBS-Real-10'
   ]
 }
 
