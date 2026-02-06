@@ -99,6 +99,9 @@ const BROKERS_CONFIG = {
       'FBS-Real-8',
       'FBS-Real-9',
       'FBS-Real-10'
+  ],
+  'Exclusive Markets': [
+      'ExclusiveMarkets-Live 2'
   ]
 }
 
