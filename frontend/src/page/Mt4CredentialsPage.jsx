@@ -184,6 +184,10 @@ const BROKERS_CONFIG = {
     'Exness-Trial16',
     'ExnessCY-Trial'
   ]
+  ,
+  // Brokers de fallback (sem servidores listados) necessários para recomendações automáticas
+  'Just Markets': [],
+  'PUPRIME': []
 }
 
 const AVAILABLE_BROKERS = Object.keys(BROKERS_CONFIG)
@@ -203,6 +207,8 @@ function Mt4CredentialsPage() {
   const [success, setSuccess] = useState(false)
   const [availableServers, setAvailableServers] = useState([])
   const [riskProfile, setRiskProfile] = useState('moderado')
+  const [depositCapital, setDepositCapital] = useState('')
+  const [recommendedBrokers, setRecommendedBrokers] = useState([])
   const [showSetupMessage, setShowSetupMessage] = useState(false)
 
   useEffect(() => {
@@ -226,6 +232,21 @@ function Mt4CredentialsPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.broker])
+
+  // Recomendações de corretora com base no capital depositado
+  useEffect(() => {
+    const capital = Number(String(depositCapital).replace(/[^0-9.]/g, '')) || 0
+    let rec = []
+    if (capital >= 200 && capital <= 999) {
+      rec = ['Exclusive Markets', 'Just Markets']
+    } else if (capital >= 1000 && capital <= 4999) {
+      // Usar chave que existe no BROKERS_CONFIG
+      rec = ['PUPRIME', 'Roboforex']
+    } else if (capital >= 5000) {
+      rec = ['Vantage Markets']
+    }
+    setRecommendedBrokers(rec)
+  }, [depositCapital])
 
   // Carregar dados existentes da conta MT4
   useEffect(() => {
@@ -416,6 +437,63 @@ function Mt4CredentialsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Capital depositado e recomendação de corretora */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-semibold text-[#374151]">Capital depositado na corretora (USD)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={depositCapital}
+                  onChange={(e) => setDepositCapital(e.target.value)}
+                  placeholder="Ex: 200"
+                  className="w-full h-11 pl-4 pr-4 bg-[#f9fafb] border border-[#e5e7eb] rounded-xl text-sm outline-none focus:border-[#00afaa] focus:ring-2 focus:ring-[#00afaa]/10 transition-all"
+                />
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
+                  <span className="text-xs text-[#6b7280]">Com base no capital, mostramos corretoras recomendadas.</span>
+                  <div>
+                    <label className="text-[12px] text-[#6b7280] mb-1 inline-block">Tipo de conta (recomendado)</label>
+                    <select
+                      value={''}
+                      onChange={() => {}}
+                      className="w-full h-9 pl-3 pr-3 bg-white border border-[#e5e7eb] rounded-lg text-sm outline-none"
+                    >
+                      <option value="">Automático</option>
+                      <option value="CENT">CENT</option>
+                      <option value="Standard">Standard</option>
+                      <option value="Micro">Micro</option>
+                      <option value="Conta ECN">Conta ECN</option>
+                      <option value="Conta ECN RAW">Conta ECN RAW</option>
+                      <option value="Conta PRO">Conta PRO</option>
+                      <option value="Conta Prime">Conta Prime</option>
+                      <option value="DEMO">DEMO</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {recommendedBrokers.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-semibold text-[#374151]">Corretora (Broker) Recomendada</label>
+                  <div className="relative">
+                    <select
+                      name="recommended_broker"
+                      value={formData.broker}
+                      onChange={handleBrokerChange}
+                      className="w-full h-11 pl-4 pr-4 bg-[#f9fafb] border border-[#e5e7eb] rounded-xl text-sm outline-none focus:border-[#00afaa] focus:ring-2 focus:ring-[#00afaa]/10 transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="">{recommendedBrokers.join(' / ')}</option>
+                      {recommendedBrokers.map(rb => (
+                        <option key={rb} value={rb}>{rb}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] pointer-events-none">
+                      <Icon icon="lucide:chevron-down" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="flex flex-col gap-1.5">

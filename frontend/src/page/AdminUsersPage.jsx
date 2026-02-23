@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '@iconify/react'
 import DashboardLayout from '../components/DashboardLayout'
-import { getAllUsers, deleteUser } from '../services/adminService'
+import { getAllUsers, deleteUser, updateUserAccountType } from '../services/adminService'
 
 function AdminUsersPage() {
   const [users, setUsers] = useState([])
@@ -36,6 +36,8 @@ function AdminUsersPage() {
           created_at: user.created_at,
           plan_name: user.plan_name,
           selected_plan_id: user.selected_plan_id,
+          account_type: user.account_type || '',
+          suggested_account_type: (user.mt4_accounts && user.mt4_accounts.some(acc => acc.balance !== null && Number(acc.balance) <= 5000)) ? 'CENT' : null,
           has_mt4: user.has_mt4 || false,
           has_myfxbook: user.has_myfxbook || false
         })))
@@ -154,6 +156,11 @@ function AdminUsersPage() {
                       </div>
                     )}
                   </div>
+                  {user.suggested_account_type && (
+                    <div className="mt-2 text-xs text-[#6b7280]">
+                      Sugestão automática: <span className="font-semibold text-[#059669]">{user.suggested_account_type}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2 mb-4 text-sm">
@@ -178,6 +185,35 @@ function AdminUsersPage() {
                     }`}>
                       {user.has_mt4 ? 'Configurado' : 'Não configurado'}
                     </span>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="text-sm text-[#6b7280]">Tipo de Conta</label>
+                  <div className="mt-2">
+                    <select
+                      value={user.account_type || ''}
+                      onChange={async (e) => {
+                        const newType = e.target.value
+                        // Atualizar localmente
+                        setUsers(prev => prev.map(u => u.id === user.id ? { ...u, account_type: newType } : u))
+                        const res = await updateUserAccountType(user.id, newType)
+                        if (!res.success) {
+                          alert('Erro ao atualizar tipo de conta: ' + (res.message || ''))
+                        }
+                      }}
+                      className="w-full text-sm rounded-lg border border-[#e5e7eb] px-3 py-2 bg-white"
+                    >
+                      <option value="">-- Selecionar --</option>
+                      <option value="CENT">CENT</option>
+                      <option value="Standard">Standard</option>
+                      <option value="Micro">Micro</option>
+                      <option value="Conta ECN">Conta ECN</option>
+                      <option value="Conta ECN RAW">Conta ECN RAW</option>
+                      <option value="Conta PRO">Conta PRO</option>
+                      <option value="Conta Prime">Conta Prime</option>
+                      <option value="DEMO">DEMO</option>
+                    </select>
                   </div>
                 </div>
 

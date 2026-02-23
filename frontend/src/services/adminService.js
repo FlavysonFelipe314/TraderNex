@@ -337,6 +337,27 @@ export const updateUserPlan = async (userId, planId) => {
     }
   }
 }
+}
+
+// Atualizar tipo de conta do usuário (Admin)
+export const updateUserAccountType = async (userId, accountType) => {
+  try {
+    const response = await api.put(`/api/admin/users/${userId}/account-type`, {
+      account_type: accountType
+    })
+    return {
+      success: response.data.success,
+      message: response.data.message
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar tipo de conta do usuário:', error)
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Erro ao atualizar tipo de conta do usuário.',
+      error: error.response?.data
+    }
+  }
+}
 
 // Obter planos pendentes de aprovação (Admin)
 export const getPendingPlanApprovals = async () => {

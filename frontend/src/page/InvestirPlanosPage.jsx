@@ -124,10 +124,19 @@ function InvestirPlanosPage() {
           ) : plans.length > 0 ? (
             plans.map((plan) => (
               <div key={plan.id} className="bg-white rounded-[16px] sm:rounded-[20px] border border-[#e5e7eb] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.04)] p-6 sm:p-9 flex flex-col gap-4 sm:gap-6 relative transition-all hover:-translate-y-2 hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.08)] min-h-[500px] sm:min-h-[560px]">
-                <div className="text-center flex flex-col gap-2 sm:gap-3">
-                  <div className="text-xl sm:text-2xl font-bold text-[#111827] tracking-[-0.02em]">{plan.name}</div>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 text-left">
+                    <div className="text-xl sm:text-2xl font-bold text-[#111827] tracking-[-0.02em]">{plan.name}</div>
                   <div className="text-xs sm:text-sm text-[#6b7280] leading-normal font-normal min-h-[36px] sm:min-h-[42px]">
-                    {plan.description || 'Plano de investimento'}
+                      {plan.description || 'Plano de investimento'}
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <div className="text-[11px] text-[#6b7280] mb-1">Taxa de performance</div>
+                    <div className="inline-flex items-baseline gap-2">
+                      <div className="text-3xl sm:text-4xl font-extrabold text-[#00afaa]">{plan.profit_fee_percentage ? `${plan.profit_fee_percentage}%` : '—'}</div>
+                      <div className="text-xs text-[#6b7280]">sobre o lucro</div>
+                    </div>
                   </div>
                 </div>
                 <div className="h-px bg-[#f3f4f6] w-full my-1" />
@@ -236,7 +245,10 @@ function InvestirPlanosPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[13px] font-medium text-[#6b7280]">Taxa de performance</span>
-                <span className="text-base font-extrabold text-[#00afaa]">50%</span>
+                <div className="inline-flex items-baseline gap-2">
+                  <div className="text-2xl sm:text-3xl font-extrabold text-[#00afaa]">50%</div>
+                  <div className="text-xs text-[#6b7280]">sobre o lucro</div>
+                </div>
               </div>
             </div>
             <div className="h-px bg-[#f3f4f6] w-full my-1" />
@@ -287,7 +299,10 @@ function InvestirPlanosPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[13px] font-medium text-[#6b7280]">Taxa de performance</span>
-                <span className="text-base font-extrabold text-[#00afaa]">40%</span>
+                <div className="inline-flex items-baseline gap-2">
+                  <div className="text-2xl sm:text-3xl font-extrabold text-[#00afaa]">40%</div>
+                  <div className="text-xs text-[#6b7280]">sobre o lucro</div>
+                </div>
               </div>
             </div>
             <div className="h-px bg-[#f3f4f6] w-full my-1" />
@@ -363,7 +378,10 @@ function InvestirPlanosPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[13px] font-medium text-[#6b7280]">Taxa de performance</span>
-                <span className="text-xl font-extrabold text-[#00bf9c]" style={{ textShadow: '0 0 20px rgba(0,255,136,0.15)' }}>30%</span>
+                <div className="inline-flex items-baseline gap-2">
+                  <div className="text-3xl sm:text-4xl font-extrabold text-[#00bf9c]" style={{ textShadow: '0 0 20px rgba(0,255,136,0.15)' }}>30%</div>
+                  <div className="text-xs text-[#6b7280]">sobre o lucro</div>
+                </div>
               </div>
             </div>
             <div className="h-px bg-[#f3f4f6] w-full my-1" />

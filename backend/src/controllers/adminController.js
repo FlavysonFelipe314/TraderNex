@@ -20,6 +20,7 @@ exports.getAllUsers = async (req, res) => {
         u.email_verified,
         cp.selected_plan_id,
         cp.plan_status,
+        cp.account_type,
         ip.name as plan_name
       FROM users u
       LEFT JOIN client_profiles cp ON u.id = cp.user_id
@@ -245,6 +246,7 @@ exports.getAllMT4Accounts = async (req, res) => {
             automation_enabled: account.automation_enabled,
             risk_profile: account.risk_profile,
             created_at: account.created_at,
+            suggested_account_type: account.balance !== null && Number(account.balance) <= 5000 ? 'CENT' : null,
             // Dados MyFXBook (do usuário, não da conta)
             myfxbook_connection_id: userData.myfxbook_connection_id,
             myfxbook_email: userData.myfxbook_email,
@@ -1198,6 +1200,63 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao deletar usuário.',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Atualizar tipo de conta do cliente (Admin)
+ * PUT /api/admin/users/:userId/account-type
+ */
+exports.updateUserAccountType = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { account_type } = req.body;
+
+    const validTypes = ['CENT','Standard','Micro','Conta ECN','Conta ECN RAW','Conta PRO','Conta Prime','DEMO'];
+    if (!account_type || !validTypes.includes(account_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de conta inválido. Tipos válidos: ' + validTypes.join(', ')
+      });
+    }
+
+    // Verificar se o usuário existe
+    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado.'
+      });
+    }
+
+    // Verificar se o perfil existe, se não, criar
+    const profileCheck = await pool.query('SELECT id FROM client_profiles WHERE user_id = $1', [userId]);
+    if (profileCheck.rows.length === 0) {
+      await pool.query(
+        `INSERT INTO client_profiles (user_id, account_type, created_at, updated_at)
+         VALUES ($1, $2, NOW(), NOW())`,
+        [userId, account_type]
+      );
+    } else {
+      await pool.query(
+        `UPDATE client_profiles
+         SET account_type = $1, updated_at = NOW()
+         WHERE user_id = $2`,
+        [account_type, userId]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Tipo de conta atualizado com sucesso!'
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar tipo de conta do usuário:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao atualizar tipo de conta do usuário.',
       error: error.message
     });
   }

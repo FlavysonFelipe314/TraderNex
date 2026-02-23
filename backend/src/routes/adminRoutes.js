@@ -27,6 +27,7 @@ router.use(adminAuthMiddleware);
  *         description: Acesso negado - apenas admins
  */
 router.get('/users', adminController.getAllUsers);
+router.put('/users/:userId/account-type', adminController.updateUserAccountType);
 
 /**
  * @swagger
