@@ -337,7 +337,6 @@ export const updateUserPlan = async (userId, planId) => {
     }
   }
 }
-}
 
 // Atualizar tipo de conta do usuário (Admin)
 export const updateUserAccountType = async (userId, accountType) => {
