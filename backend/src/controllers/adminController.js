@@ -801,17 +801,16 @@ exports.testMyfxbookHealth = async (req, res) => {
     }
 
     const { email, encrypted_password } = configResult.rows[0];
-    const { decrypt } = require('../utils/encryption');
-    let password;
-    try {
-      password = decrypt(encrypted_password);
-    } catch (decryptError) {
+    const { decryptOrExplain } = require('../utils/encryption');
+    const dec = decryptOrExplain(encrypted_password);
+    if (!dec.ok) {
       return res.json({
         success: false,
         connected: false,
-        message: 'Erro ao descriptografar credenciais: ' + decryptError.message
+        message: dec.message
       });
     }
+    const password = dec.password;
 
     const { loginMyfxbook, getMyAccounts } = require('../services/myfxbookService');
     const loginResult = await loginMyfxbook(email, password);
@@ -900,8 +899,16 @@ exports.testUserMyfxbookIntegration = async (req, res) => {
     }
 
     const { email, encrypted_password } = configResult.rows[0];
-    const { decrypt } = require('../utils/encryption');
-    const password = decrypt(encrypted_password);
+    const { decryptOrExplain } = require('../utils/encryption');
+    const dec = decryptOrExplain(encrypted_password);
+    if (!dec.ok) {
+      return res.json({
+        success: false,
+        connected: false,
+        message: dec.message
+      });
+    }
+    const password = dec.password;
 
     // Fazer login no MyFXBook
     const { loginMyfxbook, getMyAccounts, getOpenTrades } = require('../services/myfxbookService');
@@ -957,8 +964,8 @@ exports.testUserMyfxbookIntegration = async (req, res) => {
       });
     }
 
-    // Tentar buscar dados da conta para confirmar que está funcionando
-    const openTradesResult = await getOpenTrades(loginResult.session, myfxbookAccountId);
+    // Tentar buscar dados da conta para confirmar que está funcionando (API MyFXBook usa id interno)
+    const openTradesResult = await getOpenTrades(loginResult.session, accountData.id);
 
     res.json({
       success: true,
@@ -1014,8 +1021,15 @@ exports.getMyfxbookAccountDataByAccountId = async (req, res) => {
     }
 
     const { email, encrypted_password } = configResult.rows[0];
-    const { decrypt } = require('../utils/encryption');
-    const password = decrypt(encrypted_password);
+    const { decryptOrExplain } = require('../utils/encryption');
+    const dec = decryptOrExplain(encrypted_password);
+    if (!dec.ok) {
+      return res.status(500).json({
+        success: false,
+        message: dec.message
+      });
+    }
+    const password = dec.password;
 
     // Fazer login no MyFXBook usando credenciais padrão
     const { loginMyfxbook, getMyAccounts } = require('../services/myfxbookService');

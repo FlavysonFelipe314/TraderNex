@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
+import { isUserAdmin } from '../utils/authUtils'
 
 const AuthContext = createContext(null)
 
@@ -47,14 +48,15 @@ export function AuthProvider({ children }) {
         const { token, user } = response.data.data
 
         // Normalizar campos do backend para o formato do frontend
+        const adminFlag = isUserAdmin(user)
         const normalizedUser = {
           ...user,
           firstName: user.firstName || user.first_name,
           lastName: user.lastName || user.last_name,
           first_name: user.first_name || user.firstName,
           last_name: user.last_name || user.lastName,
-          is_admin: user.is_admin || user.isAdmin || false,
-          isAdmin: user.is_admin || user.isAdmin || false
+          is_admin: adminFlag,
+          isAdmin: adminFlag
         }
         
         const newUserId = normalizedUser.id || normalizedUser.userId || normalizedUser.user_id
@@ -218,12 +220,10 @@ export function AuthProvider({ children }) {
       if (response.data.success && response.data.data) {
         const userData = response.data.data
         console.log('[getProfile] Dados do usuário recebidos:', userData)
-        // Normalizar campos do backend para o formato do frontend
-        // IMPORTANTE: Preservar is_admin do user atual se não vier do backend
-        const currentIsAdmin = user?.is_admin === true || user?.isAdmin === true
-        const backendIsAdmin = userData.is_admin === true || userData.isAdmin === true
-        const finalIsAdmin = backendIsAdmin || currentIsAdmin || false
-        
+        const currentIsAdmin = isUserAdmin(user)
+        const backendIsAdmin = isUserAdmin(userData)
+        const finalIsAdmin = backendIsAdmin || currentIsAdmin
+
         const normalizedUser = {
           id: userData.id,
           email: userData.email,
@@ -286,10 +286,10 @@ export function AuthProvider({ children }) {
         const userData = response.data.data
         // Normalizar campos do backend para o formato do frontend
         // IMPORTANTE: Preservar is_admin do user atual se não vier do backend
-        const currentIsAdmin = user?.is_admin === true || user?.isAdmin === true
-        const backendIsAdmin = userData.is_admin === true || userData.isAdmin === true
-        const finalIsAdmin = backendIsAdmin || currentIsAdmin || false
-        
+        const currentIsAdmin = isUserAdmin(user)
+        const backendIsAdmin = isUserAdmin(userData)
+        const finalIsAdmin = backendIsAdmin || currentIsAdmin
+
         const normalizedUser = {
           id: userData.id,
           email: userData.email,
@@ -314,7 +314,6 @@ export function AuthProvider({ children }) {
           zipCode: userData.zip_code,
           zip_code: userData.zip_code,
           complement: userData.complement,
-          // Preservar is_admin - priorizar valor do backend, mas manter do contexto atual se necessário
           is_admin: finalIsAdmin,
           isAdmin: finalIsAdmin
         }

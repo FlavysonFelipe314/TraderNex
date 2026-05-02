@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom'
-import { useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { isUserAdmin } from '../utils/authUtils'
 
 function AdminProtectedRoute({ children }) {
   const { isAuthenticated, loading, user } = useAuth()
@@ -22,8 +22,7 @@ function AdminProtectedRoute({ children }) {
     return <Navigate to="/login" replace />
   }
 
-  // Verificar se é admin
-  if (!user?.is_admin && !user?.isAdmin) {
+  if (!isUserAdmin(user)) {
     // Se não for admin, redirecionar para dashboard
     // Não limpar dados, apenas redirecionar
     return <Navigate to="/dashboard" replace />

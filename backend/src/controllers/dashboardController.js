@@ -407,23 +407,21 @@ exports.getMyfxbookData = async (req, res) => {
     }
 
     const { email, encrypted_password } = configResult.rows[0];
-    const { decrypt } = require('../utils/encryption');
-    
-    let password;
-    try {
-      password = decrypt(encrypted_password);
-      if (!password || password.trim() === '') {
-        console.error('[getMyfxbookData] Senha descriptografada está vazia');
-        return res.status(500).json({
-          success: false,
-          message: 'Erro ao descriptografar credenciais do sistema MyFXBook. Verifique a configuração no painel admin.'
-        });
-      }
-    } catch (decryptError) {
-      console.error('[getMyfxbookData] Erro ao descriptografar senha:', decryptError);
+    const { decryptOrExplain } = require('../utils/encryption');
+    const dec = decryptOrExplain(encrypted_password);
+    if (!dec.ok) {
+      console.error('[getMyfxbookData] Falha ao descriptografar:', dec.message);
       return res.status(500).json({
         success: false,
-        message: 'Erro ao descriptografar credenciais do sistema MyFXBook: ' + decryptError.message
+        message: dec.message
+      });
+    }
+    const password = dec.password;
+    if (!password || password.trim() === '') {
+      console.error('[getMyfxbookData] Senha descriptografada está vazia');
+      return res.status(500).json({
+        success: false,
+        message: 'Credenciais MyFXBook inválidas. Salve novamente no painel admin.'
       });
     }
 

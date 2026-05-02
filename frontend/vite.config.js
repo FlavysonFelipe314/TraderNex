@@ -1,9 +1,14 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  // Local (terminal): http://localhost:5000 | Docker (Vite no compose): defina VITE_PROXY_TARGET=http://backend:5000
+  const apiProxyTarget = env.VITE_PROXY_TARGET || 'http://localhost:5000'
+
+  return {
   plugins: [
     react(),
     VitePWA({
@@ -123,7 +128,7 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://backend:5000', // No Docker, use o nome do serviço
+        target: apiProxyTarget,
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path, // Não reescrever o path, manter /api
@@ -137,5 +142,6 @@ export default defineConfig({
         manualChunks: undefined
       }
     }
+  }
   }
 })

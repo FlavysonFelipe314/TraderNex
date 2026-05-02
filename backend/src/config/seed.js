@@ -5,80 +5,88 @@ async function seedDatabase() {
   try {
     console.log('🌱 Iniciando seed do banco de dados...\n');
 
-    // Limpar dados existentes (opcional - comentado por segurança)
-    // console.log('🗑️  Limpando dados existentes...');
-    // await pool.query('TRUNCATE TABLE support_responses, support_tickets, referrals, performance_reports, invoices, transactions, user_investments, mt4_accounts, client_profiles, users CASCADE;');
-
     const hashedPassword = await bcrypt.hash('senha123', 10);
 
     // 1. Inserir usuários de exemplo
     console.log('👤 Inserindo usuários...');
-    const usersResult = await pool.query(`
-      INSERT INTO users (email, password, first_name, last_name, phone, country, email_verified, is_active)
-      VALUES
-        ('admin@tradernex.com', $1, 'Admin', 'TraderNex', '+5511999999999', 'Brasil', true, true),
-        ('joao.silva@email.com', $1, 'João', 'Silva', '+5511988888888', 'Brasil', true, true),
-        ('maria.santos@email.com', $1, 'Maria', 'Santos', '+5511977777777', 'Brasil', true, true),
-        ('pedro.oliveira@email.com', $1, 'Pedro', 'Oliveira', '+5511966666666', 'Brasil', false, true),
-        ('ana.costa@email.com', $1, 'Ana', 'Costa', '+5511955555555', 'Brasil', true, true)
-      ON CONFLICT (email) DO NOTHING
-      RETURNING id, email, first_name, last_name;
-    `, [hashedPassword]);
+    
+    // Inserir um por um para pegar os IDs (MySQL não tem RETURNING)
+    const usersData = [
+      ['admin@tradernex.com', hashedPassword, 'Admin', 'TraderNex', '+5511999999999', 'Brasil', 1, 1],
+      ['joao.silva@email.com', hashedPassword, 'João', 'Silva', '+5511988888888', 'Brasil', 1, 1],
+      ['maria.santos@email.com', hashedPassword, 'Maria', 'Santos', '+5511977777777', 'Brasil', 1, 1],
+      ['pedro.oliveira@email.com', hashedPassword, 'Pedro', 'Oliveira', '+5511966666666', 'Brasil', 0, 1],
+      ['ana.costa@email.com', hashedPassword, 'Ana', 'Costa', '+5511955555555', 'Brasil', 1, 1]
+    ];
 
-    console.log(`✅ ${usersResult.rows.length} usuários inseridos`);
+    for (const userData of usersData) {
+      await pool.query(`
+        INSERT IGNORE INTO users (id, email, password, first_name, last_name, phone, country, email_verified, is_active)
+        VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?)
+      `, userData);
+    }
+
+    console.log(`✅ Usuários inseridos`);
 
     // Buscar IDs dos usuários
     const users = await pool.query('SELECT id, email FROM users ORDER BY created_at LIMIT 5');
-    const userIds = users.rows.map(u => u.id);
     const adminId = users.rows.find(u => u.email === 'admin@tradernex.com')?.id;
     const joaoId = users.rows.find(u => u.email === 'joao.silva@email.com')?.id;
     const mariaId = users.rows.find(u => u.email === 'maria.santos@email.com')?.id;
     const pedroId = users.rows.find(u => u.email === 'pedro.oliveira@email.com')?.id;
     const anaId = users.rows.find(u => u.email === 'ana.costa@email.com')?.id;
 
-    // 2. Inserir perfis de cliente (apenas se não existirem)
+    // Marcar admin
+    if (adminId) {
+      await pool.query('UPDATE users SET is_admin = 1 WHERE id = ?', [adminId]);
+    }
+
+    // 2. Inserir perfis de cliente
     console.log('👥 Inserindo perfis de cliente...');
-    for (const [userId, profile] of [
-      [adminId, { type: 'Premium', balance: 50000.00, invested: 100000.00, profit: 15000.00, percent: 15.00, referredBy: null }],
-      [joaoId, { type: 'Pro', balance: 15000.00, invested: 50000.00, profit: 6000.00, percent: 12.00, referredBy: adminId }],
-      [mariaId, { type: 'Basic', balance: 5000.00, invested: 10000.00, profit: 500.00, percent: 5.00, referredBy: adminId }],
-      [pedroId, { type: 'Basic', balance: 2000.00, invested: 5000.00, profit: 250.00, percent: 5.00, referredBy: joaoId }],
-      [anaId, { type: 'Pro', balance: 8000.00, invested: 25000.00, profit: 3000.00, percent: 12.00, referredBy: null }]
-    ]) {
-      const existing = await pool.query('SELECT id FROM client_profiles WHERE user_id = $1', [userId]);
+    const profiles = [
+      [adminId, 'Premium', 50000.00, 100000.00, 15000.00, 15.00, null],
+      [joaoId, 'Pro', 15000.00, 50000.00, 6000.00, 12.00, adminId],
+      [mariaId, 'Basic', 5000.00, 10000.00, 500.00, 5.00, adminId],
+      [pedroId, 'Basic', 2000.00, 5000.00, 250.00, 5.00, joaoId],
+      [anaId, 'Pro', 8000.00, 25000.00, 3000.00, 12.00, null]
+    ];
+
+    for (const [userId, type, balance, invested, profit, percent, referredBy] of profiles) {
+      const existing = await pool.query('SELECT id FROM client_profiles WHERE user_id = ?', [userId]);
       if (existing.rows.length === 0) {
+        const referralCode = 'TN' + Math.random().toString(36).substring(2, 10).toUpperCase();
         await pool.query(`
-          INSERT INTO client_profiles (user_id, account_type, balance, total_invested, total_profit, profit_percentage, referral_code, referred_by)
-          VALUES ($1, $2, $3, $4, $5, $6, 'TN' || substr(md5(random()::text), 1, 8), $7)
-        `, [userId, profile.type, profile.balance, profile.invested, profile.profit, profile.percent, profile.referredBy]);
+          INSERT INTO client_profiles (id, user_id, account_type, balance, total_invested, total_profit, profit_percentage, referral_code, referred_by)
+          VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [userId, type, balance, invested, profit, percent, referralCode, referredBy]);
       }
     }
 
     console.log('✅ Perfis de cliente inseridos');
 
-    // 3. Inserir/atualizar planos de investimento (garante consistência com constraints)
+    // 3. Inserir/atualizar planos de investimento
     console.log('📦 Inserindo planos de investimento...');
     await pool.query(`
-      INSERT INTO investment_plans (name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active)
+      INSERT INTO investment_plans (id, name, description, min_investment, max_investment, expected_return, duration_days, risk_level, is_active)
       VALUES
-        ('Nex Start', 'Plano básico para iniciantes', 1000.00, 10000.00, 5.0, 30, 'Low', TRUE),
-        ('Nex Pro', 'Plano profissional para escala', 5000.00, 100000.00, 8.0, 60, 'Medium', TRUE),
-        ('Nex Prime', 'Plano premium com acompanhamento exclusivo', 10000.00, NULL, 12.0, 90, 'High', TRUE)
-      ON CONFLICT (name) DO UPDATE
-        SET description = EXCLUDED.description,
-            min_investment = EXCLUDED.min_investment,
-            max_investment = EXCLUDED.max_investment,
-            expected_return = EXCLUDED.expected_return,
-            duration_days = EXCLUDED.duration_days,
-            risk_level = EXCLUDED.risk_level,
-            is_active = EXCLUDED.is_active;
+        (UUID(), 'Nex Start', 'Plano básico para iniciantes', 1000.00, 10000.00, 5.0, 30, 'Low', 1),
+        (UUID(), 'Nex Pro', 'Plano profissional para escala', 5000.00, 100000.00, 8.0, 60, 'Medium', 1),
+        (UUID(), 'Nex Prime', 'Plano premium com acompanhamento exclusivo', 10000.00, NULL, 12.0, 90, 'High', 1)
+      ON DUPLICATE KEY UPDATE
+        description = VALUES(description),
+        min_investment = VALUES(min_investment),
+        max_investment = VALUES(max_investment),
+        expected_return = VALUES(expected_return),
+        duration_days = VALUES(duration_days),
+        risk_level = VALUES(risk_level),
+        is_active = VALUES(is_active);
     `);
 
     const plans = await pool.query('SELECT id, name FROM investment_plans ORDER BY min_investment');
     const starterPlan = plans.rows.find(p => p.name === 'Nex Start')?.id;
     const professionalPlan = plans.rows.find(p => p.name === 'Nex Pro')?.id;
     const premiumPlan = plans.rows.find(p => p.name === 'Nex Prime')?.id;
-    const elitePlan = premiumPlan; // reutiliza Nex Prime para manter seeds existentes
+    const elitePlan = premiumPlan;
 
     // 4. Inserir contas MT4
     console.log('💼 Inserindo contas MT4...');
@@ -91,12 +99,17 @@ async function seedDatabase() {
     ];
     
     for (const [userId, accNum, accName, broker, server, balance, equity, currency, status] of mt4Accounts) {
-      const existing = await pool.query('SELECT id FROM mt4_accounts WHERE account_number = $1', [accNum]);
+      const existing = await pool.query('SELECT id FROM mt4_accounts WHERE account_number = ?', [accNum]);
       if (existing.rows.length === 0) {
+        const connectedAt = new Date();
+        connectedAt.setDate(connectedAt.getDate() - 30);
+        const lastSync = new Date();
+        lastSync.setHours(lastSync.getHours() - 1);
+        
         await pool.query(`
-          INSERT INTO mt4_accounts (user_id, account_number, account_name, broker, server, balance, equity, currency, status, connected_at, last_sync)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW() - INTERVAL '30 days', NOW() - INTERVAL '1 hour')
-        `, [userId, accNum, accName, broker, server, balance, equity, currency, status]);
+          INSERT INTO mt4_accounts (id, user_id, account_number, account_name, broker, server, balance, equity, currency, status, connected_at, last_sync)
+          VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [userId, accNum, accName, broker, server, balance, equity, currency, status, connectedAt, lastSync]);
       }
     }
 
@@ -120,9 +133,8 @@ async function seedDatabase() {
       endDate.setDate(endDate.getDate() + daysAhead);
       
       await pool.query(`
-        INSERT INTO user_investments (user_id, plan_id, amount, status, start_date, end_date, current_value, profit)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        ON CONFLICT DO NOTHING
+        INSERT IGNORE INTO user_investments (id, user_id, plan_id, amount, status, start_date, end_date, current_value, profit)
+        VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?)
       `, [userId, planId, amount, status, startDate, endDate, currentValue, profit]);
     }
 
@@ -145,9 +157,8 @@ async function seedDatabase() {
     
     for (const [userId, type, amount, status, description, reference] of transactions) {
       await pool.query(`
-        INSERT INTO transactions (user_id, type, amount, status, description, reference)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT DO NOTHING
+        INSERT IGNORE INTO transactions (id, user_id, type, amount, status, description, reference)
+        VALUES (UUID(), ?, ?, ?, ?, ?, ?)
       `, [userId, type, amount, status, description, reference]);
     }
 
@@ -174,9 +185,8 @@ async function seedDatabase() {
       })() : null;
       
       await pool.query(`
-        INSERT INTO invoices (user_id, invoice_number, amount, status, due_date, paid_date, description)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        ON CONFLICT (invoice_number) DO NOTHING
+        INSERT IGNORE INTO invoices (id, user_id, invoice_number, amount, status, due_date, paid_date, description)
+        VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?)
       `, [userId, invoiceNumber, amount, status, dueDate, paidDate, description]);
     }
 
@@ -198,9 +208,8 @@ async function seedDatabase() {
       reportDate.setDate(reportDate.getDate() - daysAgo);
       
       await pool.query(`
-        INSERT INTO performance_reports (user_id, report_date, total_trades, winning_trades, losing_trades, win_rate, total_profit, total_loss, net_profit, roi)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        ON CONFLICT DO NOTHING
+        INSERT IGNORE INTO performance_reports (id, user_id, report_date, total_trades, winning_trades, losing_trades, win_rate, total_profit, total_loss, net_profit, roi)
+        VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [userId, reportDate, totalTrades, winningTrades, losingTrades, winRate, totalProfit, totalLoss, netProfit, roi]);
     }
 
@@ -208,15 +217,19 @@ async function seedDatabase() {
 
     // 9. Inserir referências
     console.log('🔗 Inserindo referências...');
-    await pool.query(`
-      INSERT INTO referrals (referrer_id, referred_id, commission, commission_paid, status)
-      VALUES
-        ($1, $2, 500.00, true, 'active'),
-        ($1, $3, 250.00, true, 'active'),
-        ($2, $4, 100.00, false, 'active'),
-        ($1, $5, 400.00, true, 'active')
-      ON CONFLICT DO NOTHING;
-    `, [adminId, joaoId, mariaId, pedroId, anaId]);
+    const referralData = [
+      [adminId, joaoId, 500.00, 1, 'active'],
+      [adminId, mariaId, 250.00, 1, 'active'],
+      [joaoId, pedroId, 100.00, 0, 'active'],
+      [adminId, anaId, 400.00, 1, 'active']
+    ];
+
+    for (const [referrerId, referredId, commission, paid, status] of referralData) {
+      await pool.query(`
+        INSERT IGNORE INTO referrals (id, referrer_id, referred_id, commission, commission_paid, status)
+        VALUES (UUID(), ?, ?, ?, ?, ?)
+      `, [referrerId, referredId, commission, paid, status]);
+    }
 
     console.log('✅ Referências inseridas');
 
@@ -230,41 +243,37 @@ async function seedDatabase() {
       [pedroId, 'Verificação de email', 'Não recebi o email de verificação. Pode reenviar?', 'closed', 'low']
     ];
     
-    const ticketsResult = { rows: [] };
+    const insertedTicketIds = [];
     for (const [userId, subject, message, status, priority] of tickets) {
-      const result = await pool.query(`
-        INSERT INTO support_tickets (user_id, subject, message, status, priority)
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT DO NOTHING
-        RETURNING id, subject;
+      await pool.query(`
+        INSERT IGNORE INTO support_tickets (id, user_id, subject, message, status, priority)
+        VALUES (UUID(), ?, ?, ?, ?, ?)
       `, [userId, subject, message, status, priority]);
-      if (result.rows.length > 0) {
-        ticketsResult.rows.push(result.rows[0]);
-      }
     }
 
+    // Buscar tickets inseridos
+    const ticketsResult = await pool.query('SELECT id, subject FROM support_tickets ORDER BY created_at LIMIT 5');
     console.log(`✅ ${ticketsResult.rows.length} tickets de suporte inseridos`);
 
     // 11. Inserir respostas de suporte
-    if (ticketsResult.rows.length > 0) {
+    if (ticketsResult.rows.length >= 3) {
       const ticket1 = ticketsResult.rows[0]?.id;
       const ticket2 = ticketsResult.rows[1]?.id;
       const ticket3 = ticketsResult.rows[2]?.id;
 
       if (ticket1 && ticket2 && ticket3) {
         const responses = [
-          [ticket1, joaoId, 'Olá! Vamos verificar sua conexão MT4. Por favor, verifique se o servidor está correto.', false],
-          [ticket1, adminId, 'Verificamos sua conta e parece estar tudo correto. Tente desconectar e conectar novamente.', true],
-          [ticket2, mariaId, 'Obrigada pela pergunta! O Plano Premium tem risco alto, mas oferece retornos de até 20%.', false],
-          [ticket2, adminId, 'Segue mais informações sobre o Plano Premium: [detalhes técnicos]', true],
-          [ticket3, joaoId, 'Seu saque foi processado com sucesso! O valor será creditado em até 2 dias úteis.', false]
+          [ticket1, joaoId, 'Olá! Vamos verificar sua conexão MT4. Por favor, verifique se o servidor está correto.', 0],
+          [ticket1, adminId, 'Verificamos sua conta e parece estar tudo correto. Tente desconectar e conectar novamente.', 1],
+          [ticket2, mariaId, 'Obrigada pela pergunta! O Plano Premium tem risco alto, mas oferece retornos de até 20%.', 0],
+          [ticket2, adminId, 'Segue mais informações sobre o Plano Premium: [detalhes técnicos]', 1],
+          [ticket3, joaoId, 'Seu saque foi processado com sucesso! O valor será creditado em até 2 dias úteis.', 0]
         ];
         
         for (const [ticketId, userId, message, isAdmin] of responses) {
           await pool.query(`
-            INSERT INTO support_responses (ticket_id, user_id, message, is_admin)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT DO NOTHING
+            INSERT IGNORE INTO support_responses (id, ticket_id, user_id, message, is_admin)
+            VALUES (UUID(), ?, ?, ?, ?)
           `, [ticketId, userId, message, isAdmin]);
         }
 
@@ -297,4 +306,3 @@ if (require.main === module) {
 }
 
 module.exports = seedDatabase;
-

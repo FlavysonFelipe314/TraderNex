@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { isUserAdmin } from '../utils/authUtils'
 
 function DashboardRedirect({ children }) {
   const { user, loading } = useAuth()
@@ -19,7 +20,7 @@ function DashboardRedirect({ children }) {
   }
 
   // Se for admin, redirecionar para /admin
-  if (user?.is_admin || user?.isAdmin) {
+  if (isUserAdmin(user)) {
     return <Navigate to="/admin" replace />
   }
 

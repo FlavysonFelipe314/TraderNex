@@ -73,8 +73,29 @@ function decrypt(encryptedText) {
   }
 }
 
+/**
+ * Descriptografa credenciais e devolve mensagem clara se a chave AES não bater com o banco.
+ */
+function decryptOrExplain(encryptedText) {
+  try {
+    const password = decrypt(encryptedText);
+    return { ok: true, password };
+  } catch (err) {
+    const badKey =
+      err.code === 'ERR_OSSL_BAD_DECRYPT' ||
+      String(err.message || '').toLowerCase().includes('bad decrypt');
+    return {
+      ok: false,
+      message: badKey
+        ? 'ENCRYPTION_KEY no .env não corresponde à chave usada ao salvar as credenciais no banco. Use a mesma chave do ambiente original ou, no admin, salve de novo o email/senha MyFXBook para recriptografar com a chave atual.'
+        : String(err.message || 'Erro ao descriptografar')
+    };
+  }
+}
+
 module.exports = {
   encrypt,
-  decrypt
+  decrypt,
+  decryptOrExplain
 };
 

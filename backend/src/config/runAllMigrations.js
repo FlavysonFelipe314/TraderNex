@@ -1,140 +1,99 @@
 const fs = require('fs');
 const path = require('path');
-const pool = require('./database');
+const mysql = require('mysql2/promise');
+require('dotenv').config();
 
 async function runAllMigrations() {
+  // Usar conexão direta com multipleStatements
+  const connection = await mysql.createConnection({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT, 10) || 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'tradernex',
+    multipleStatements: true,
+  });
+
   try {
     console.log('🔄 Executando todas as migrations pendentes...\n');
 
-    const migrationsDir = path.join(__dirname, 'migrations');
-    const migrationFiles = fs.readdirSync(migrationsDir)
-      .filter(file => file.endsWith('.sql'))
-      .sort(); // Executar em ordem alfabética
+    // Como o schema.sql já inclui todas as tabelas e colunas,
+    // as migrations do PostgreSQL não precisam ser re-executadas.
+    // Apenas verificamos se as colunas/tabelas críticas existem.
 
-    console.log(`📋 Encontradas ${migrationFiles.length} migrations:\n`);
+    console.log('🔍 Verificando status das tabelas e colunas críticas...\n');
 
-    for (const file of migrationFiles) {
-      const migrationPath = path.join(migrationsDir, file);
-      const migrationName = file.replace('.sql', '');
-      
-      try {
-        console.log(`🔄 Executando: ${migrationName}...`);
-        
-        const migrationSql = fs.readFileSync(migrationPath, 'utf8');
-        await pool.query(migrationSql);
-        
-        console.log(`✅ ${migrationName} - OK\n`);
-      } catch (error) {
-        // Se for erro de "já existe", não é crítico
-        if (error.message && (
-          error.message.includes('already exists') ||
-          error.message.includes('duplicate key') ||
-          error.message.includes('column') && error.message.includes('already exists')
-        )) {
-          console.log(`ℹ️  ${migrationName} - Já aplicada (pode ser ignorado)\n`);
-        } else {
-          console.error(`❌ ${migrationName} - ERRO:`, error.message);
-          console.error(`   Continuando com próxima migration...\n`);
-          // Não interrompe, continua com as próximas
-        }
-      }
-    }
-
-    // Aplicar migrations específicas que podem estar faltando
-    console.log('🔄 Aplicando migrations críticas adicionais...\n');
-
-    const criticalMigrations = [
-      {
-        name: 'selected_plan_id',
-        sql: `
-          ALTER TABLE client_profiles 
-          ADD COLUMN IF NOT EXISTS selected_plan_id UUID REFERENCES investment_plans(id);
-          CREATE INDEX IF NOT EXISTS idx_client_profiles_selected_plan_id ON client_profiles(selected_plan_id);
-        `
-      },
-      {
-        name: 'profit_fee_percentage',
-        sql: `
-          ALTER TABLE investment_plans 
-          ADD COLUMN IF NOT EXISTS profit_fee_percentage DECIMAL(5, 2) DEFAULT 0.00 
-          CHECK (profit_fee_percentage >= 0 AND profit_fee_percentage <= 100);
-        `
-      },
-      {
-        name: 'system_myfxbook_config',
-        sql: `
-          CREATE TABLE IF NOT EXISTS system_myfxbook_config (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            email VARCHAR(255) NOT NULL,
-            encrypted_password TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_by UUID REFERENCES users(id)
-          );
-        `
-      }
-    ];
-
-    for (const migration of criticalMigrations) {
-      try {
-        await pool.query(migration.sql);
-        console.log(`✅ ${migration.name} - OK\n`);
-      } catch (error) {
-        if (error.message && error.message.includes('already exists')) {
-          console.log(`ℹ️  ${migration.name} - Já aplicada\n`);
-        } else {
-          console.error(`⚠️  ${migration.name} - Aviso:`, error.message);
-        }
-      }
-    }
-
-    console.log('═══════════════════════════════════════════');
-    console.log('   ✅ Todas as migrations executadas!');
-    console.log('═══════════════════════════════════════════\n');
-
-    // Verificar status das migrations críticas
-    console.log('🔍 Verificando status das migrations críticas...\n');
+    const dbName = process.env.DB_NAME || 'tradernex';
 
     const checks = [
       {
         name: 'Coluna selected_plan_id',
-        query: `SELECT 1 FROM information_schema.columns 
-                WHERE table_name = 'client_profiles' AND column_name = 'selected_plan_id'`
+        query: `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_SCHEMA = '${dbName}' AND TABLE_NAME = 'client_profiles' AND COLUMN_NAME = 'selected_plan_id'`
       },
       {
         name: 'Coluna profit_fee_percentage',
-        query: `SELECT 1 FROM information_schema.columns 
-                WHERE table_name = 'investment_plans' AND column_name = 'profit_fee_percentage'`
+        query: `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_SCHEMA = '${dbName}' AND TABLE_NAME = 'investment_plans' AND COLUMN_NAME = 'profit_fee_percentage'`
       },
       {
         name: 'Tabela system_myfxbook_config',
-        query: `SELECT 1 FROM information_schema.tables 
-                WHERE table_name = 'system_myfxbook_config'`
+        query: `SELECT 1 FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_SCHEMA = '${dbName}' AND TABLE_NAME = 'system_myfxbook_config'`
       },
       {
         name: 'Coluna is_admin',
-        query: `SELECT 1 FROM information_schema.columns 
-                WHERE table_name = 'users' AND column_name = 'is_admin'`
+        query: `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_SCHEMA = '${dbName}' AND TABLE_NAME = 'users' AND COLUMN_NAME = 'is_admin'`
+      },
+      {
+        name: 'Coluna encrypted_password (myfxbook_connections)',
+        query: `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_SCHEMA = '${dbName}' AND TABLE_NAME = 'myfxbook_connections' AND COLUMN_NAME = 'encrypted_password'`
+      },
+      {
+        name: 'Coluna credentials_status (mt4_accounts)',
+        query: `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_SCHEMA = '${dbName}' AND TABLE_NAME = 'mt4_accounts' AND COLUMN_NAME = 'credentials_status'`
+      },
+      {
+        name: 'Tabela crypto_interested',
+        query: `SELECT 1 FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_SCHEMA = '${dbName}' AND TABLE_NAME = 'crypto_interested'`
       }
     ];
 
+    let allOk = true;
     for (const check of checks) {
       try {
-        const result = await pool.query(check.query);
-        if (result.rows.length > 0) {
+        const [rows] = await connection.query(check.query);
+        if (rows.length > 0) {
           console.log(`✅ ${check.name}: OK`);
         } else {
           console.log(`❌ ${check.name}: FALTANDO`);
+          allOk = false;
         }
       } catch (error) {
         console.log(`⚠️  ${check.name}: Erro ao verificar - ${error.message}`);
+        allOk = false;
       }
     }
 
+    if (allOk) {
+      console.log('\n═══════════════════════════════════════════');
+      console.log('   ✅ Todas as tabelas e colunas estão OK!');
+      console.log('═══════════════════════════════════════════\n');
+    } else {
+      console.log('\n⚠️  Algumas colunas/tabelas estão faltando.');
+      console.log('   Execute: node src/config/initDB.js para recriar o schema.\n');
+    }
+
+    await connection.end();
     process.exit(0);
   } catch (error) {
     console.error('❌ Erro ao executar migrations:', error.message);
     console.error(error);
+    await connection.end();
     process.exit(1);
   }
 }
@@ -145,6 +104,3 @@ if (require.main === module) {
 }
 
 module.exports = runAllMigrations;
-
-
-

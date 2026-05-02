@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSidebar } from '../contexts/SidebarContext'
 import { getDashboardData, getMT4Accounts } from '../services/dashboardService'
+import { isUserAdmin } from '../utils/authUtils'
 
 function Sidebar() {
   const navigate = useNavigate()
@@ -191,28 +192,7 @@ function Sidebar() {
   }
   
   const storedUser = getUserFromStorage()
-  const adminCheck = 
-    user?.is_admin === true || 
-    user?.isAdmin === true || 
-    user?.role === 'admin' ||
-    storedUser?.is_admin === true ||
-    storedUser?.isAdmin === true ||
-    storedUser?.role === 'admin'
-  
-  const isAdmin = Boolean(adminCheck)
-  
-  // Debug: verificar status de admin em todas as rotas
-  if (user) {
-    console.log('[Sidebar] Verificação de admin:', {
-      isAdmin,
-      user_is_admin: user?.is_admin,
-      user_isAdmin: user?.isAdmin,
-      stored_is_admin: storedUser?.is_admin,
-      stored_isAdmin: storedUser?.isAdmin,
-      pathname: location.pathname,
-      user_id: user?.id
-    })
-  }
+  const isAdmin = isUserAdmin(user) || isUserAdmin(storedUser)
 
   // Itens do menu principal - alguns só aparecem após onboarding completo
   const allNavItems = [

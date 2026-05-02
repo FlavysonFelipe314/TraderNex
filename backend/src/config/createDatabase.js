@@ -1,54 +1,52 @@
 /**
- * Script para criar o banco de dados tradernex se não existir
+ * Script para criar o banco de dados tradernex se não existir (MySQL)
  * 
- * Este script conecta ao PostgreSQL usando o banco padrão 'postgres'
- * e cria o banco de dados 'tradernex' se ele não existir.
+ * Este script conecta ao MySQL e cria o banco de dados 'tradernex' se ele não existir.
  * 
  * Uso:
  *   node src/config/createDatabase.js
  */
 
-const { Pool } = require('pg');
+const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 async function createDatabase() {
   const dbName = process.env.DB_NAME || 'tradernex';
   
-  // Primeiro, conecta ao banco padrão 'postgres' para poder criar o banco
-  const adminPool = new Pool({
+  // Conecta sem especificar banco de dados
+  const connection = await mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT, 10) || 5432,
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-    database: 'postgres',  // Conecta ao banco padrão
+    port: parseInt(process.env.DB_PORT, 10) || 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
   });
 
   try {
     console.log(`🔍 Verificando se o banco de dados '${dbName}' existe...`);
 
     // Verifica se o banco existe
-    const checkResult = await adminPool.query(
-      'SELECT 1 FROM pg_database WHERE datname = $1',
+    const [rows] = await connection.query(
+      `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?`,
       [dbName]
     );
 
-    if (checkResult.rows.length === 0) {
+    if (rows.length === 0) {
       console.log(`📦 Criando banco de dados '${dbName}'...`);
       
-      // Cria o banco de dados
-      await adminPool.query(`CREATE DATABASE "${dbName}"`);
+      // Cria o banco de dados com charset UTF-8
+      await connection.query(`CREATE DATABASE \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
       
       console.log(`✅ Banco de dados '${dbName}' criado com sucesso!`);
     } else {
       console.log(`✅ Banco de dados '${dbName}' já existe.`);
     }
 
-    await adminPool.end();
+    await connection.end();
     process.exit(0);
   } catch (error) {
     console.error('❌ Erro ao criar banco de dados:', error.message);
     console.error(error);
-    await adminPool.end();
+    await connection.end();
     process.exit(1);
   }
 }
